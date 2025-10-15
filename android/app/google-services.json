@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "758311627601",
+    "project_id": "magang-bps",
+    "storage_bucket": "magang-bps.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:758311627601:android:cd4be1a6762b2593acc170",
+        "android_client_info": {
+          "package_name": "com.example.loginfirebase"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCLGJh1eOIS4fQqbourIQbMHmpnauY1oAs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:758311627601:android:37e5c90a0b3a2179acc170",
+        "android_client_info": {
+          "package_name": "magang.bps"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCLGJh1eOIS4fQqbourIQbMHmpnauY1oAs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
