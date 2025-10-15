@@ -31,7 +31,9 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Login Demo',
-        theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue)),
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        ),
         home: const RootPage(),
       ),
     );

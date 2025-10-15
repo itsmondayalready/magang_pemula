@@ -18,7 +18,10 @@ class AuthService extends ChangeNotifier {
 
   Future<void> signIn({required String email, required String password}) async {
     try {
-      final cred = await _auth.signInWithEmailAndPassword(email: email, password: password);
+      final cred = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
       _user = cred.user;
       notifyListeners();
     } on FirebaseAuthException {
@@ -27,9 +30,15 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  Future<void> createAccount({required String email, required String password}) async {
+  Future<void> createAccount({
+    required String email,
+    required String password,
+  }) async {
     try {
-      final cred = await _auth.createUserWithEmailAndPassword(email: email, password: password);
+      final cred = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
       _user = cred.user;
       notifyListeners();
     } on FirebaseAuthException {
