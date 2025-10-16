@@ -301,24 +301,36 @@ class _HeaderContentState extends State<_HeaderContent> with SingleTickerProvide
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Hanya teks 'Ubah Wilayah' yang bisa ditekan
-                        GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: widget.onChangeWilayah,
-                          child: const Text(
-                            'Ubah Wilayah',
-                            style: TextStyle(color: Colors.white70, fontSize: 11),
+                        Material(
+                          type: MaterialType.transparency,
+                          child: InkWell(
+                            onTap: widget.onChangeWilayah,
+                            borderRadius: BorderRadius.circular(4),
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 2, horizontal: 2),
+                              child: Text(
+                                'Ubah Wilayah',
+                                style: TextStyle(color: Colors.white70, fontSize: 11),
+                              ),
+                            ),
                           ),
                         ),
                         // Hanya teks nama desa yang bisa ditekan
-                        GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: widget.onChangeWilayah,
-                          child: Text(
-                            widget.desaName,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
+                        Material(
+                          type: MaterialType.transparency,
+                          child: InkWell(
+                            onTap: widget.onChangeWilayah,
+                            borderRadius: BorderRadius.circular(4),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 2),
+                              child: Text(
+                                widget.desaName,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
                             ),
                           ),
                         ),
