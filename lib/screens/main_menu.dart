@@ -295,32 +295,49 @@ class _HeaderContentState extends State<_HeaderContent> with SingleTickerProvide
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
-                  child: GestureDetector(
-                    onTap: widget.onChangeWilayah,
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Ubah Wilayah', style: TextStyle(color: Colors.white70, fontSize: 11)),
-                          Text(
-                            widget.desaName,
-                            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Hanya teks 'Ubah Wilayah' yang bisa ditekan
+                        GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: widget.onChangeWilayah,
+                          child: const Text(
+                            'Ubah Wilayah',
+                            style: TextStyle(color: Colors.white70, fontSize: 11),
                           ),
-                          Text('Kode: ${widget.kodeWilayah}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
-                          const SizedBox(height: 6),
-                          FadeTransition(
-                            opacity: _fade,
-                            child: Row(
-                              children: [
-                                const Text('Peran', style: TextStyle(color: Colors.white70, fontSize: 11)),
-                                const SizedBox(width: 8),
-                                _AdminBadgeCompact(isAdmin: widget.isAdmin),
-                              ],
+                        ),
+                        // Hanya teks nama desa yang bisa ditekan
+                        GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: widget.onChangeWilayah,
+                          child: Text(
+                            widget.desaName,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                        Text(
+                          'Kode: ${widget.kodeWilayah}',
+                          style: const TextStyle(color: Colors.white70, fontSize: 12),
+                        ),
+                        const SizedBox(height: 6),
+                        FadeTransition(
+                          opacity: _fade,
+                          child: Row(
+                            children: [
+                              const Text('Peran', style: TextStyle(color: Colors.white70, fontSize: 11)),
+                              const SizedBox(width: 8),
+                              _AdminBadgeCompact(isAdmin: widget.isAdmin),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
