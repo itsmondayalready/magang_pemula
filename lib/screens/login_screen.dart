@@ -344,29 +344,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          SizedBox(
-                            width: 180,
-                            height: 44,
-                            child: OutlinedButton.icon(
-                              onPressed: _isLoading ? null : _signInGuest,
-                              icon: const Icon(Icons.visibility_rounded),
-                              label: const Text('Masuk sebagai Guest'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.black87,
-                                side: const BorderSide(color: Colors.black26),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30),
-                                ),
-                                textStyle: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                ),
-                                backgroundColor: Colors.white.withValues(
-                                  alpha: 0.6,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
                           TextButton(
                             onPressed: () async {
                               final email = _emailController.text.trim();
@@ -408,10 +385,26 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 18),
-                  const Text(
-                    'BUILD: signin-v2',
-                    style: TextStyle(color: Colors.white24, fontSize: 12),
+                  SizedBox(
+                    width: 220,
+                    height: 44,
+                    child: OutlinedButton.icon(
+                      onPressed: _isLoading ? null : _signInGuest,
+                      icon: const Icon(Icons.visibility_rounded),
+                      label: const Text('Masuk sebagai Guest'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.black87,
+                        side: const BorderSide(color: Colors.black26),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        textStyle: const TextStyle(fontWeight: FontWeight.w700),
+                        backgroundColor: Colors.white.withValues(alpha: 0.6),
+                      ),
+                    ),
                   ),
+                  const SizedBox(height: 10),
+
                 ],
               ),
             ),
