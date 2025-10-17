@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../services/auth_service.dart';
-import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -41,6 +40,14 @@ class _LoginScreenState extends State<LoginScreen> {
         return 'Password terlalu lemah. Gunakan minimal 6 karakter.';
       case 'too-many-requests':
         return 'Terlalu banyak percobaan. Coba lagi nanti.';
+      case 'network-request-failed':
+        return 'Koneksi jaringan bermasalah. Periksa internet Anda.';
+      case 'operation-not-allowed':
+        return 'Metode login tidak diaktifkan. Hubungi admin.';
+      case 'invalid-credential':
+        return 'Kredensial tidak valid atau sudah kedaluwarsa.';
+      case 'internal-error':
+        return 'Terjadi kesalahan internal. Coba beberapa saat lagi.';
       default:
         return null;
     }
@@ -73,17 +80,18 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _passwordController.text.trim(),
       );
       if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
+        // Kembali ke halaman sebelumnya (Main Menu) dan biarkan UI
+        // merespons perubahan auth melalui Provider.
+        Navigator.of(context).pop(true);
       }
     } on FirebaseAuthException catch (e) {
-      final msg =
-          _friendlyMessageForCode(e.code) ??
+      final msg = _friendlyMessageForCode(e.code) ??
           'Login gagal. Periksa email dan password Anda.';
-      setState(() => _error = msg);
+      debugPrint('[Login] FirebaseAuthException code=${e.code} message=${e.message}');
+      if (mounted) setState(() => _error = msg);
     } catch (e) {
-      setState(() => _error = 'Terjadi kesalahan. Silakan coba lagi.');
+      debugPrint('[Login] Unknown error: $e');
+      if (mounted) setState(() => _error = 'Terjadi kesalahan. Silakan coba lagi.');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);

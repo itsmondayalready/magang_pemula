@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import 'login_screen.dart';
 
 // Main menu screen untuk aplikasi Desa — versi yang dirapikan
 class MainMenuPage extends StatefulWidget {
@@ -10,14 +11,13 @@ class MainMenuPage extends StatefulWidget {
     required this.kodeWilayah,
     required this.totalPenduduk,
     required this.totalKK,
-    required this.isAdmin,
   });
 
   final String desaName;
   final String kodeWilayah;
   final int totalPenduduk;
   final int totalKK;
-  final bool isAdmin;
+  // isAdmin dihitung dinamis dari AuthService agar UI merefleksikan login/logout
 
   @override
   State<MainMenuPage> createState() => _MainMenuPageState();
@@ -51,6 +51,9 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = Provider.of<AuthService>(context);
+    final isSignedIn = auth.isSignedIn;
+    final isAdmin = isSignedIn && (auth.userEmail ?? '').toLowerCase().contains('admin');
     final features = <_Feature>[
       _Feature(
         title: 'Rencana',
@@ -132,11 +135,18 @@ class _MainMenuPageState extends State<MainMenuPage> {
             delegate: _MainMenuHeaderDelegate(
               desaName: _desaName,
               kodeWilayah: widget.kodeWilayah,
-              isAdmin: widget.isAdmin,
+              isAdmin: isAdmin,
+              isSignedIn: isSignedIn,
               onChangeWilayah: _changeWilayah,
+              onLogin: () async {
+                await Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                );
+                // Setelah kembali dari Login, Provider akan memicu rebuild
+              },
               onLogout: () async {
-                final auth = Provider.of<AuthService>(context, listen: false);
-                await auth.signOut();
+                final a = Provider.of<AuthService>(context, listen: false);
+                await a.signOut();
               },
             ),
           ),
@@ -163,17 +173,19 @@ class _MainMenuPageState extends State<MainMenuPage> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          showModalBottomSheet(
-            context: context,
-            showDragHandle: true,
-            builder: (_) => const _QuickActionsSheet(),
-          );
-        },
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Aksi Cepat'),
-      ),
+      floatingActionButton: isAdmin
+          ? FloatingActionButton.extended(
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  showDragHandle: true,
+                  builder: (_) => const _QuickActionsSheet(),
+                );
+              },
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Aksi Cepat'),
+            )
+          : null,
     );
   }
 }
@@ -182,13 +194,17 @@ class _MainMenuHeaderDelegate extends SliverPersistentHeaderDelegate {
   final String desaName;
   final String kodeWilayah;
   final bool isAdmin;
+  final bool isSignedIn;
   final VoidCallback onChangeWilayah;
+  final VoidCallback onLogin;
   final VoidCallback onLogout;
   _MainMenuHeaderDelegate({
     required this.desaName,
     required this.kodeWilayah,
     required this.isAdmin,
+    required this.isSignedIn,
     required this.onChangeWilayah,
+    required this.onLogin,
     required this.onLogout,
   });
 
@@ -212,7 +228,9 @@ class _MainMenuHeaderDelegate extends SliverPersistentHeaderDelegate {
         desaName: desaName,
         kodeWilayah: kodeWilayah,
         isAdmin: isAdmin,
+        isSignedIn: isSignedIn,
         onChangeWilayah: onChangeWilayah,
+        onLogin: onLogin,
         onLogout: onLogout,
         shrinkOffset: shrinkOffset,
         minExtent: minExtent,
@@ -232,7 +250,9 @@ class _HeaderContent extends StatefulWidget {
     required this.desaName,
     required this.kodeWilayah,
     required this.isAdmin,
+    required this.isSignedIn,
     required this.onChangeWilayah,
+    required this.onLogin,
     required this.onLogout,
     required this.shrinkOffset,
     required this.minExtent,
@@ -242,7 +262,9 @@ class _HeaderContent extends StatefulWidget {
   final String desaName;
   final String kodeWilayah;
   final bool isAdmin;
+  final bool isSignedIn;
   final VoidCallback onChangeWilayah;
+  final VoidCallback onLogin;
   final VoidCallback onLogout;
   final double shrinkOffset;
   final double minExtent;
@@ -354,13 +376,22 @@ class _HeaderContentState extends State<_HeaderContent> with SingleTickerProvide
                   ),
                 ),
                 const SizedBox(width: 8),
-                IconButton(
-                  tooltip: 'Logout',
-                  icon: const Icon(Icons.logout_rounded, color: Colors.white),
-                  onPressed: widget.onLogout,
-                  padding: const EdgeInsets.all(8),
-                  constraints: const BoxConstraints(),
-                ),
+                if (widget.isSignedIn)
+                  IconButton(
+                    tooltip: 'Logout',
+                    icon: const Icon(Icons.logout_rounded, color: Colors.white),
+                    onPressed: widget.onLogout,
+                    padding: const EdgeInsets.all(8),
+                    constraints: const BoxConstraints(),
+                  )
+                else
+                  IconButton(
+                    tooltip: 'Login',
+                    icon: const Icon(Icons.login_rounded, color: Colors.white),
+                    onPressed: widget.onLogin,
+                    padding: const EdgeInsets.all(8),
+                    constraints: const BoxConstraints(),
+                  ),
               ],
             ),
           ],
