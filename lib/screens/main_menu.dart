@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 
-// Main menu screen untuk aplikasi Desa — versi yang dirapikan
+// Main menu screen untuk aplikasi Desa — versi yang rapi
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({
     super.key,
@@ -124,8 +124,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
       ),
     ];
 
-    final auth = Provider.of<AuthService>(context);
-    final isGuest = auth.isGuest;
+  final auth = Provider.of<AuthService>(context);
+  final isGuest = auth.isGuest;
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -315,7 +315,7 @@ class _HeaderContentState extends State<_HeaderContent>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: Padding(
@@ -366,28 +366,30 @@ class _HeaderContentState extends State<_HeaderContent>
                             ),
                           ),
                         ),
-                        Text(
-                          'Kode: ${widget.kodeWilayah}',
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
+                        // Tampilkan 'Kode' sebagai baris tersendiri
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 2,
+                            horizontal: 2,
+                          ),
+                          child: Text(
+                            'Kode: ${widget.kodeWilayah}',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 6),
+                        // Role badge di bawahnya, dengan padding kiri sama seperti teks di atas
                         FadeTransition(
                           opacity: _fade,
-                          child: Row(
-                            children: [
-                              const Text(
-                                'Peran',
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 11,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              _RoleBadge(),
-                            ],
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 2,
+                              horizontal: 2,
+                            ),
+                            child: _RoleBadge(),
                           ),
                         ),
                       ],
@@ -395,12 +397,15 @@ class _HeaderContentState extends State<_HeaderContent>
                   ),
                 ),
                 const SizedBox(width: 8),
-                IconButton(
-                  tooltip: 'Logout',
-                  icon: const Icon(Icons.logout_rounded, color: Colors.white),
-                  onPressed: widget.onLogout,
-                  padding: const EdgeInsets.all(8),
-                  constraints: const BoxConstraints(),
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: IconButton(
+                    tooltip: 'Logout',
+                    icon: const Icon(Icons.logout_rounded, color: Colors.white),
+                    onPressed: widget.onLogout,
+                    padding: const EdgeInsets.all(8),
+                    constraints: const BoxConstraints(),
+                  ),
                 ),
               ],
             ),
@@ -698,32 +703,33 @@ class _RoleBadge extends StatelessWidget {
     final isAdmin = !(isGuest); // treat non-guest as admin for now
     final baseColor = isAdmin ? Colors.green : Colors.grey;
     final bgColor = isAdmin
-        ? baseColor.withValues(alpha: 0.18)
-        : baseColor.withValues(alpha: 0.10);
-    final borderColor = baseColor.withValues(alpha: 0.28);
+        ? baseColor.withValues(alpha: 0.16)
+        : baseColor.withValues(alpha: 0.08);
+    final borderColor = baseColor.withValues(alpha: 0.24);
     final contentColor = isAdmin ? Colors.white : baseColor;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: borderColor),
       ),
-      child: Row(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            isAdmin ? Icons.verified_user_rounded : Icons.visibility_rounded,
+            isAdmin ? Icons.verified_user_rounded : Icons.person,
             color: contentColor,
-            size: 14,
+            size: 12,
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 4),
           Text(
             isGuest ? 'Guest' : 'Admin',
             style: TextStyle(
               color: contentColor,
               fontWeight: FontWeight.w600,
-              fontSize: 12,
+              fontSize: 11,
             ),
           ),
         ],

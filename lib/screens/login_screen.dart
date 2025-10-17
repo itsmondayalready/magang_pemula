@@ -390,7 +390,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     height: 44,
                     child: OutlinedButton.icon(
                       onPressed: _isLoading ? null : _signInGuest,
-                      icon: const Icon(Icons.visibility_rounded),
+                      icon: const Icon(Icons.person_2),
                       label: const Text('Masuk sebagai Guest'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.black87,
