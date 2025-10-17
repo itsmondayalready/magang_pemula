@@ -124,6 +124,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
       ),
     ];
 
+    final auth = Provider.of<AuthService>(context);
+    final isGuest = auth.isGuest;
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -146,12 +148,19 @@ class _MainMenuPageState extends State<MainMenuPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _HeaderStats(totalPenduduk: widget.totalPenduduk, totalKK: widget.totalKK),
+                  _HeaderStats(
+                    totalPenduduk: widget.totalPenduduk,
+                    totalKK: widget.totalKK,
+                  ),
                   const SizedBox(height: 12),
                   // Small top menu stays in the body (horizontal carousel)
                   const _TopMenuCarousel(),
                   const SizedBox(height: 10),
-                  _SearchField(onChanged: (v) {/* TODO: implement search */}),
+                  _SearchField(
+                    onChanged: (v) {
+                      /* TODO: implement search */
+                    },
+                  ),
                   const SizedBox(height: 12),
                 ],
               ),
@@ -163,17 +172,19 @@ class _MainMenuPageState extends State<MainMenuPage> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          showModalBottomSheet(
-            context: context,
-            showDragHandle: true,
-            builder: (_) => const _QuickActionsSheet(),
-          );
-        },
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Aksi Cepat'),
-      ),
+      floatingActionButton: isGuest
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  showDragHandle: true,
+                  builder: (_) => const _QuickActionsSheet(),
+                );
+              },
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Aksi Cepat'),
+            ),
     );
   }
 }
@@ -198,8 +209,12 @@ class _MainMenuHeaderDelegate extends SliverPersistentHeaderDelegate {
   double get maxExtent => 180;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-  // header content delegates animation handling to _HeaderContent
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    // header content delegates animation handling to _HeaderContent
     return Container(
       decoration: const BoxDecoration(
         gradient: _gradLogin,
@@ -223,7 +238,9 @@ class _MainMenuHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(covariant _MainMenuHeaderDelegate oldDelegate) {
-    return desaName != oldDelegate.desaName || kodeWilayah != oldDelegate.kodeWilayah || isAdmin != oldDelegate.isAdmin;
+    return desaName != oldDelegate.desaName ||
+        kodeWilayah != oldDelegate.kodeWilayah ||
+        isAdmin != oldDelegate.isAdmin;
   }
 }
 
@@ -252,14 +269,18 @@ class _HeaderContent extends StatefulWidget {
   State<_HeaderContent> createState() => _HeaderContentState();
 }
 
-class _HeaderContentState extends State<_HeaderContent> with SingleTickerProviderStateMixin {
+class _HeaderContentState extends State<_HeaderContent>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
   late Animation<double> _fade;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 200))..value = 1.0;
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    )..value = 1.0;
     _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
   }
 
@@ -267,7 +288,9 @@ class _HeaderContentState extends State<_HeaderContent> with SingleTickerProvide
   void didUpdateWidget(covariant _HeaderContent oldWidget) {
     super.didUpdateWidget(oldWidget);
     final shrinkRange = widget.maxExtent - widget.minExtent;
-    final factor = shrinkRange > 0 ? (widget.shrinkOffset / shrinkRange).clamp(0.0, 1.0) : 0.0;
+    final factor = shrinkRange > 0
+        ? (widget.shrinkOffset / shrinkRange).clamp(0.0, 1.0)
+        : 0.0;
     final target = (1.0 - factor).clamp(0.0, 1.0);
     // set controller value after this frame to avoid 'setState during build' warnings
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -307,10 +330,16 @@ class _HeaderContentState extends State<_HeaderContent> with SingleTickerProvide
                             onTap: widget.onChangeWilayah,
                             borderRadius: BorderRadius.circular(4),
                             child: const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 2, horizontal: 2),
+                              padding: EdgeInsets.symmetric(
+                                vertical: 2,
+                                horizontal: 2,
+                              ),
                               child: Text(
                                 'Ubah Wilayah',
-                                style: TextStyle(color: Colors.white70, fontSize: 11),
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 11,
+                                ),
                               ),
                             ),
                           ),
@@ -322,7 +351,10 @@ class _HeaderContentState extends State<_HeaderContent> with SingleTickerProvide
                             onTap: widget.onChangeWilayah,
                             borderRadius: BorderRadius.circular(4),
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 2),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 2,
+                                horizontal: 2,
+                              ),
                               child: Text(
                                 widget.desaName,
                                 style: const TextStyle(
@@ -336,16 +368,25 @@ class _HeaderContentState extends State<_HeaderContent> with SingleTickerProvide
                         ),
                         Text(
                           'Kode: ${widget.kodeWilayah}',
-                          style: const TextStyle(color: Colors.white70, fontSize: 12),
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
                         ),
                         const SizedBox(height: 6),
                         FadeTransition(
                           opacity: _fade,
                           child: Row(
                             children: [
-                              const Text('Peran', style: TextStyle(color: Colors.white70, fontSize: 11)),
+                              const Text(
+                                'Peran',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 11,
+                                ),
+                              ),
                               const SizedBox(width: 8),
-                              _AdminBadgeCompact(isAdmin: widget.isAdmin),
+                              _RoleBadge(),
                             ],
                           ),
                         ),
@@ -371,7 +412,12 @@ class _HeaderContentState extends State<_HeaderContent> with SingleTickerProvide
 }
 
 class _TopMenuItem extends StatelessWidget {
-  const _TopMenuItem({required this.icon, required this.label, required this.onTap, required this.gradient});
+  const _TopMenuItem({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    required this.gradient,
+  });
   final IconData icon;
   final String label;
   final VoidCallback onTap;
@@ -402,9 +448,9 @@ class _TopMenuItem extends StatelessWidget {
               label,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.w600,
-                  ),
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
@@ -432,17 +478,27 @@ class _HeaderStats extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Ringkasan Desa',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+                Text(
+                  'Ringkasan Desa',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    _StatChip(icon: Icons.people_alt_rounded, label: 'Penduduk', value: totalPenduduk),
+                    _StatChip(
+                      icon: Icons.people_alt_rounded,
+                      label: 'Penduduk',
+                      value: totalPenduduk,
+                    ),
                     const SizedBox(width: 8),
-                    _StatChip(icon: Icons.home_rounded, label: 'KK', value: totalKK),
+                    _StatChip(
+                      icon: Icons.home_rounded,
+                      label: 'KK',
+                      value: totalKK,
+                    ),
                   ],
                 ),
               ],
@@ -456,7 +512,11 @@ class _HeaderStats extends StatelessWidget {
 }
 
 class _StatChip extends StatelessWidget {
-  const _StatChip({required this.icon, required this.label, required this.value});
+  const _StatChip({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
   final IconData icon;
   final String label;
   final int value;
@@ -472,7 +532,13 @@ class _StatChip extends StatelessWidget {
         children: [
           Icon(icon, color: Colors.white, size: 18),
           const SizedBox(width: 6),
-          Text('$label: $value', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+          Text(
+            '$label: $value',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );
@@ -488,7 +554,11 @@ class _SearchField extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.06)),
+        border: Border.all(
+          color: Theme.of(
+            context,
+          ).colorScheme.onSurface.withValues(alpha: 0.06),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -501,9 +571,15 @@ class _SearchField extends StatelessWidget {
         onChanged: onChanged,
         decoration: InputDecoration(
           hintText: 'Cari menu, data, atau RT…',
-          prefixIcon: Icon(Icons.search_rounded, color: Theme.of(context).colorScheme.primary),
+          prefixIcon: Icon(
+            Icons.search_rounded,
+            color: Theme.of(context).colorScheme.primary,
+          ),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 14,
+            horizontal: 12,
+          ),
         ),
       ),
     );
@@ -522,13 +598,10 @@ class _FeatureGrid extends StatelessWidget {
         crossAxisSpacing: 12,
         childAspectRatio: 1.15,
       ),
-      delegate: SliverChildBuilderDelegate(
-        (context, i) {
-          final f = features[i];
-          return _FeatureCard(feature: f);
-        },
-        childCount: features.length,
-      ),
+      delegate: SliverChildBuilderDelegate((context, i) {
+        final f = features[i];
+        return _FeatureCard(feature: f);
+      }, childCount: features.length),
     );
   }
 }
@@ -545,7 +618,7 @@ class _FeatureCard extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: feature.gradient,
           borderRadius: BorderRadius.circular(20),
-            boxShadow: [
+          boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 12,
@@ -569,7 +642,10 @@ class _FeatureCard extends StatelessWidget {
                     child: Icon(feature.icon, color: Colors.white),
                   ),
                   const Spacer(),
-                  const Icon(Icons.arrow_forward_rounded, color: Colors.white70),
+                  const Icon(
+                    Icons.arrow_forward_rounded,
+                    color: Colors.white70,
+                  ),
                 ],
               ),
               const Spacer(),
@@ -612,13 +688,18 @@ class _Feature {
 // _AdminBadge removed — replaced by _AdminBadgeCompact for compact/consistent use
 
 // Compact variant of the admin badge used in the smaller header
-class _AdminBadgeCompact extends StatelessWidget {
-  const _AdminBadgeCompact({required this.isAdmin});
-  final bool isAdmin;
+// Replaced by _RoleBadge above
+
+class _RoleBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final auth = Provider.of<AuthService>(context);
+    final isGuest = auth.isGuest;
+    final isAdmin = !(isGuest); // treat non-guest as admin for now
     final baseColor = isAdmin ? Colors.green : Colors.grey;
-    final bgColor = isAdmin ? baseColor.withValues(alpha: 0.18) : baseColor.withValues(alpha: 0.10);
+    final bgColor = isAdmin
+        ? baseColor.withValues(alpha: 0.18)
+        : baseColor.withValues(alpha: 0.10);
     final borderColor = baseColor.withValues(alpha: 0.28);
     final contentColor = isAdmin ? Colors.white : baseColor;
 
@@ -631,11 +712,19 @@ class _AdminBadgeCompact extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.verified_user_rounded, color: contentColor, size: 14),
+          Icon(
+            isAdmin ? Icons.verified_user_rounded : Icons.visibility_rounded,
+            color: contentColor,
+            size: 14,
+          ),
           const SizedBox(width: 6),
           Text(
-            isAdmin ? 'Admin' : 'Guest',
-            style: TextStyle(color: contentColor, fontWeight: FontWeight.w600, fontSize: 12),
+            isGuest ? 'Guest' : 'Admin',
+            style: TextStyle(
+              color: contentColor,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
           ),
         ],
       ),
@@ -647,11 +736,33 @@ class _QuickActionsSheet extends StatelessWidget {
   const _QuickActionsSheet();
   @override
   Widget build(BuildContext context) {
-    final actions = [
-      _ActionData(Icons.note_add_rounded, 'Tambah Rencana', '/rencana', _gradEmeraldGold),
-      _ActionData(Icons.campaign_rounded, 'Catat Kebencanaan', '/kebencanaan', _gradRedOrange),
-      _ActionData(Icons.event_available_rounded, 'Buat Jadwal', '/kalender', _gradOrangePink),
-      _ActionData(Icons.how_to_vote_rounded, 'Buat Kuesioner', '/kuesioner', _gradBluePurple),
+    final auth = Provider.of<AuthService>(context, listen: false);
+    final isGuest = auth.isGuest;
+    final actions = <_ActionData>[
+      _ActionData(
+        Icons.note_add_rounded,
+        'Tambah Rencana',
+        '/rencana',
+        _gradEmeraldGold,
+      ),
+      _ActionData(
+        Icons.campaign_rounded,
+        'Catat Kebencanaan',
+        '/kebencanaan',
+        _gradRedOrange,
+      ),
+      _ActionData(
+        Icons.event_available_rounded,
+        'Buat Jadwal',
+        '/kalender',
+        _gradOrangePink,
+      ),
+      _ActionData(
+        Icons.how_to_vote_rounded,
+        'Buat Kuesioner',
+        '/kuesioner',
+        _gradBluePurple,
+      ),
     ];
     return SafeArea(
       child: Padding(
@@ -660,9 +771,47 @@ class _QuickActionsSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Aksi Cepat', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+            Text(
+              'Aksi Cepat',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+            ),
             const SizedBox(height: 12),
-            ...actions.map((a) => ListTile(
+            if (isGuest) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.1),
+                  border: Border.all(
+                    color: Colors.orange.withValues(alpha: 0.3),
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: const [
+                    Icon(Icons.visibility_rounded, color: Colors.orange),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Mode Tamu: Tindakan pembuatan data dinonaktifkan.',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Tutup'),
+                ),
+              ),
+            ] else ...[
+              ...actions.map(
+                (a) => ListTile(
                   leading: Icon(a.icon),
                   title: Text(a.label),
                   trailing: const Icon(Icons.chevron_right_rounded),
@@ -670,7 +819,9 @@ class _QuickActionsSheet extends StatelessWidget {
                     Navigator.pop(context);
                     Navigator.pushNamed(context, a.route);
                   },
-                )),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -691,12 +842,42 @@ class _TopMenuCarousel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = [
-      _ActionData(Icons.book_rounded, 'Publikasi', '/publikasi', _gradBluePurple),
-      _ActionData(Icons.table_chart_rounded, 'Tabel', '/tabel', _gradTealIndigo),
-      _ActionData(Icons.image_rounded, 'Infografis', '/infografis', _gradIndigoCyan),
-      _ActionData(Icons.insert_drive_file_rounded, 'BRS', '/brs', _gradGoldBrown),
-      _ActionData(Icons.people_rounded, 'Kependudukan', '/kependudukan', _gradCyanBlue),
-      _ActionData(Icons.warning_rounded, 'Kebencanaan', '/kebencanaan', _gradRedOrange),
+      _ActionData(
+        Icons.book_rounded,
+        'Publikasi',
+        '/publikasi',
+        _gradBluePurple,
+      ),
+      _ActionData(
+        Icons.table_chart_rounded,
+        'Tabel',
+        '/tabel',
+        _gradTealIndigo,
+      ),
+      _ActionData(
+        Icons.image_rounded,
+        'Infografis',
+        '/infografis',
+        _gradIndigoCyan,
+      ),
+      _ActionData(
+        Icons.insert_drive_file_rounded,
+        'BRS',
+        '/brs',
+        _gradGoldBrown,
+      ),
+      _ActionData(
+        Icons.people_rounded,
+        'Kependudukan',
+        '/kependudukan',
+        _gradCyanBlue,
+      ),
+      _ActionData(
+        Icons.warning_rounded,
+        'Kebencanaan',
+        '/kebencanaan',
+        _gradRedOrange,
+      ),
     ];
 
     return SizedBox(
@@ -760,16 +941,66 @@ class _DesaData {
 
 // Data dummy desa - nanti diganti dengan data dari Firestore
 final _dummyDesaList = <_DesaData>[
-  _DesaData(nama: 'Desa Sukamaju', kode: '3201012001', kecamatan: 'Ciwidey', penduduk: 5420),
-  _DesaData(nama: 'Desa Mekar Sari', kode: '3201012002', kecamatan: 'Ciwidey', penduduk: 4230),
-  _DesaData(nama: 'Desa Sindang Jaya', kode: '3201012003', kecamatan: 'Pasir Jambu', penduduk: 6150),
-  _DesaData(nama: 'Desa Cibodas', kode: '3201012004', kecamatan: 'Rancabali', penduduk: 3890),
-  _DesaData(nama: 'Desa Alam Endah', kode: '3201012005', kecamatan: 'Ciwidey', penduduk: 7200),
-  _DesaData(nama: 'Desa Patengan', kode: '3201012006', kecamatan: 'Rancabali', penduduk: 2450),
-  _DesaData(nama: 'Desa Sukamanah', kode: '3201012007', kecamatan: 'Pasir Jambu', penduduk: 5630),
-  _DesaData(nama: 'Desa Nengkelan', kode: '3201012008', kecamatan: 'Ciwidey', penduduk: 4120),
-  _DesaData(nama: 'Desa Rawabogo', kode: '3201012009', kecamatan: 'Rancabali', penduduk: 3340),
-  _DesaData(nama: 'Desa Cipanjalu', kode: '3201012010', kecamatan: 'Pasir Jambu', penduduk: 4890),
+  _DesaData(
+    nama: 'Desa Sukamaju',
+    kode: '3201012001',
+    kecamatan: 'Ciwidey',
+    penduduk: 5420,
+  ),
+  _DesaData(
+    nama: 'Desa Mekar Sari',
+    kode: '3201012002',
+    kecamatan: 'Ciwidey',
+    penduduk: 4230,
+  ),
+  _DesaData(
+    nama: 'Desa Sindang Jaya',
+    kode: '3201012003',
+    kecamatan: 'Pasir Jambu',
+    penduduk: 6150,
+  ),
+  _DesaData(
+    nama: 'Desa Cibodas',
+    kode: '3201012004',
+    kecamatan: 'Rancabali',
+    penduduk: 3890,
+  ),
+  _DesaData(
+    nama: 'Desa Alam Endah',
+    kode: '3201012005',
+    kecamatan: 'Ciwidey',
+    penduduk: 7200,
+  ),
+  _DesaData(
+    nama: 'Desa Patengan',
+    kode: '3201012006',
+    kecamatan: 'Rancabali',
+    penduduk: 2450,
+  ),
+  _DesaData(
+    nama: 'Desa Sukamanah',
+    kode: '3201012007',
+    kecamatan: 'Pasir Jambu',
+    penduduk: 5630,
+  ),
+  _DesaData(
+    nama: 'Desa Nengkelan',
+    kode: '3201012008',
+    kecamatan: 'Ciwidey',
+    penduduk: 4120,
+  ),
+  _DesaData(
+    nama: 'Desa Rawabogo',
+    kode: '3201012009',
+    kecamatan: 'Rancabali',
+    penduduk: 3340,
+  ),
+  _DesaData(
+    nama: 'Desa Cipanjalu',
+    kode: '3201012010',
+    kecamatan: 'Pasir Jambu',
+    penduduk: 4890,
+  ),
 ];
 
 class _DesaPickerSheet extends StatefulWidget {
@@ -833,15 +1064,15 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
                   Text(
                     'Pilih Wilayah Desa',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     '${_filteredList.length} desa tersedia',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey.shade600,
-                        ),
+                      color: Colors.grey.shade600,
+                    ),
                   ),
                 ],
               ),
@@ -870,7 +1101,10 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
                   ),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 16,
+                  ),
                 ),
               ),
             ),
@@ -882,11 +1116,18 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.search_off_rounded, size: 64, color: Colors.grey.shade400),
+                          Icon(
+                            Icons.search_off_rounded,
+                            size: 64,
+                            color: Colors.grey.shade400,
+                          ),
                           const SizedBox(height: 16),
                           Text(
                             'Tidak ada desa ditemukan',
-                            style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 16,
+                            ),
                           ),
                         ],
                       ),
@@ -899,7 +1140,10 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
                       itemBuilder: (context, index) {
                         final desa = _filteredList[index];
                         return ListTile(
-                          contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 8,
+                            horizontal: 12,
+                          ),
                           leading: Container(
                             width: 48,
                             height: 48,
@@ -907,11 +1151,17 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
                               gradient: _gradLogin,
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Icon(Icons.location_city_rounded, color: Colors.white),
+                            child: const Icon(
+                              Icons.location_city_rounded,
+                              color: Colors.white,
+                            ),
                           ),
                           title: Text(
                             desa.nama,
-                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
                           ),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -921,7 +1171,10 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
                               const SizedBox(height: 2),
                               Text(
                                 '${desa.penduduk} penduduk',
-                                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade600,
+                                ),
                               ),
                             ],
                           ),

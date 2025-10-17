@@ -15,6 +15,7 @@ class AuthService extends ChangeNotifier {
 
   String? get userEmail => _user?.email;
   bool get isSignedIn => _user != null;
+  bool get isGuest => _user?.isAnonymous == true;
 
   Future<void> signIn({required String email, required String password}) async {
     try {
@@ -49,6 +50,16 @@ class AuthService extends ChangeNotifier {
   Future<void> sendPasswordResetEmail(String email) async {
     try {
       await _auth.sendPasswordResetEmail(email: email);
+    } on FirebaseAuthException {
+      rethrow;
+    }
+  }
+
+  Future<void> signInAnonymously() async {
+    try {
+      final cred = await _auth.signInAnonymously();
+      _user = cred.user;
+      notifyListeners();
     } on FirebaseAuthException {
       rethrow;
     }

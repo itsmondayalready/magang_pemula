@@ -27,6 +27,29 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  Future<void> _signInGuest() async {
+    setState(() => _error = null);
+    setState(() => _isLoading = true);
+    final auth = Provider.of<AuthService>(context, listen: false);
+    try {
+      await auth.signInAnonymously();
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      // If anonymous sign-in is disabled in Firebase console
+      final msg =
+          _friendlyMessageForCode(e.code) ?? 'Masuk sebagai Guest gagal.';
+      setState(() => _error = msg);
+    } catch (_) {
+      setState(() => _error = 'Terjadi kesalahan saat masuk sebagai Guest.');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   String? _friendlyMessageForCode(String code) {
     switch (code) {
       case 'user-not-found':
@@ -316,6 +339,29 @@ class _LoginScreenState extends State<LoginScreen> {
                                             ),
                                           ),
                                   ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: 180,
+                            height: 44,
+                            child: OutlinedButton.icon(
+                              onPressed: _isLoading ? null : _signInGuest,
+                              icon: const Icon(Icons.visibility_rounded),
+                              label: const Text('Masuk sebagai Guest'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.black87,
+                                side: const BorderSide(color: Colors.black26),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(30),
+                                ),
+                                textStyle: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                backgroundColor: Colors.white.withValues(
+                                  alpha: 0.6,
                                 ),
                               ),
                             ),

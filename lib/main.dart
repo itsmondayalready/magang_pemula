@@ -50,7 +50,9 @@ class RootPage extends StatelessWidget {
         // Show MainMenu when signed in, otherwise Login screen
         if (auth.isSignedIn) {
           // Infer isAdmin from email containing 'admin' (simple heuristic)
-          final isAdmin = (auth.userEmail ?? '').toLowerCase().contains('admin');
+          final isAdmin = (auth.userEmail ?? '').toLowerCase().contains(
+            'admin',
+          );
           return MainMenuPage(
             desaName: 'Desa Melayu Ilir',
             kodeWilayah: '6303052009',
