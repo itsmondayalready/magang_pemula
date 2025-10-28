@@ -1,6 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Required for network calls in release builds -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Optional: used if you want to check connectivity state -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <application
-        android:label="loginfirebase"
+        android:label="Desa Cantik"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

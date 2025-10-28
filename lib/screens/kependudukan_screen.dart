@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import '../utils/responsive.dart';
 
 class KependudukanScreen extends StatefulWidget {
   const KependudukanScreen({super.key});
@@ -118,7 +119,7 @@ class _KependudukanScreenState extends State<KependudukanScreen>
               child: GridView.count(
                 shrinkWrap: true,
                 crossAxisCount: 2,
-                childAspectRatio: 1.6,
+                childAspectRatio: context.summaryAspect,
                 physics: const NeverScrollableScrollPhysics(),
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,

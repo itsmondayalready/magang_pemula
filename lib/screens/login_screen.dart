@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/auth_service.dart';
+import '../services/error_messages.dart';
+import '../utils/responsive.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -35,92 +37,25 @@ class _LoginScreenState extends State<LoginScreen> {
       // Login Guest berhasil - Consumer di main.dart akan redirect otomatis
     } on AuthException catch (e) {
       debugPrint('[Login] Guest sign-in AuthException: ${e.message}');
-      final msg = _getErrorMessage(e);
+      final msg = _friendly(e);
       if (mounted) setState(() => _error = msg);
     } catch (e) {
       debugPrint('[Login] Guest sign-in unexpected error: $e');
       if (mounted) {
-        setState(() => _error = 'Terjadi kesalahan. Periksa koneksi internet Anda.');
+        setState(() => _error = _friendly(e));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  // Helper untuk mendapatkan pesan error yang user-friendly
-  String _getErrorMessage(AuthException e) {
-    final message = e.message.toLowerCase();
-    
-    // Network errors
-    if (message.contains('network') || 
-        message.contains('connection') ||
-        message.contains('timeout') ||
-        message.contains('failed to fetch')) {
-      return 'Tidak ada koneksi internet. Periksa jaringan Anda.';
-    }
-    
-    // Invalid credentials
-    if (message.contains('invalid login credentials') ||
-        message.contains('invalid email or password')) {
-      return 'Email atau password salah.';
-    }
-    
-    // Email not confirmed
-    if (message.contains('email not confirmed')) {
-      return 'Email belum diverifikasi. Cek inbox Anda.';
-    }
-    
-    // User not found
-    if (message.contains('user not found')) {
-      return 'Akun tidak ditemukan. Periksa email Anda.';
-    }
-    
-    // Invalid email format
-    if (message.contains('invalid email')) {
-      return 'Format email tidak valid.';
-    }
-    
-    // Too many requests
-    if (message.contains('too many requests')) {
-      return 'Terlalu banyak percobaan. Tunggu beberapa menit.';
-    }
-    
-    // User disabled/banned
-    if (message.contains('user disabled') || message.contains('banned')) {
-      return 'Akun dinonaktifkan. Hubungi administrator.';
-    }
-    
-    // Weak password (for signup)
-    if (message.contains('password') && message.contains('weak')) {
-      return 'Password terlalu lemah. Gunakan minimal 6 karakter.';
-    }
-    
-    // Anonymous sign-in disabled
-    if (message.contains('anonymous sign-in') && message.contains('disabled')) {
-      return 'Login sebagai Guest tidak diaktifkan. Gunakan email/password.';
-    }
-    
-    // Database/server errors
-    if (message.contains('database') || 
-        message.contains('server error') ||
-        message.contains('internal')) {
-      return 'Server sedang bermasalah. Coba lagi nanti.';
-    }
-    
-    // Rate limit
-    if (message.contains('rate limit')) {
-      return 'Terlalu banyak permintaan. Tunggu sebentar.';
-    }
-    
-    // Default: return original message
-    return e.message;
-  }
+  // Centralized error mapping (reuses services/error_messages.dart)
+  String _friendly(Object error) => mapAuthError(error);
 
   Future<void> _submit() async {
     setState(() => _error = null);
     final email = _emailController.text.trim();
     final password = _passwordController.text;
-
     // Manual validation routed to a single message field
     if (email.isEmpty) {
       setState(() => _error = 'Masukkan email');
@@ -145,12 +80,12 @@ class _LoginScreenState extends State<LoginScreen> {
       // Login berhasil - Consumer di main.dart akan otomatis redirect ke MainMenu
     } on AuthException catch (e) {
       debugPrint('[Login] AuthException: ${e.message}');
-      final msg = _getErrorMessage(e);
+      final msg = _friendly(e);
       if (mounted) setState(() => _error = msg);
     } catch (e) {
       debugPrint('[Login] Unexpected error: $e');
       if (mounted) {
-        setState(() => _error = 'Terjadi kesalahan. Periksa koneksi internet Anda.');
+        setState(() => _error = _friendly(e));
       }
     } finally {
       if (mounted) {
@@ -184,24 +119,26 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const SizedBox(height: 6),
-                  const Text(
-                    'Welcome back',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 26,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  Builder(builder: (context) {
+                    return Text(
+                      'Welcome back',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: context.rf(26),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    );
+                  }),
                   const SizedBox(height: 6),
-                  const Text(
+                  Text(
                     'Sign in to continue',
-                    style: TextStyle(color: Colors.white70),
+                    style: TextStyle(color: Colors.white70, fontSize: context.rf(14)),
                   ),
                   const SizedBox(height: 20),
                   Container(
-                    width: MediaQuery.of(context).size.width < 420
-                        ? MediaQuery.of(context).size.width
-                        : 420,
+          width: MediaQuery.of(context).size.width < 420
+            ? MediaQuery.of(context).size.width
+            : 420,
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.25),
@@ -376,11 +313,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                                   ),
                                             ),
                                           )
-                                        : const Text(
+                                        : Text(
                                             'Sign In',
                                             style: TextStyle(
                                               color: Colors.white,
                                               fontWeight: FontWeight.bold,
+                                              fontSize: context.rf(14),
                                             ),
                                           ),
                                   ),
@@ -410,11 +348,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                       'Instruksi reset dikirim ke email',
                                 );
                               } on AuthException catch (e) {
-                                final msg = _getErrorMessage(e);
+                                final msg = _friendly(e);
                                 setState(() => _error = msg);
                               } catch (e) {
                                 debugPrint('[Login] Reset password error: $e');
-                                setState(() => _error = 'Gagal mengirim email. Periksa koneksi internet.');
+                                setState(() => _error = _friendly(e));
                               }
                             },
                             child: const Text(
