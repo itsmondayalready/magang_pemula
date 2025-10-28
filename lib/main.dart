@@ -8,6 +8,7 @@ import 'screens/main_menu.dart';
 import 'screens/infrastruktur_screen.dart';
 import 'screens/kependudukan_screen.dart';
 import 'screens/pendidikan_screen.dart';
+import 'screens/kesehatan_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -40,6 +41,7 @@ class MyApp extends StatelessWidget {
           '/infrastruktur': (context) => const InfrastrukturScreen(),
           '/kependudukan': (context) => const KependudukanScreen(),
           '/pendidikan': (context) => const PendidikanScreen(),
+          '/kesehatan': (context) => const KesehatanScreen(),
         },
       ),
     );

@@ -58,7 +58,7 @@ class _KependudukanScreenState extends State<KependudukanScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -156,7 +156,6 @@ class _KependudukanScreenState extends State<KependudukanScreen>
           controller: _tabController,
           children: [
             _buildChartSection(_buildGenderChart()),
-            _buildChartSection(_buildUsiaChart()),
             _buildChartSection(_buildPendidikanChart()),
             _buildChartSection(_buildPekerjaanChart()),
           ],
@@ -183,7 +182,6 @@ class _KependudukanScreenState extends State<KependudukanScreen>
             ),
             tabs: const [
               Tab(icon: Icon(Icons.wc_rounded, size: 20), text: 'Gender'),
-              Tab(icon: Icon(Icons.cake_rounded, size: 20), text: 'Usia'),
               Tab(
                 icon: Icon(Icons.school_rounded, size: 20),
                 text: 'Pendidikan',
@@ -474,187 +472,6 @@ class _KependudukanScreenState extends State<KependudukanScreen>
     );
   }
 
-  Widget _buildUsiaChart() {
-    final usiaData = _dataDummy['kelompok_usia'] as Map<String, dynamic>;
-    final maxValue = usiaData.values.cast<int>().reduce(
-      (a, b) => a > b ? a : b,
-    );
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0B7A75).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.cake_rounded,
-                  color: Color(0xFF0B7A75),
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Distribusi Kelompok Usia',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A1A1A),
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Piramida penduduk berdasarkan rentang usia',
-                      style: TextStyle(color: Colors.grey, fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 32),
-          SizedBox(
-            height: 450,
-            child: BarChart(
-              BarChartData(
-                alignment: BarChartAlignment.spaceAround,
-                maxY: (maxValue * 1.2).toDouble(),
-                barTouchData: BarTouchData(
-                  enabled: true,
-                  touchTooltipData: BarTouchTooltipData(
-                    getTooltipColor: (group) => const Color(0xFF0B7A75),
-                    tooltipPadding: const EdgeInsets.all(8),
-                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                      final kelompok = usiaData.keys.elementAt(group.x.toInt());
-                      return BarTooltipItem(
-                        '$kelompok tahun\n${rod.toY.toInt()} jiwa',
-                        const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                titlesData: FlTitlesData(
-                  show: true,
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 42,
-                      getTitlesWidget: (value, meta) {
-                        if (value.toInt() >= 0 &&
-                            value.toInt() < usiaData.length) {
-                          final kelompok = usiaData.keys.elementAt(
-                            value.toInt(),
-                          );
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text(
-                              kelompok,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey[700],
-                              ),
-                            ),
-                          );
-                        }
-                        return const Text('');
-                      },
-                    ),
-                  ),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 45,
-                      interval: 100,
-                      getTitlesWidget: (value, meta) => Text(
-                        value.toInt().toString(),
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ),
-                  ),
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                ),
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: 100,
-                  getDrawingHorizontalLine: (value) => FlLine(
-                    color: Colors.grey[200],
-                    strokeWidth: 1,
-                    dashArray: [5, 5],
-                  ),
-                ),
-                borderData: FlBorderData(
-                  show: true,
-                  border: Border(
-                    bottom: BorderSide(color: Colors.grey[300]!, width: 1),
-                    left: BorderSide(color: Colors.grey[300]!, width: 1),
-                  ),
-                ),
-                barGroups: List.generate(usiaData.length, (index) {
-                  final value = usiaData.values.elementAt(index) as int;
-                  return BarChartGroupData(
-                    x: index,
-                    barRods: [
-                      BarChartRodData(
-                        toY: value.toDouble(),
-                        gradient: LinearGradient(
-                          begin: Alignment.bottomCenter,
-                          end: Alignment.topCenter,
-                          colors: [
-                            _getAgeColor(index),
-                            _getAgeColor(index).withValues(alpha: 0.7),
-                          ],
-                        ),
-                        width: 18,
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(6),
-                        ),
-                      ),
-                    ],
-                  );
-                }),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildPendidikanChart() {
     final pendidikanData = _dataDummy['pendidikan'] as Map<String, dynamic>;
@@ -998,25 +815,7 @@ class _KependudukanScreenState extends State<KependudukanScreen>
     );
   }
 
-  Color _getAgeColor(int index) {
-    final colors = [
-      const Color(0xFF93C5FD),
-      const Color(0xFF60A5FA),
-      const Color(0xFF3B82F6),
-      const Color(0xFF2563EB),
-      const Color(0xFF1D4ED8),
-      const Color(0xFF1E40AF),
-      const Color(0xFF06B6D4),
-      const Color(0xFF0891B2),
-      const Color(0xFF14B8A6),
-      const Color(0xFF0D9488),
-      const Color(0xFF10B981),
-      const Color(0xFF059669),
-      const Color(0xFFF97316),
-      const Color(0xFFEA580C),
-    ];
-    return colors[index % colors.length];
-  }
+  
 
   Color _getPendidikanColor(String pendidikan) {
     switch (pendidikan) {
