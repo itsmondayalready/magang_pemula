@@ -35,8 +35,12 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   provider: ^6.0.5
-  firebase_core: ^2.12.0
-  firebase_auth: ^4.6.0
+  
+  # Supabase (menggantikan Firebase)
+  supabase_flutter: ^2.5.0
+  
+  # Chart library untuk visualisasi data
+  fl_chart: ^0.69.0
 
 dev_dependencies:
   flutter_test:

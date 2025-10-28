@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import 'kependudukan_screen.dart';
 
 // Main menu screen untuk aplikasi Desa — versi yang rapi
 class MainMenuPage extends StatefulWidget {
@@ -51,76 +52,49 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
   @override
   Widget build(BuildContext context) {
-    final features = <_Feature>[
-      _Feature(
-        title: 'Rencana',
-        subtitle: 'Program & Kegiatan',
-        icon: Icons.playlist_add_check_rounded,
-        gradient: _gradEmeraldGold,
-        route: '/rencana',
-      ),
-      _Feature(
-        title: 'Riwayat',
-        subtitle: 'Monografi bulanan',
-        icon: Icons.history_rounded,
-        gradient: _gradTealIndigo,
-        route: '/riwayat',
-      ),
-      _Feature(
-        title: 'Kalender',
-        subtitle: 'Kegiatan & Jadwal',
-        icon: Icons.event_rounded,
-        gradient: _gradOrangePink,
-        route: '/kalender',
-      ),
-      _Feature(
-        title: 'Kuesioner',
-        subtitle: 'Umpan balik warga',
-        icon: Icons.fact_check_rounded,
-        gradient: _gradBluePurple,
-        route: '/kuesioner',
-      ),
-      _Feature(
-        title: 'Profil Desa',
-        subtitle: 'Info pemerintahan',
-        icon: Icons.account_balance_rounded,
-        gradient: _gradEmeraldBlue,
-        route: '/profil',
-      ),
+    // Main data categories (sesuai gambar yang dikirim)
+    final dataCategories = <_Feature>[
       _Feature(
         title: 'Kependudukan',
-        subtitle: 'Komposisi & tren',
+        subtitle: 'Program & Kegiatan',
         icon: Icons.people_alt_rounded,
-        gradient: _gradCyanBlue,
+        gradient: _gradEmeraldGold,
         route: '/kependudukan',
       ),
       _Feature(
+        title: 'Kesehatan',
+        subtitle: 'Program & Kegiatan',
+        icon: Icons.local_hospital_rounded,
+        gradient: _gradCyanBlue,
+        route: '/kesehatan',
+      ),
+      _Feature(
+        title: 'Infrastruktur',
+        subtitle: 'Program & Kegiatan',
+        icon: Icons.maps_home_work_rounded,
+        gradient: _gradOrangePink,
+        route: '/infrastruktur',
+      ),
+      _Feature(
+        title: 'Pendidikan',
+        subtitle: 'Program & Kegiatan',
+        icon: Icons.school_rounded,
+        gradient: _gradBluePurple,
+        route: '/pendidikan',
+      ),
+      _Feature(
         title: 'Kebencanaan',
-        subtitle: 'Banjir & laporan',
-        icon: Icons.warning_amber_rounded,
+        subtitle: 'Program & Kegiatan',
+        icon: Icons.cloud_rounded,
         gradient: _gradRedOrange,
         route: '/kebencanaan',
       ),
       _Feature(
-        title: 'Sarana',
-        subtitle: 'Pendidikan, kesehatan',
-        icon: Icons.room_preferences_rounded,
+        title: 'Metadata',
+        subtitle: 'Program & Kegiatan',
+        icon: Icons.storage_rounded,
         gradient: _gradGreenLime,
-        route: '/sarana',
-      ),
-      _Feature(
-        title: 'Komunikasi',
-        subtitle: 'Internet & kanal publikasi',
-        icon: Icons.wifi_rounded,
-        gradient: _gradIndigoCyan,
-        route: '/komunikasi',
-      ),
-      _Feature(
-        title: 'Ekonomi',
-        subtitle: 'Perdagangan & keuangan',
-        icon: Icons.store_mall_directory_rounded,
-        gradient: _gradGoldBrown,
-        route: '/ekonomi',
+        route: '/metadata',
       ),
     ];
 
@@ -168,7 +142,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
           ),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-            sliver: _FeatureGrid(features: features),
+            sliver: _FeatureGrid(features: dataCategories),
           ),
         ],
       ),
@@ -618,7 +592,20 @@ class _FeatureCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       borderRadius: BorderRadius.circular(20),
-      onTap: () => Navigator.of(context).pushNamed(feature.route),
+      onTap: () {
+        // Navigate berdasarkan route
+        if (feature.route == '/kependudukan') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const KependudukanScreen(),
+            ),
+          );
+        } else {
+          // Route lain menggunakan named route
+          Navigator.of(context).pushNamed(feature.route);
+        }
+      },
       child: Ink(
         decoration: BoxDecoration(
           gradient: feature.gradient,
