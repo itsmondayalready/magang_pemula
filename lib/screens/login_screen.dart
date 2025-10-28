@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/auth_service.dart';
-import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -33,40 +32,88 @@ class _LoginScreenState extends State<LoginScreen> {
     final auth = Provider.of<AuthService>(context, listen: false);
     try {
       await auth.signInAnonymously();
+      // Login Guest berhasil - Consumer di main.dart akan redirect otomatis
+    } on AuthException catch (e) {
+      debugPrint('[Login] Guest sign-in AuthException: ${e.message}');
+      final msg = _getErrorMessage(e);
+      if (mounted) setState(() => _error = msg);
+    } catch (e) {
+      debugPrint('[Login] Guest sign-in unexpected error: $e');
       if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
+        setState(() => _error = 'Terjadi kesalahan. Periksa koneksi internet Anda.');
       }
-    } on FirebaseAuthException catch (e) {
-      // If anonymous sign-in is disabled in Firebase console
-      final msg =
-          _friendlyMessageForCode(e.code) ?? 'Masuk sebagai Guest gagal.';
-      setState(() => _error = msg);
-    } catch (_) {
-      setState(() => _error = 'Terjadi kesalahan saat masuk sebagai Guest.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  String? _friendlyMessageForCode(String code) {
-    switch (code) {
-      case 'user-not-found':
-        return 'Akun dengan email tersebut tidak ditemukan.';
-      case 'wrong-password':
-        return 'Password salah. Silakan coba lagi.';
-      case 'invalid-email':
-        return 'Format email tidak valid.';
-      case 'user-disabled':
-        return 'Akun dinonaktifkan. Hubungi dukungan.';
-      case 'weak-password':
-        return 'Password terlalu lemah. Gunakan minimal 6 karakter.';
-      case 'too-many-requests':
-        return 'Terlalu banyak percobaan. Coba lagi nanti.';
-      default:
-        return null;
+  // Helper untuk mendapatkan pesan error yang user-friendly
+  String _getErrorMessage(AuthException e) {
+    final message = e.message.toLowerCase();
+    
+    // Network errors
+    if (message.contains('network') || 
+        message.contains('connection') ||
+        message.contains('timeout') ||
+        message.contains('failed to fetch')) {
+      return 'Tidak ada koneksi internet. Periksa jaringan Anda.';
     }
+    
+    // Invalid credentials
+    if (message.contains('invalid login credentials') ||
+        message.contains('invalid email or password')) {
+      return 'Email atau password salah.';
+    }
+    
+    // Email not confirmed
+    if (message.contains('email not confirmed')) {
+      return 'Email belum diverifikasi. Cek inbox Anda.';
+    }
+    
+    // User not found
+    if (message.contains('user not found')) {
+      return 'Akun tidak ditemukan. Periksa email Anda.';
+    }
+    
+    // Invalid email format
+    if (message.contains('invalid email')) {
+      return 'Format email tidak valid.';
+    }
+    
+    // Too many requests
+    if (message.contains('too many requests')) {
+      return 'Terlalu banyak percobaan. Tunggu beberapa menit.';
+    }
+    
+    // User disabled/banned
+    if (message.contains('user disabled') || message.contains('banned')) {
+      return 'Akun dinonaktifkan. Hubungi administrator.';
+    }
+    
+    // Weak password (for signup)
+    if (message.contains('password') && message.contains('weak')) {
+      return 'Password terlalu lemah. Gunakan minimal 6 karakter.';
+    }
+    
+    // Anonymous sign-in disabled
+    if (message.contains('anonymous sign-in') && message.contains('disabled')) {
+      return 'Login sebagai Guest tidak diaktifkan. Gunakan email/password.';
+    }
+    
+    // Database/server errors
+    if (message.contains('database') || 
+        message.contains('server error') ||
+        message.contains('internal')) {
+      return 'Server sedang bermasalah. Coba lagi nanti.';
+    }
+    
+    // Rate limit
+    if (message.contains('rate limit')) {
+      return 'Terlalu banyak permintaan. Tunggu sebentar.';
+    }
+    
+    // Default: return original message
+    return e.message;
   }
 
   Future<void> _submit() async {
@@ -92,21 +139,19 @@ class _LoginScreenState extends State<LoginScreen> {
     final auth = Provider.of<AuthService>(context, listen: false);
     try {
       await auth.signIn(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+        email: email,
+        password: password,
       );
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
-      }
-    } on FirebaseAuthException catch (e) {
-      final msg =
-          _friendlyMessageForCode(e.code) ??
-          'Login gagal. Periksa email dan password Anda.';
-      setState(() => _error = msg);
+      // Login berhasil - Consumer di main.dart akan otomatis redirect ke MainMenu
+    } on AuthException catch (e) {
+      debugPrint('[Login] AuthException: ${e.message}');
+      final msg = _getErrorMessage(e);
+      if (mounted) setState(() => _error = msg);
     } catch (e) {
-      setState(() => _error = 'Terjadi kesalahan. Silakan coba lagi.');
+      debugPrint('[Login] Unexpected error: $e');
+      if (mounted) {
+        setState(() => _error = 'Terjadi kesalahan. Periksa koneksi internet Anda.');
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -364,15 +409,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                   () => _error =
                                       'Instruksi reset dikirim ke email',
                                 );
-                              } catch (e) {
-                                String msg = 'Gagal mengirim instruksi reset';
-                                try {
-                                  final code = (e as dynamic).code as String?;
-                                  if (code != null) {
-                                    msg = _friendlyMessageForCode(code) ?? msg;
-                                  }
-                                } catch (_) {}
+                              } on AuthException catch (e) {
+                                final msg = _getErrorMessage(e);
                                 setState(() => _error = msg);
+                              } catch (e) {
+                                debugPrint('[Login] Reset password error: $e');
+                                setState(() => _error = 'Gagal mengirim email. Periksa koneksi internet.');
                               }
                             },
                             child: const Text(
