@@ -8,23 +8,36 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:loginfirebase/main.dart';
+import 'package:loginfirebase/screens/infrastruktur_screen.dart';
+import 'package:loginfirebase/screens/pendidikan_screen.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('basic material smoke test', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: Text('Hello'))),
+    );
+    expect(find.text('Hello'), findsOneWidget);
+  });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+  testWidgets('InfrastrukturScreen builds and shows title', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: InfrastrukturScreen()));
+    // AppBar title text
+    expect(find.text('Infrastruktur Desa'), findsOneWidget);
+    // Tab labels exist
+    expect(find.text('Pendidikan'), findsOneWidget);
+    expect(find.text('Kesehatan'), findsOneWidget);
+    expect(find.text('Transportasi'), findsOneWidget);
+    expect(find.text('Komunikasi'), findsOneWidget);
+    expect(find.text('Sanitasi'), findsOneWidget);
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+  testWidgets('PendidikanScreen builds and shows tabs', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: PendidikanScreen()));
+    // AppBar title
+    expect(find.text('Pendidikan'), findsOneWidget);
+    // Tab labels
+    expect(find.text('Negeri'), findsOneWidget);
+    expect(find.text('Swasta'), findsOneWidget);
+    expect(find.text('LB & Keagamaan'), findsOneWidget);
   });
 }

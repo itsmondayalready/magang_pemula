@@ -98,8 +98,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
       ),
     ];
 
-  final auth = Provider.of<AuthService>(context);
-  final isGuest = auth.isGuest;
+    final auth = Provider.of<AuthService>(context);
+    final isGuest = auth.isGuest;
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -122,14 +122,79 @@ class _MainMenuPageState extends State<MainMenuPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _HeaderStats(
-                    totalPenduduk: widget.totalPenduduk,
-                    totalKK: widget.totalKK,
+                  _SummaryCarousel(
+                    items: [
+                      _SummaryItem(
+                        title: 'Ringkasan Desa',
+                        gradient: _gradLogin,
+                        icon: Icons.landscape_rounded,
+                        chips: [
+                          _SummaryChip(
+                            icon: Icons.people_alt_rounded,
+                            label: 'Penduduk',
+                            value: widget.totalPenduduk.toString(),
+                          ),
+                          _SummaryChip(
+                            icon: Icons.home_rounded,
+                            label: 'KK',
+                            value: widget.totalKK.toString(),
+                          ),
+                        ],
+                      ),
+                      const _SummaryItem(
+                        title: 'Kependudukan',
+                        gradient: _gradEmeraldGold,
+                        icon: Icons.people_rounded,
+                        chips: [
+                          _SummaryChip(
+                            icon: Icons.group_rounded,
+                            label: 'Total',
+                            value: '0',
+                          ),
+                          _SummaryChip(
+                            icon: Icons.badge_rounded,
+                            label: 'KK',
+                            value: '0',
+                          ),
+                        ],
+                      ),
+                      const _SummaryItem(
+                        title: 'Pendidikan',
+                        gradient: _gradBluePurple,
+                        icon: Icons.school_rounded,
+                        chips: [
+                          _SummaryChip(
+                            icon: Icons.account_balance_rounded,
+                            label: 'Negeri',
+                            value: '0',
+                          ),
+                          _SummaryChip(
+                            icon: Icons.child_care_rounded,
+                            label: 'PAUD Swasta',
+                            value: '1',
+                          ),
+                        ],
+                      ),
+                      const _SummaryItem(
+                        title: 'Kesehatan',
+                        gradient: _gradCyanBlue,
+                        icon: Icons.local_hospital_rounded,
+                        chips: [
+                          _SummaryChip(
+                            icon: Icons.local_hospital_rounded,
+                            label: 'Faskes',
+                            value: '0',
+                          ),
+                          _SummaryChip(
+                            icon: Icons.volunteer_activism_rounded,
+                            label: 'Tenaga',
+                            value: '0',
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  // Small top menu stays in the body (horizontal carousel)
-                  const _TopMenuCarousel(),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 16),
                   _SearchField(
                     onChanged: (v) {
                       /* TODO: implement search */
@@ -390,139 +455,9 @@ class _HeaderContentState extends State<_HeaderContent>
   }
 }
 
-class _TopMenuItem extends StatelessWidget {
-  const _TopMenuItem({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    required this.gradient,
-  });
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  final Gradient gradient;
-  @override
-  Widget build(BuildContext context) {
-    // fixed readable label color for small menu items
-    final color = Colors.black87;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: SizedBox(
-        width: 76,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                gradient: gradient,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-              ),
-              child: Icon(icon, color: Colors.white, size: 22),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 // The rest of the helper widgets/classes are included below (trimmed and improved)
-class _HeaderStats extends StatelessWidget {
-  const _HeaderStats({required this.totalPenduduk, required this.totalKK});
-  final int totalPenduduk;
-  final int totalKK;
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: _gradLogin,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Ringkasan Desa',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    _StatChip(
-                      icon: Icons.people_alt_rounded,
-                      label: 'Penduduk',
-                      value: totalPenduduk,
-                    ),
-                    const SizedBox(width: 8),
-                    _StatChip(
-                      icon: Icons.home_rounded,
-                      label: 'KK',
-                      value: totalKK,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const Icon(Icons.landscape_rounded, color: Colors.white, size: 42),
-        ],
-      ),
-    );
-  }
-}
 
-class _StatChip extends StatelessWidget {
-  const _StatChip({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-  final IconData icon;
-  final String label;
-  final int value;
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.white, size: 18),
-          const SizedBox(width: 6),
-          Text(
-            '$label: $value',
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+// _StatChip removed — replaced by summary pills in _SummaryCarousel
 
 class _SearchField extends StatelessWidget {
   const _SearchField({required this.onChanged});
@@ -597,9 +532,7 @@ class _FeatureCard extends StatelessWidget {
         if (feature.route == '/kependudukan') {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (context) => const KependudukanScreen(),
-            ),
+            MaterialPageRoute(builder: (context) => const KependudukanScreen()),
           );
         } else {
           // Route lain menggunakan named route
@@ -702,8 +635,8 @@ class _RoleBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: borderColor),
       ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             isAdmin ? Icons.verified_user_rounded : Icons.person,
@@ -830,72 +763,7 @@ class _ActionData {
   const _ActionData(this.icon, this.label, this.route, this.gradient);
 }
 
-class _TopMenuCarousel extends StatelessWidget {
-  const _TopMenuCarousel();
-  @override
-  Widget build(BuildContext context) {
-    final items = [
-      _ActionData(
-        Icons.book_rounded,
-        'Publikasi',
-        '/publikasi',
-        _gradBluePurple,
-      ),
-      _ActionData(
-        Icons.table_chart_rounded,
-        'Tabel',
-        '/tabel',
-        _gradTealIndigo,
-      ),
-      _ActionData(
-        Icons.image_rounded,
-        'Infografis',
-        '/infografis',
-        _gradIndigoCyan,
-      ),
-      _ActionData(
-        Icons.insert_drive_file_rounded,
-        'BRS',
-        '/brs',
-        _gradGoldBrown,
-      ),
-      _ActionData(
-        Icons.people_rounded,
-        'Kependudukan',
-        '/kependudukan',
-        _gradCyanBlue,
-      ),
-      _ActionData(
-        Icons.warning_rounded,
-        'Kebencanaan',
-        '/kebencanaan',
-        _gradRedOrange,
-      ),
-    ];
-
-    return SizedBox(
-      height: 96,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        itemBuilder: (context, i) {
-          final it = items[i];
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: _TopMenuItem(
-              icon: it.icon,
-              label: it.label,
-              onTap: () => Navigator.pushNamed(context, it.route),
-              gradient: it.gradient,
-            ),
-          );
-        },
-        separatorBuilder: (_, __) => const SizedBox(width: 4),
-        itemCount: items.length,
-      ),
-    );
-  }
-}
+// _TopMenuCarousel removed — replaced by _SummaryCarousel above
 
 class PlaceholderPage extends StatelessWidget {
   const PlaceholderPage({super.key, required this.title});
@@ -1129,7 +997,7 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
                       controller: scrollController,
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                       itemCount: _filteredList.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      separatorBuilder: (_, index) => const Divider(height: 1),
                       itemBuilder: (context, index) {
                         final desa = _filteredList[index];
                         return ListTile(
@@ -1199,11 +1067,6 @@ const _gradEmeraldGold = LinearGradient(
   begin: Alignment.topLeft,
   end: Alignment.bottomRight,
 );
-const _gradTealIndigo = LinearGradient(
-  colors: [Color(0xFF0EA5A5), Color(0xFF4338CA)],
-  begin: Alignment.topLeft,
-  end: Alignment.bottomRight,
-);
 const _gradOrangePink = LinearGradient(
   colors: [Color(0xFFF97316), Color(0xFFEC4899)],
   begin: Alignment.topLeft,
@@ -1211,11 +1074,6 @@ const _gradOrangePink = LinearGradient(
 );
 const _gradBluePurple = LinearGradient(
   colors: [Color(0xFF2563EB), Color(0xFF7C3AED)],
-  begin: Alignment.topLeft,
-  end: Alignment.bottomRight,
-);
-const _gradEmeraldBlue = LinearGradient(
-  colors: [Color(0xFF059669), Color(0xFF2563EB)],
   begin: Alignment.topLeft,
   end: Alignment.bottomRight,
 );
@@ -1234,13 +1092,209 @@ const _gradGreenLime = LinearGradient(
   begin: Alignment.topLeft,
   end: Alignment.bottomRight,
 );
-const _gradIndigoCyan = LinearGradient(
-  colors: [Color(0xFF4F46E5), Color(0xFF06B6D4)],
-  begin: Alignment.topLeft,
-  end: Alignment.bottomRight,
-);
-const _gradGoldBrown = LinearGradient(
-  colors: [Color(0xFFB45309), Color(0xFF92400E)],
-  begin: Alignment.topLeft,
-  end: Alignment.bottomRight,
-);
+// removed unused gradients after carousel refactor
+
+// =========================
+// Summary Carousel (replacing header stats + small menu)
+// =========================
+
+class _SummaryCarousel extends StatefulWidget {
+  const _SummaryCarousel({required this.items});
+  final List<_SummaryItem> items;
+
+  @override
+  State<_SummaryCarousel> createState() => _SummaryCarouselState();
+}
+
+class _SummaryCarouselState extends State<_SummaryCarousel> {
+  late final PageController _pageController;
+  int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Use a large initial page and modulo indexing to simulate an infinite carousel
+    final len = widget.items.length;
+    final base = len == 0 ? 0 : len * 1000;
+    _pageController = PageController(viewportFraction: 0.92, initialPage: base);
+    if (len > 0) {
+      _index = base % len;
+    }
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final height = 130.0;
+    if (widget.items.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          height: height,
+          child: PageView.builder(
+            controller: _pageController,
+            // no itemCount -> infinite builder; map index via modulo
+            onPageChanged: (i) =>
+                setState(() => _index = i % widget.items.length),
+            itemBuilder: (context, i) {
+              final idx = i % widget.items.length;
+              return _SummaryCard(data: widget.items[idx]);
+            },
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(
+            widget.items.length,
+            (i) => AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              height: 6,
+              width: i == _index ? 18 : 6,
+              decoration: BoxDecoration(
+                color: i == _index
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SummaryItem {
+  final String title;
+  final Gradient gradient;
+  final IconData icon;
+  final List<_SummaryChip> chips;
+  const _SummaryItem({
+    required this.title,
+    required this.gradient,
+    required this.icon,
+    required this.chips,
+  });
+}
+
+class _SummaryChip {
+  final IconData icon;
+  final String label;
+  final String value;
+  const _SummaryChip({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+}
+
+class _SummaryCard extends StatelessWidget {
+  const _SummaryCard({required this.data});
+  final _SummaryItem data;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6.0),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: data.gradient,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    data.title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: data.chips
+                        .map(
+                          (c) => _SummaryPill(
+                            icon: c.icon,
+                            label: c.label,
+                            value: c.value,
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              height: 44,
+              width: 44,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(data.icon, color: Colors.white),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SummaryPill extends StatelessWidget {
+  const _SummaryPill({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 16),
+          const SizedBox(width: 6),
+          Text(
+            '$label: $value',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
