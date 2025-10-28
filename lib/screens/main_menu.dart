@@ -535,8 +535,6 @@ class _FeatureCard extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const KependudukanScreen()),
-<<<<<<< Updated upstream
-=======
           );
         } else if (feature.route == '/kebencanaan') {
           Navigator.push(
@@ -547,7 +545,6 @@ class _FeatureCard extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const MetadataScreen()),
->>>>>>> Stashed changes
           );
         } else {
           Navigator.of(context).pushNamed(feature.route);
