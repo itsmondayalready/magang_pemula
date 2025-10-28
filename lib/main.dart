@@ -5,10 +5,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'services/auth_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_menu.dart';
+<<<<<<< Updated upstream
 import 'screens/infrastruktur_screen.dart';
 import 'screens/kependudukan_screen.dart';
 import 'screens/pendidikan_screen.dart';
 import 'screens/kesehatan_screen.dart';
+=======
+import 'screens/kebencanaan_screen.dart';
+>>>>>>> Stashed changes
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,12 +41,16 @@ class MyApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         ),
         home: const RootPage(),
+<<<<<<< Updated upstream
         routes: {
           '/infrastruktur': (context) => const InfrastrukturScreen(),
           '/kependudukan': (context) => const KependudukanScreen(),
           '/pendidikan': (context) => const PendidikanScreen(),
           '/kesehatan': (context) => const KesehatanScreen(),
         },
+=======
+        routes: {'/kebencanaan': (context) => const KebencanaanScreen()},
+>>>>>>> Stashed changes
       ),
     );
   }

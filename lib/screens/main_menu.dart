@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import 'kependudukan_screen.dart';
+import 'kebencanaan_screen.dart';
+import 'metadata_screen.dart';
 
 // Main menu screen untuk aplikasi Desa — versi yang rapi
 class MainMenuPage extends StatefulWidget {
@@ -533,9 +535,21 @@ class _FeatureCard extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const KependudukanScreen()),
+<<<<<<< Updated upstream
+=======
+          );
+        } else if (feature.route == '/kebencanaan') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const KebencanaanScreen()),
+          );
+        } else if (feature.route == '/metadata') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const MetadataScreen()),
+>>>>>>> Stashed changes
           );
         } else {
-          // Route lain menggunakan named route
           Navigator.of(context).pushNamed(feature.route);
         }
       },
