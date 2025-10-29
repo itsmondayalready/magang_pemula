@@ -70,7 +70,7 @@ class _KesehatanScreenState extends State<KesehatanScreen>
             pinned: true,
             elevation: 0,
             backgroundColor: Colors.transparent,
-            toolbarHeight: 64,
+            toolbarHeight: 56,
             title: const Text(
               'Kesehatan',
               style: TextStyle(
@@ -106,7 +106,7 @@ class _KesehatanScreenState extends State<KesehatanScreen>
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: GridView.count(
                 shrinkWrap: true,
                 crossAxisCount: 2,
@@ -149,25 +149,27 @@ class _KesehatanScreenState extends State<KesehatanScreen>
             ),
           ),
         ],
-        body: TabBarView(
-          controller: _tabController,
-          children: [
-            _buildSection(
-              _Card(
-                icon: Icons.local_hospital_rounded,
-                title: 'Fasilitas Kesehatan',
-                subtitle: 'Distribusi fasilitas layanan kesehatan per jenis',
-                child: _FasilitasPie(
-                  data: Map<String, int>.from(_data['fasilitas']),
+        body: Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildSection(
+                _Card(
+                  icon: Icons.local_hospital_rounded,
+                  title: 'Fasilitas Kesehatan',
+                  subtitle: 'Distribusi fasilitas layanan kesehatan per jenis',
+                  child: _FasilitasPie(
+                    data: Map<String, int>.from(_data['fasilitas']),
+                  ),
                 ),
               ),
-            ),
-            _buildSection(
-              _Card(
-                icon: Icons.volunteer_activism_rounded,
-                title: 'Tenaga Medis',
-                subtitle: 'Komposisi tenaga kesehatan per peran',
-                child: _HorizontalBars(
+              _buildSection(
+                _Card(
+                  icon: Icons.volunteer_activism_rounded,
+                  title: 'Tenaga Medis',
+                  subtitle: 'Komposisi tenaga kesehatan per peran',
+                  child: _HorizontalBars(
                   data: Map<String, int>.from(_data['tenaga_medis']),
                   colorFor: (k) => const Color(0xFF10B981),
                 ),
@@ -183,6 +185,7 @@ class _KesehatanScreenState extends State<KesehatanScreen>
               ),
             ),
           ],
+        ),
         ),
       ),
       bottomNavigationBar: Material(
@@ -261,29 +264,35 @@ class _SummaryCard extends StatelessWidget {
               ),
               child: Icon(icon, color: color, size: 22),
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: const TextStyle(
-                    color: Color(0xFF1A1A1A),
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      value,
+                      style: const TextStyle(
+                        color: Color(0xFF1A1A1A),
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
+                  const SizedBox(height: 2),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),

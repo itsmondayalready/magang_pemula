@@ -134,8 +134,8 @@ class _MetadataScreenState extends State<MetadataScreen>
             pinned: true,
             elevation: 0,
             backgroundColor: Colors.transparent,
-            expandedHeight: 140,
-            toolbarHeight: 64,
+            expandedHeight: 100,
+            toolbarHeight: 56,
             leading: IconButton(
               icon: const Icon(Icons.arrow_back, color: Colors.white),
               onPressed: () => Navigator.pop(context),
@@ -170,7 +170,7 @@ class _MetadataScreenState extends State<MetadataScreen>
                 child: FlexibleSpaceBar(
                   background: SafeArea(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 70, 16, 16),
+                      padding: const EdgeInsets.fromLTRB(16, 60, 16, 16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.end,
@@ -224,7 +224,7 @@ class _MetadataScreenState extends State<MetadataScreen>
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
               child: TextField(
                 onChanged: (value) {
                   setState(() {
@@ -264,22 +264,25 @@ class _MetadataScreenState extends State<MetadataScreen>
               ],
             ),
             Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildMetadataList(_filteredMetadata),
-                  _buildMetadataList(
-                    _filteredMetadata
-                        .where((item) =>
-                            item['tahun'].toString().contains('2025'))
-                        .toList(),
-                  ),
-                  _buildMetadataList(
-                    _filteredMetadata
-                        .where((item) => item['frekuensi'] == 'Tahunan')
-                        .toList(),
-                  ),
-                ],
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildMetadataList(_filteredMetadata),
+                    _buildMetadataList(
+                      _filteredMetadata
+                          .where((item) =>
+                              item['tahun'].toString().contains('2025'))
+                          .toList(),
+                    ),
+                    _buildMetadataList(
+                      _filteredMetadata
+                          .where((item) => item['frekuensi'] == 'Tahunan')
+                          .toList(),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

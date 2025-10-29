@@ -127,7 +127,7 @@ class _PendidikanScreenState extends State<PendidikanScreen>
             pinned: true,
             elevation: 0,
             backgroundColor: Colors.transparent,
-            toolbarHeight: 64,
+            toolbarHeight: 56,
             title: const _AppBarTitle(
               title: 'Pendidikan',
               subtitle: 'Sarana & akses pendidikan desa',
@@ -160,7 +160,7 @@ class _PendidikanScreenState extends State<PendidikanScreen>
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: GridView.count(
                 shrinkWrap: true,
                 crossAxisCount: 2,
@@ -186,13 +186,16 @@ class _PendidikanScreenState extends State<PendidikanScreen>
             ),
           ),
         ],
-        body: TabBarView(
-          controller: _tabController,
-          children: [
-            _section(_buildNegeri(negeri)),
-            _section(_buildSwasta(swasta)),
-            _section(_buildLBKeagamaan(lb, keagamaan, keterampilan)),
-          ],
+        body: Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _section(_buildNegeri(negeri)),
+              _section(_buildSwasta(swasta)),
+              _section(_buildLBKeagamaan(lb, keagamaan, keterampilan)),
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: Material(
@@ -583,29 +586,35 @@ class _PendidikanScreenState extends State<PendidikanScreen>
               ),
               child: Icon(icon, color: color, size: 22),
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: const TextStyle(
-                    color: Color(0xFF1A1A1A),
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      value,
+                      style: const TextStyle(
+                        color: Color(0xFF1A1A1A),
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
+                  const SizedBox(height: 2),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),

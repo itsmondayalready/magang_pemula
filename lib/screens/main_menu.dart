@@ -4,6 +4,7 @@ import '../services/auth_service.dart';
 import 'kependudukan_screen.dart';
 import 'kebencanaan_screen.dart';
 import 'metadata_screen.dart';
+import 'profil_desa_screen.dart';
 
 // Main menu screen untuk aplikasi Desa — versi yang rapi
 class MainMenuPage extends StatefulWidget {
@@ -56,6 +57,13 @@ class _MainMenuPageState extends State<MainMenuPage> {
   Widget build(BuildContext context) {
     // Main data categories (sesuai gambar yang dikirim)
     final dataCategories = <_Feature>[
+      _Feature(
+        title: 'Profil Desa',
+        subtitle: 'Informasi Lengkap',
+        icon: Icons.account_balance_rounded,
+        gradient: _gradPurplePink,
+        route: '/profil-desa',
+      ),
       _Feature(
         title: 'Kependudukan',
         subtitle: 'Program & Kegiatan',
@@ -531,7 +539,12 @@ class _FeatureCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(20),
       onTap: () {
         // Navigate berdasarkan route
-        if (feature.route == '/kependudukan') {
+        if (feature.route == '/profil-desa') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const ProfilDesaScreen()),
+          );
+        } else if (feature.route == '/kependudukan') {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const KependudukanScreen()),
@@ -1100,6 +1113,11 @@ const _gradRedOrange = LinearGradient(
 );
 const _gradGreenLime = LinearGradient(
   colors: [Color(0xFF16A34A), Color(0xFFA3E635)],
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+);
+const _gradPurplePink = LinearGradient(
+  colors: [Color(0xFF9333EA), Color(0xFFEC4899)],
   begin: Alignment.topLeft,
   end: Alignment.bottomRight,
 );

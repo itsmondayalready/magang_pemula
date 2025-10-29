@@ -160,8 +160,22 @@ class AuthService extends ChangeNotifier {
       debugPrint('[AuthService] UID Length: ${uid.length}');
       debugPrint('[AuthService] Query: SELECT role FROM users WHERE id = \'$uid\'');
       debugPrint('════════════════════════════════════════════════════════');
+
+      // 0) Try to read role from JWT first (app_metadata/user_metadata) to avoid DB hit when possible
+      try {
+        final appMeta = _user?.appMetadata ?? const <String, dynamic>{};
+        final userMeta = _user?.userMetadata ?? const <String, dynamic>{};
+        final jwtRole = (appMeta['role'] ?? userMeta['role'])?.toString();
+        if (jwtRole != null && jwtRole.isNotEmpty) {
+          debugPrint('[AuthService] Found role in JWT metadata: $jwtRole');
+          _userRole = jwtRole;
+          return;
+        }
+      } catch (_) {
+        // Ignore metadata parsing issues and fall through to DB lookup
+      }
       
-      // Try direct query first
+    // 1) Try direct query to users table (RLS must allow reading own row)
       final response = await _supabase
           .from('users')
           .select('role')
@@ -175,7 +189,7 @@ class AuthService extends ChangeNotifier {
       debugPrint('[AuthService] Response Type: ${response.runtimeType}');
       debugPrint('[AuthService] Is Null: ${response == null}');
       
-      // Try alternative query with explicit UUID cast
+      // 2) Try alternative query with explicit UUID cast
       if (response == null) {
         debugPrint('');
         debugPrint('[AuthService] ⚠️ First query returned null, trying with explicit cast...');
