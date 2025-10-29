@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/responsive.dart';
 
 class ProfilDesaScreen extends StatelessWidget {
   const ProfilDesaScreen({super.key});
@@ -28,7 +29,7 @@ class ProfilDesaScreen extends StatelessWidget {
         elevation: 0,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+        padding: EdgeInsets.fromLTRB(context.horizontalPadding, 0, context.horizontalPadding, 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

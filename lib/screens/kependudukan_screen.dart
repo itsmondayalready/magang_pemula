@@ -115,10 +115,10 @@ class _KependudukanScreenState extends State<KependudukanScreen>
           // Summary cards moved OUTSIDE AppBar
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              padding: EdgeInsets.fromLTRB(context.horizontalPadding, 0, context.horizontalPadding, 8),
               child: GridView.count(
                 shrinkWrap: true,
-                crossAxisCount: 2,
+                crossAxisCount: context.gridCount(mobile: 2, tablet: 3, desktop: 4),
                 childAspectRatio: context.summaryAspect,
                 physics: const NeverScrollableScrollPhysics(),
                 crossAxisSpacing: 12,
@@ -217,29 +217,29 @@ class _KependudukanScreenState extends State<KependudukanScreen>
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(context.rs(16)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            blurRadius: context.rs(10),
+            offset: Offset(0, context.rs(4)),
           ),
         ],
         border: Border.all(color: Colors.grey[200]!),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: EdgeInsets.all(context.rs(14)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(context.rs(8)),
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(context.rs(10)),
               ),
-              child: Icon(icon, color: color, size: 22),
+              child: Icon(icon, color: color, size: context.rs(22)),
             ),
             Flexible(
               child: Column(
@@ -250,19 +250,19 @@ class _KependudukanScreenState extends State<KependudukanScreen>
                     alignment: Alignment.centerLeft,
                     child: Text(
                       value,
-                      style: const TextStyle(
-                        color: Color(0xFF1A1A1A),
-                        fontSize: 22,
+                      style: TextStyle(
+                        color: const Color(0xFF1A1A1A),
+                        fontSize: context.rf(22),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  SizedBox(height: context.rs(2)),
                   Text(
                     label,
                     style: TextStyle(
                       color: Colors.grey[600],
-                      fontSize: 12,
+                      fontSize: context.rf(12),
                       fontWeight: FontWeight.w500,
                     ),
                     maxLines: 2,

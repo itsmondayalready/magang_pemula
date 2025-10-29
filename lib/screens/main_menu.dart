@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import '../utils/responsive.dart';
 import 'kependudukan_screen.dart';
 import 'kebencanaan_screen.dart';
 import 'metadata_screen.dart';
@@ -128,7 +129,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              padding: EdgeInsets.fromLTRB(context.horizontalPadding, 12, context.horizontalPadding, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -216,7 +217,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
             ),
           ),
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+            padding: EdgeInsets.fromLTRB(context.horizontalPadding, 0, context.horizontalPadding, 24),
             sliver: _FeatureGrid(features: dataCategories),
           ),
         ],
@@ -515,12 +516,16 @@ class _FeatureGrid extends StatelessWidget {
   final List<_Feature> features;
   @override
   Widget build(BuildContext context) {
+    // Responsive grid: 2 columns for mobile, 3 for tablet, 4 for desktop
+    final crossAxisCount = context.gridCount(mobile: 2, tablet: 3, desktop: 4);
+    final childAspectRatio = context.isTablet || context.isDesktop ? 1.2 : 1.15;
+    
     return SliverGrid(
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
         mainAxisSpacing: 12,
         crossAxisSpacing: 12,
-        childAspectRatio: 1.15,
+        childAspectRatio: childAspectRatio,
       ),
       delegate: SliverChildBuilderDelegate((context, i) {
         final f = features[i];
@@ -1142,27 +1147,62 @@ class _SummaryCarouselState extends State<_SummaryCarousel> {
   @override
   void initState() {
     super.initState();
-    // Use a large initial page and modulo indexing to simulate an infinite carousel
+    // Will be properly initialized in didChangeDependencies
     final len = widget.items.length;
     final base = len == 0 ? 0 : len * 1000;
-    _pageController = PageController(viewportFraction: 0.92, initialPage: base);
     if (len > 0) {
       _index = base % len;
     }
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Initialize controller with responsive viewport fraction
+    if (!_isControllerInitialized) {
+      final viewportFraction = context.isDesktop 
+          ? 0.4 
+          : context.isTablet 
+              ? 0.6 
+              : 0.92;
+      
+      final len = widget.items.length;
+      final base = len == 0 ? 0 : len * 1000;
+      _pageController = PageController(
+        viewportFraction: viewportFraction,
+        initialPage: base,
+      );
+      _isControllerInitialized = true;
+    }
+  }
+
+  bool _isControllerInitialized = false;
+
+  @override
   void dispose() {
-    _pageController.dispose();
+    if (_isControllerInitialized) {
+      _pageController.dispose();
+    }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final height = 130.0;
+    // Responsive height untuk carousel
+    final height = context.isDesktop 
+        ? 160.0 
+        : context.isTablet 
+            ? 145.0 
+            : 130.0;
+    
     if (widget.items.isEmpty) {
       return const SizedBox.shrink();
     }
+    
+    if (!_isControllerInitialized) {
+      return SizedBox(height: height);
+    }
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1179,16 +1219,16 @@ class _SummaryCarouselState extends State<_SummaryCarousel> {
             },
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: context.rs(8)),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(
             widget.items.length,
             (i) => AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              margin: const EdgeInsets.symmetric(horizontal: 3),
-              height: 6,
-              width: i == _index ? 18 : 6,
+              margin: EdgeInsets.symmetric(horizontal: context.rs(3)),
+              height: context.rs(6),
+              width: i == _index ? context.rs(18) : context.rs(6),
               decoration: BoxDecoration(
                 color: i == _index
                     ? Theme.of(context).colorScheme.primary
@@ -1235,14 +1275,21 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Responsive sizing
+    final horizontalPadding = context.rs(6);
+    final cardPadding = context.rs(16);
+    final borderRadius = context.rs(20);
+    final iconSize = context.rs(44);
+    final titleFontSize = context.rf(16);
+    
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 6.0),
+      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
       child: Container(
         decoration: BoxDecoration(
           gradient: data.gradient,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(borderRadius),
         ),
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(cardPadding),
         child: Row(
           children: [
             Expanded(
@@ -1252,16 +1299,16 @@ class _SummaryCard extends StatelessWidget {
                 children: [
                   Text(
                     data.title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w800,
-                      fontSize: 16,
+                      fontSize: titleFontSize,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: context.rs(8)),
                   Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+                    spacing: context.rs(8),
+                    runSpacing: context.rs(8),
                     children: data.chips
                         .map(
                           (c) => _SummaryPill(
@@ -1275,15 +1322,19 @@ class _SummaryCard extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: context.rs(8)),
             Container(
-              height: 44,
-              width: 44,
+              height: iconSize,
+              width: iconSize,
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(context.rs(12)),
               ),
-              child: Icon(data.icon, color: Colors.white),
+              child: Icon(
+                data.icon, 
+                color: Colors.white,
+                size: context.rs(24),
+              ),
             ),
           ],
         ),
@@ -1305,21 +1356,29 @@ class _SummaryPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.rs(10), 
+        vertical: context.rs(8),
+      ),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(context.rs(12)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: Colors.white, size: 16),
-          const SizedBox(width: 6),
+          Icon(
+            icon, 
+            color: Colors.white, 
+            size: context.rs(16),
+          ),
+          SizedBox(width: context.rs(6)),
           Text(
             '$label: $value',
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.w700,
+              fontSize: context.rf(13),
             ),
           ),
         ],
