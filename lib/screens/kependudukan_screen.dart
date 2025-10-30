@@ -11,6 +11,8 @@ class KependudukanScreen extends StatefulWidget {
 
 class _KependudukanScreenState extends State<KependudukanScreen>
     with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
   // Data dummy untuk visualisasi
   final Map<String, dynamic> _dataDummy = {
     'total_penduduk': 5234,
@@ -40,7 +42,7 @@ class _KependudukanScreenState extends State<KependudukanScreen>
       'SMP': 978,
       'SMA': 1456,
       'Diploma': 234,
-      'Sarjana': 987,
+      'Sarjana': 321,
       'Pascasarjana': 200,
     },
     'pekerjaan': {
@@ -53,8 +55,6 @@ class _KependudukanScreenState extends State<KependudukanScreen>
       'Lainnya': 953,
     },
   };
-
-  late TabController _tabController;
 
   @override
   void initState() {
@@ -73,7 +73,7 @@ class _KependudukanScreenState extends State<KependudukanScreen>
     return Scaffold(
       backgroundColor: Colors.grey[50],
       body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) => [
+        headerSliverBuilder: (context, inner) => [
           SliverAppBar(
             pinned: true,
             elevation: 0,
@@ -112,13 +112,21 @@ class _KependudukanScreenState extends State<KependudukanScreen>
               ),
             ),
           ),
-          // Summary cards moved OUTSIDE AppBar
           SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.fromLTRB(context.horizontalPadding, 0, context.horizontalPadding, 8),
+              padding: EdgeInsets.fromLTRB(
+                context.horizontalPadding,
+                0,
+                context.horizontalPadding,
+                8,
+              ),
               child: GridView.count(
                 shrinkWrap: true,
-                crossAxisCount: context.gridCount(mobile: 2, tablet: 3, desktop: 4),
+                crossAxisCount: context.gridCount(
+                  mobile: 2,
+                  tablet: 3,
+                  desktop: 4,
+                ),
                 childAspectRatio: context.summaryAspect,
                 physics: const NeverScrollableScrollPhysics(),
                 crossAxisSpacing: 12,
@@ -154,7 +162,7 @@ class _KependudukanScreenState extends State<KependudukanScreen>
           ),
         ],
         body: Padding(
-          padding: const EdgeInsets.only(bottom: 16),
+          padding: EdgeInsets.zero,
           child: TabBarView(
             controller: _tabController,
             children: [
@@ -200,7 +208,7 @@ class _KependudukanScreenState extends State<KependudukanScreen>
 
   Widget _buildChartSection(Widget chart) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: AnimatedSwitcher(
         duration: const Duration(milliseconds: 300),
         child: chart,
@@ -229,9 +237,8 @@ class _KependudukanScreenState extends State<KependudukanScreen>
       ),
       child: Padding(
         padding: EdgeInsets.all(context.rs(14)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
               padding: EdgeInsets.all(context.rs(8)),
@@ -241,9 +248,11 @@ class _KependudukanScreenState extends State<KependudukanScreen>
               ),
               child: Icon(icon, color: color, size: context.rs(22)),
             ),
-            Flexible(
+            SizedBox(width: context.rs(12)),
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   FittedBox(
                     fit: BoxFit.scaleDown,
@@ -265,7 +274,7 @@ class _KependudukanScreenState extends State<KependudukanScreen>
                       fontSize: context.rf(12),
                       fontWeight: FontWeight.w500,
                     ),
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
@@ -383,7 +392,7 @@ class _KependudukanScreenState extends State<KependudukanScreen>
                         Icons.male_rounded,
                         const Color(0xFF3B82F6),
                       ),
-                      badgePositionPercentageOffset: 1.3,
+                      badgePositionPercentageOffset: 1.06,
                     ),
                     PieChartSectionData(
                       value: perempuan.toDouble(),
@@ -399,7 +408,7 @@ class _KependudukanScreenState extends State<KependudukanScreen>
                         Icons.female_rounded,
                         const Color(0xFFEC4899),
                       ),
-                      badgePositionPercentageOffset: 1.3,
+                      badgePositionPercentageOffset: 1.06,
                     ),
                   ],
                 ),
@@ -481,7 +490,6 @@ class _KependudukanScreenState extends State<KependudukanScreen>
       child: Icon(icon, color: color, size: 20),
     );
   }
-
 
   Widget _buildPendidikanChart() {
     final pendidikanData = _dataDummy['pendidikan'] as Map<String, dynamic>;
@@ -824,8 +832,6 @@ class _KependudukanScreenState extends State<KependudukanScreen>
       ),
     );
   }
-
-  
 
   Color _getPendidikanColor(String pendidikan) {
     switch (pendidikan) {

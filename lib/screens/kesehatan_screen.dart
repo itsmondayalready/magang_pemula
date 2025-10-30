@@ -15,36 +15,31 @@ class _KesehatanScreenState extends State<KesehatanScreen>
 
   // Dummy breakdown data for UC-D01
   Map<String, dynamic> get _data => {
-        'fasilitas': {
-          'Rumah Sakit': 1,
-          'Puskesmas': 2,
-          'Poliklinik': 2,
-          'Poskesdes': 3,
-          'Posyandu': 12,
-          'Apotek': 6,
-        },
-        'tenaga_medis': {
-          'Dokter': 5,
-          'Perawat': 12,
-          'Bidan': 9,
-          'Kader': 30,
-        },
-        'imunisasi': {
-          'BCG': 120,
-          'DPT': 200,
-          'Polio': 180,
-          'Campak/MR': 160,
-          'Hepatitis B': 140,
-        },
-        'penyakit': {
-          'ISPA': 90,
-          'Diare': 75,
-          'Hipertensi': 48,
-          'Diabetes': 22,
-          'DBD': 15,
-          'Lainnya': 30,
-        },
-      };
+    'fasilitas': {
+      'Rumah Sakit': 1,
+      'Puskesmas': 2,
+      'Poliklinik': 2,
+      'Poskesdes': 3,
+      'Posyandu': 12,
+      'Apotek': 6,
+    },
+    'tenaga_medis': {'Dokter': 5, 'Perawat': 12, 'Bidan': 9, 'Kader': 30},
+    'imunisasi': {
+      'BCG': 120,
+      'DPT': 200,
+      'Polio': 180,
+      'Campak/MR': 160,
+      'Hepatitis B': 140,
+    },
+    'penyakit': {
+      'ISPA': 90,
+      'Diare': 75,
+      'Hipertensi': 48,
+      'Diabetes': 22,
+      'DBD': 15,
+      'Lainnya': 30,
+    },
+  };
 
   int _sum(Map<String, int> map) => map.values.fold(0, (p, c) => p + c);
 
@@ -106,10 +101,19 @@ class _KesehatanScreenState extends State<KesehatanScreen>
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.fromLTRB(context.horizontalPadding, 0, context.horizontalPadding, 8),
+              padding: EdgeInsets.fromLTRB(
+                context.horizontalPadding,
+                0,
+                context.horizontalPadding,
+                8,
+              ),
               child: GridView.count(
                 shrinkWrap: true,
-                crossAxisCount: context.gridCount(mobile: 2, tablet: 3, desktop: 4),
+                crossAxisCount: context.gridCount(
+                  mobile: 2,
+                  tablet: 3,
+                  desktop: 4,
+                ),
                 childAspectRatio: context.summaryAspect,
                 physics: const NeverScrollableScrollPhysics(),
                 crossAxisSpacing: 12,
@@ -117,30 +121,33 @@ class _KesehatanScreenState extends State<KesehatanScreen>
                 children: [
                   _SummaryCard(
                     label: 'Fasilitas',
-                    value: _sum(Map<String, int>.from(_data['fasilitas']))
-                        .toString(),
+                    value: _sum(
+                      Map<String, int>.from(_data['fasilitas']),
+                    ).toString(),
                     icon: Icons.local_hospital_rounded,
                     color: const Color(0xFF06B6D4),
                   ),
                   _SummaryCard(
                     label: 'Tenaga Medis',
-                    value:
-                        _sum(Map<String, int>.from(_data['tenaga_medis']))
-                            .toString(),
+                    value: _sum(
+                      Map<String, int>.from(_data['tenaga_medis']),
+                    ).toString(),
                     icon: Icons.volunteer_activism_rounded,
                     color: const Color(0xFF10B981),
                   ),
                   _SummaryCard(
                     label: 'Imunisasi',
-                    value: _sum(Map<String, int>.from(_data['imunisasi']))
-                        .toString(),
+                    value: _sum(
+                      Map<String, int>.from(_data['imunisasi']),
+                    ).toString(),
                     icon: Icons.vaccines_rounded,
                     color: const Color(0xFFF59E0B),
                   ),
                   _SummaryCard(
                     label: 'Penyakit',
-                    value: _sum(Map<String, int>.from(_data['penyakit']))
-                        .toString(),
+                    value: _sum(
+                      Map<String, int>.from(_data['penyakit']),
+                    ).toString(),
                     icon: Icons.sick_rounded,
                     color: const Color(0xFFEF4444),
                   ),
@@ -170,22 +177,23 @@ class _KesehatanScreenState extends State<KesehatanScreen>
                   title: 'Tenaga Medis',
                   subtitle: 'Komposisi tenaga kesehatan per peran',
                   child: _HorizontalBars(
-                  data: Map<String, int>.from(_data['tenaga_medis']),
-                  colorFor: (k) => const Color(0xFF10B981),
+                    data: Map<String, int>.from(_data['tenaga_medis']),
+                    colorFor: (k) => const Color(0xFF10B981),
+                  ),
                 ),
               ),
-            ),
-            _buildSection(
-              _Card(
-                icon: Icons.vaccines_rounded,
-                title: 'Imunisasi',
-                subtitle: 'Cakupan (dummy) per jenis imunisasi',
-                child:
-                    _ImunisasiBars(data: Map<String, int>.from(_data['imunisasi'])),
+              _buildSection(
+                _Card(
+                  icon: Icons.vaccines_rounded,
+                  title: 'Imunisasi',
+                  subtitle: 'Cakupan (dummy) per jenis imunisasi',
+                  child: _ImunisasiBars(
+                    data: Map<String, int>.from(_data['imunisasi']),
+                  ),
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: Material(
@@ -199,12 +207,27 @@ class _KesehatanScreenState extends State<KesehatanScreen>
             unselectedLabelColor: Colors.grey[600],
             indicatorColor: const Color(0xFF06B6D4),
             indicatorWeight: 3,
-            labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-            unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+            labelStyle: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+            unselectedLabelStyle: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.normal,
+            ),
             tabs: const [
-              Tab(icon: Icon(Icons.local_hospital_rounded, size: 20), text: 'Fasilitas'),
-              Tab(icon: Icon(Icons.volunteer_activism_rounded, size: 20), text: 'Tenaga'),
-              Tab(icon: Icon(Icons.vaccines_rounded, size: 20), text: 'Imunisasi'),
+              Tab(
+                icon: Icon(Icons.local_hospital_rounded, size: 20),
+                text: 'Fasilitas',
+              ),
+              Tab(
+                icon: Icon(Icons.volunteer_activism_rounded, size: 20),
+                text: 'Tenaga',
+              ),
+              Tab(
+                icon: Icon(Icons.vaccines_rounded, size: 20),
+                text: 'Imunisasi',
+              ),
             ],
           ),
         ),
@@ -214,12 +237,12 @@ class _KesehatanScreenState extends State<KesehatanScreen>
 
   // Section wrapper for body tabs
   Widget _buildSection(Widget child) => SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          child: child,
-        ),
-      );
+    padding: const EdgeInsets.all(16),
+    child: AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      child: child,
+    ),
+  );
 }
 
 class _SummaryCard extends StatelessWidget {
@@ -252,9 +275,8 @@ class _SummaryCard extends StatelessWidget {
       ),
       child: Padding(
         padding: EdgeInsets.all(context.rs(14)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
               padding: EdgeInsets.all(context.rs(8)),
@@ -264,9 +286,11 @@ class _SummaryCard extends StatelessWidget {
               ),
               child: Icon(icon, color: color, size: context.rs(22)),
             ),
-            Flexible(
+            SizedBox(width: context.rs(12)),
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   FittedBox(
                     fit: BoxFit.scaleDown,
@@ -358,8 +382,7 @@ class _Card extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      style:
-                          const TextStyle(color: Colors.grey, fontSize: 12),
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
                     ),
                   ],
                 ),
@@ -595,7 +618,11 @@ class _ImunisasiBars extends StatelessWidget {
 }
 
 // ---------- Reusable bits ----------
-Widget _legendItem({required Color color, required String label, required int value}) {
+Widget _legendItem({
+  required Color color,
+  required String label,
+  required int value,
+}) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
     decoration: BoxDecoration(
@@ -606,9 +633,20 @@ Widget _legendItem({required Color color, required String label, required int va
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
         const SizedBox(width: 8),
-        Text('$label: $value', style: TextStyle(fontSize: 12, color: Colors.grey[800], fontWeight: FontWeight.w600)),
+        Text(
+          '$label: $value',
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[800],
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ],
     ),
   );
@@ -648,7 +686,11 @@ Widget _modernHorizontalBar({
               ),
               child: Text(
                 '$value',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
               ),
             ),
           ],
@@ -665,16 +707,28 @@ Widget _modernHorizontalBar({
               ),
             ),
             TweenAnimationBuilder<double>(
-              tween: Tween<double>(begin: 0, end: (percentage / 100).clamp(0.0, 1.0)),
+              tween: Tween<double>(
+                begin: 0,
+                end: (percentage / 100).clamp(0.0, 1.0),
+              ),
               duration: const Duration(milliseconds: 500),
               curve: Curves.easeOutCubic,
-              builder: (context, value, child) => FractionallySizedBox(widthFactor: value, child: child),
+              builder: (context, value, child) =>
+                  FractionallySizedBox(widthFactor: value, child: child),
               child: Container(
                 height: 24,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [color, color.withValues(alpha: 0.7)]),
+                  gradient: LinearGradient(
+                    colors: [color, color.withValues(alpha: 0.7)],
+                  ),
                   borderRadius: BorderRadius.circular(12),
-                  boxShadow: [BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 4, offset: const Offset(0, 2))],
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.3),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: const SizedBox.shrink(),
               ),
@@ -683,7 +737,11 @@ Widget _modernHorizontalBar({
               child: Center(
                 child: Text(
                   '${percentage.toStringAsFixed(1)}%',
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),

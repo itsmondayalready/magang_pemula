@@ -219,9 +219,8 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
       ),
       child: Padding(
         padding: EdgeInsets.all(context.rs(14)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
               padding: EdgeInsets.all(context.rs(8)),
@@ -231,9 +230,11 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
               ),
               child: Icon(icon, color: color, size: context.rs(22)),
             ),
-            Flexible(
+            SizedBox(width: context.rs(12)),
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   FittedBox(
                     fit: BoxFit.scaleDown,

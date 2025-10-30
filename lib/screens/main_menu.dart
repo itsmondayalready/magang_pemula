@@ -111,12 +111,96 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
     final auth = Provider.of<AuthService>(context);
     final isGuest = auth.isGuest;
+    // Static paddings for the fixed carousel
+  const double topPad = 12;
+  const double bottomPad = 20; // loosen spacing below carousel
+
+    // Prepare carousel items
+    final summaryItems = <_SummaryItem>[
+      _SummaryItem(
+        title: 'Ringkasan Desa',
+        gradient: _gradLogin,
+        icon: Icons.landscape_rounded,
+        chips: [
+          _SummaryChip(
+            icon: Icons.people_alt_rounded,
+            label: 'Penduduk',
+            value: widget.totalPenduduk.toString(),
+          ),
+          _SummaryChip(
+            icon: Icons.home_rounded,
+            label: 'KK',
+            value: widget.totalKK.toString(),
+          ),
+        ],
+      ),
+      const _SummaryItem(
+        title: 'Kependudukan',
+        gradient: _gradEmeraldGold,
+        icon: Icons.people_rounded,
+        chips: [
+          _SummaryChip(
+            icon: Icons.group_rounded,
+            label: 'Total',
+            value: '0',
+          ),
+          _SummaryChip(
+            icon: Icons.badge_rounded,
+            label: 'KK',
+            value: '0',
+          ),
+        ],
+      ),
+      const _SummaryItem(
+        title: 'Pendidikan',
+        gradient: _gradBluePurple,
+        icon: Icons.school_rounded,
+        chips: [
+          _SummaryChip(
+            icon: Icons.account_balance_rounded,
+            label: 'Negeri',
+            value: '0',
+          ),
+          _SummaryChip(
+            icon: Icons.child_care_rounded,
+            label: 'PAUD Swasta',
+            value: '1',
+          ),
+        ],
+      ),
+      const _SummaryItem(
+        title: 'Kesehatan',
+        gradient: _gradCyanBlue,
+        icon: Icons.local_hospital_rounded,
+        chips: [
+          _SummaryChip(
+            icon: Icons.local_hospital_rounded,
+            label: 'Faskes',
+            value: '0',
+          ),
+          _SummaryChip(
+            icon: Icons.volunteer_activism_rounded,
+            label: 'Tenaga',
+            value: '0',
+          ),
+        ],
+      ),
+    ];
+
+    // Fixed (non-scrollable) header + carousel on top, scrollable menu below
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: _MainMenuHeaderDelegate(
+      body: Column(
+        children: [
+          // Static header (not vertically scrollable)
+          Container(
+            decoration: const BoxDecoration(
+              gradient: _gradLogin,
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(20),
+                bottomRight: Radius.circular(20),
+              ),
+            ),
+            child: _HeaderContent(
               desaName: _desaName,
               kodeWilayah: widget.kodeWilayah,
               isAdmin: widget.isAdmin,
@@ -125,100 +209,45 @@ class _MainMenuPageState extends State<MainMenuPage> {
                 final auth = Provider.of<AuthService>(context, listen: false);
                 await auth.signOut();
               },
+              // Keep animation fully visible (no shrink)
+              shrinkOffset: 0,
+              minExtent: 140,
+              maxExtent: 180,
             ),
           ),
-          SliverToBoxAdapter(
+          // Static summary carousel (not vertically scrollable)
+          // Put a solid white background behind it so the menu underneath is hidden.
+          Container(
+            color: Colors.white,
             child: Padding(
-              padding: EdgeInsets.fromLTRB(context.horizontalPadding, 12, context.horizontalPadding, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _SummaryCarousel(
-                    items: [
-                      _SummaryItem(
-                        title: 'Ringkasan Desa',
-                        gradient: _gradLogin,
-                        icon: Icons.landscape_rounded,
-                        chips: [
-                          _SummaryChip(
-                            icon: Icons.people_alt_rounded,
-                            label: 'Penduduk',
-                            value: widget.totalPenduduk.toString(),
-                          ),
-                          _SummaryChip(
-                            icon: Icons.home_rounded,
-                            label: 'KK',
-                            value: widget.totalKK.toString(),
-                          ),
-                        ],
-                      ),
-                      const _SummaryItem(
-                        title: 'Kependudukan',
-                        gradient: _gradEmeraldGold,
-                        icon: Icons.people_rounded,
-                        chips: [
-                          _SummaryChip(
-                            icon: Icons.group_rounded,
-                            label: 'Total',
-                            value: '0',
-                          ),
-                          _SummaryChip(
-                            icon: Icons.badge_rounded,
-                            label: 'KK',
-                            value: '0',
-                          ),
-                        ],
-                      ),
-                      const _SummaryItem(
-                        title: 'Pendidikan',
-                        gradient: _gradBluePurple,
-                        icon: Icons.school_rounded,
-                        chips: [
-                          _SummaryChip(
-                            icon: Icons.account_balance_rounded,
-                            label: 'Negeri',
-                            value: '0',
-                          ),
-                          _SummaryChip(
-                            icon: Icons.child_care_rounded,
-                            label: 'PAUD Swasta',
-                            value: '1',
-                          ),
-                        ],
-                      ),
-                      const _SummaryItem(
-                        title: 'Kesehatan',
-                        gradient: _gradCyanBlue,
-                        icon: Icons.local_hospital_rounded,
-                        chips: [
-                          _SummaryChip(
-                            icon: Icons.local_hospital_rounded,
-                            label: 'Faskes',
-                            value: '0',
-                          ),
-                          _SummaryChip(
-                            icon: Icons.volunteer_activism_rounded,
-                            label: 'Tenaga',
-                            value: '0',
-                          ),
-                        ],
-                      ),
-                    ],
+              padding: EdgeInsets.fromLTRB(
+                context.horizontalPadding,
+                topPad,
+                context.horizontalPadding,
+                bottomPad,
+              ),
+              child: _SummaryCarousel(items: summaryItems),
+            ),
+          ),
+          // Scrollable menu grid below
+          Expanded(
+            child: ScrollConfiguration(
+              behavior: _NoGlowBehavior(),
+              child: CustomScrollView(
+                physics: const ClampingScrollPhysics(),
+                slivers: [
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(
+                      context.horizontalPadding,
+                      0,
+                      context.horizontalPadding,
+                      24,
+                    ),
+                    sliver: _FeatureGrid(features: dataCategories),
                   ),
-                  const SizedBox(height: 16),
-                  _SearchField(
-                    onChanged: (v) {
-                      /* TODO: implement search */
-                    },
-                  ),
-                  const SizedBox(height: 12),
                 ],
               ),
             ),
-          ),
-          SliverPadding(
-            padding: EdgeInsets.fromLTRB(context.horizontalPadding, 0, context.horizontalPadding, 24),
-            sliver: _FeatureGrid(features: dataCategories),
           ),
         ],
       ),
@@ -239,60 +268,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
   }
 }
 
-class _MainMenuHeaderDelegate extends SliverPersistentHeaderDelegate {
-  final String desaName;
-  final String kodeWilayah;
-  final bool isAdmin;
-  final VoidCallback onChangeWilayah;
-  final VoidCallback onLogout;
-  _MainMenuHeaderDelegate({
-    required this.desaName,
-    required this.kodeWilayah,
-    required this.isAdmin,
-    required this.onChangeWilayah,
-    required this.onLogout,
-  });
-
-  @override
-  double get minExtent => 140;
-  @override
-  double get maxExtent => 180;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    // header content delegates animation handling to _HeaderContent
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: _gradLogin,
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(20),
-          bottomRight: Radius.circular(20),
-        ),
-      ),
-      child: _HeaderContent(
-        desaName: desaName,
-        kodeWilayah: kodeWilayah,
-        isAdmin: isAdmin,
-        onChangeWilayah: onChangeWilayah,
-        onLogout: onLogout,
-        shrinkOffset: shrinkOffset,
-        minExtent: minExtent,
-        maxExtent: maxExtent,
-      ),
-    );
-  }
-
-  @override
-  bool shouldRebuild(covariant _MainMenuHeaderDelegate oldDelegate) {
-    return desaName != oldDelegate.desaName ||
-        kodeWilayah != oldDelegate.kodeWilayah ||
-        isAdmin != oldDelegate.isAdmin;
-  }
-}
+// Removed sliver header delegate; header is now static above the scrollable grid.
 
 class _HeaderContent extends StatefulWidget {
   const _HeaderContent({
@@ -470,46 +446,17 @@ class _HeaderContentState extends State<_HeaderContent>
 
 // _StatChip removed — replaced by summary pills in _SummaryCarousel
 
-class _SearchField extends StatelessWidget {
-  const _SearchField({required this.onChanged});
-  final ValueChanged<String> onChanged;
+// Search bar removed per request
+
+// Disable default overscroll glow/indicator
+class _NoGlowBehavior extends ScrollBehavior {
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Theme.of(
-            context,
-          ).colorScheme.onSurface.withValues(alpha: 0.06),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: TextField(
-        onChanged: onChanged,
-        decoration: InputDecoration(
-          hintText: 'Cari menu, data, atau RT…',
-          prefixIcon: Icon(
-            Icons.search_rounded,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-            vertical: 14,
-            horizontal: 12,
-          ),
-        ),
-      ),
-    );
+  Widget buildOverscrollIndicator(BuildContext context, Widget child, ScrollableDetails details) {
+    return child; // no glow/bounce indicator
   }
 }
+
+// Removed sliver carousel delegate; carousel is now static above the scrollable grid.
 
 class _FeatureGrid extends StatelessWidget {
   const _FeatureGrid({required this.features});
