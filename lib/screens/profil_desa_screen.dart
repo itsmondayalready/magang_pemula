@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import '../utils/responsive.dart';
 
 class ProfilDesaScreen extends StatelessWidget {
@@ -29,90 +30,15 @@ class ProfilDesaScreen extends StatelessWidget {
         elevation: 0,
       ),
       body: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(context.horizontalPadding, 0, context.horizontalPadding, 24),
+        padding: EdgeInsets.fromLTRB(
+          context.horizontalPadding,
+          16,
+          context.horizontalPadding,
+          24,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Identitas Desa
-            _SectionCard(
-              title: 'Identitas Desa',
-              icon: Icons.location_city_rounded,
-              gradient: const LinearGradient(
-                colors: [Color(0xFF2563EB), Color(0xFF7C3AED)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              children: const [
-                _InfoRow(label: 'Nama Desa', value: 'Desa Sukamaju'),
-                _InfoRow(label: 'Kode Wilayah', value: '3201012001'),
-                _InfoRow(label: 'Kecamatan', value: 'Ciwidey'),
-                _InfoRow(label: 'Kabupaten', value: 'Bandung'),
-                _InfoRow(label: 'Provinsi', value: 'Jawa Barat'),
-                _InfoRow(label: 'Kode Pos', value: '40973'),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Kepala Desa
-            _SectionCard(
-              title: 'Kepala Desa',
-              icon: Icons.person_rounded,
-              gradient: const LinearGradient(
-                colors: [Color(0xFF0B7A75), Color(0xFFB08900)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              children: const [
-                _InfoRow(label: 'Nama', value: 'Budi Santoso, S.Sos'),
-                _InfoRow(label: 'NIP', value: '197505121998031004'),
-                _InfoRow(label: 'Periode Jabatan', value: '2019 - 2025'),
-                _InfoRow(label: 'No. Telepon', value: '+62 812-3456-7890'),
-                _InfoRow(label: 'Email', value: 'kades.sukamaju@gmail.com'),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Geografis
-            _SectionCard(
-              title: 'Kondisi Geografis',
-              icon: Icons.terrain_rounded,
-              gradient: const LinearGradient(
-                colors: [Color(0xFF16A34A), Color(0xFFA3E635)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              children: const [
-                _InfoRow(label: 'Luas Wilayah', value: '12.5 km²'),
-                _InfoRow(label: 'Ketinggian', value: '1.200 mdpl'),
-                _InfoRow(label: 'Batas Utara', value: 'Desa Mekar Sari'),
-                _InfoRow(label: 'Batas Selatan', value: 'Desa Patengan'),
-                _InfoRow(label: 'Batas Timur', value: 'Desa Sindang Jaya'),
-                _InfoRow(label: 'Batas Barat', value: 'Desa Alam Endah'),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Perangkat Desa
-            _SectionCard(
-              title: 'Perangkat Desa',
-              icon: Icons.groups_3_rounded,
-              gradient: const LinearGradient(
-                colors: [Color(0xFF06B6D4), Color(0xFF1D4ED8)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              children: const [
-                _InfoRow(label: 'Sekretaris Desa', value: 'Siti Nurhaliza, S.Kom'),
-                _InfoRow(label: 'Kaur Keuangan', value: 'Ahmad Fauzi, SE'),
-                _InfoRow(label: 'Kaur Perencanaan', value: 'Dewi Sartika, S.Sos'),
-                _InfoRow(label: 'Kaur Tata Usaha', value: 'Rudi Hartono, S.Pd'),
-                _InfoRow(label: 'Kasi Pemerintahan', value: 'Bambang Sutrisno, S.IP'),
-                _InfoRow(label: 'Kasi Kesejahteraan', value: 'Nurul Hidayah, SKM'),
-                _InfoRow(label: 'Kasi Pelayanan', value: 'Eko Prasetyo, A.Md'),
-              ],
-            ),
-            const SizedBox(height: 16),
-
             // Galeri Foto Desa
             _SectionCard(
               title: 'Galeri Foto Desa',
@@ -128,6 +54,57 @@ class ProfilDesaScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
+            // Identitas Desa
+            _SectionCard(
+              title: 'Identitas Desa',
+              icon: Icons.location_city_rounded,
+              gradient: const LinearGradient(
+                colors: [Color(0xFF2563EB), Color(0xFF7C3AED)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              children: const [
+                _InfoRow(label: 'Nama Desa', value: 'Desa Melayu Ilir'),
+                _InfoRow(label: 'Kode Wilayah', value: '6303052009'),
+                _InfoRow(label: 'Kecamatan', value: 'Martapura'),
+                _InfoRow(label: 'Kabupaten', value: 'Banjar'),
+                _InfoRow(label: 'Provinsi', value: 'Kalimantan Selatan'),
+                _InfoRow(label: 'Jumlah RT', value: '3 RT'),
+                _InfoRow(label: 'Jumlah RW', value: '1 RW'),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Aparatur Desa
+            _SectionCard(
+              title: 'Aparatur Desa',
+              icon: Icons.groups_3_rounded,
+              gradient: const LinearGradient(
+                colors: [Color(0xFF06B6D4), Color(0xFF1D4ED8)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              children: const [
+                _InfoRow(label: 'Kepala Desa', value: 'MURJANI'),
+                _InfoRow(label: 'Sekretaris Desa', value: 'NUR LUTFIA'),
+                _InfoRow(label: 'Kasi Pemerintahan', value: 'H. BUNAWAR'),
+                _InfoRow(label: 'Kasi Pelayanan dan Kesejahteraan', value: 'A. JAILANI'),
+                _InfoRow(label: 'Kaur Umum dan Perencanaan', value: 'FATHURRIZOAH, S.PD.I'),
+                _InfoRow(label: 'Kaur Keuangan', value: 'NAFILAH'),
+                _InfoRow(label: 'Kepala Lingkungan I', value: 'MUHAMMAD KADRI'),
+                _InfoRow(label: 'Kepala Lingkungan II', value: 'ANDI HIDAYAT'),
+                _InfoRow(label: 'Ketua BPD', value: 'RAFI\'I, S.PD.I'),
+                _InfoRow(label: 'Wakil Ketua BPD', value: 'PITRIANI'),
+                _InfoRow(label: 'Sekretaris BPD', value: 'SRI MULIYANI, S.PD'),
+                _InfoRow(label: 'Anggota BPD', value: 'RAHMADI'),
+                _InfoRow(label: 'Anggota BPD', value: 'SAUFI, S.E'),
+                _InfoRow(label: 'Ketua RT I', value: 'AHMAD MUJAHIT'),
+                _InfoRow(label: 'Ketua RT II', value: 'M. HATTA'),
+                _InfoRow(label: 'Ketua RT III', value: 'H. SYA\'RANI'),
+              ],
+            ),
+            const SizedBox(height: 16),
+
             // Kontak & Sosial Media
             _SectionCard(
               title: 'Kontak & Informasi',
@@ -138,11 +115,11 @@ class ProfilDesaScreen extends StatelessWidget {
                 end: Alignment.bottomRight,
               ),
               children: const [
-                _InfoRow(label: 'Telepon Kantor', value: '(022) 5891234'),
-                _InfoRow(label: 'Email Desa', value: 'info@desasukamaju.id'),
-                _InfoRow(label: 'Website', value: 'www.desasukamaju.id'),
-                _InfoRow(label: 'Instagram', value: '@desasukamaju'),
-                _InfoRow(label: 'Facebook', value: 'Desa Sukamaju Official'),
+                _InfoRow(label: 'Nama Desa', value: 'Desa Melayu Ilir'),
+                _InfoRow(label: 'Kecamatan', value: 'Martapura'),
+                _InfoRow(label: 'Kabupaten', value: 'Banjar'),
+                _InfoRow(label: 'Provinsi', value: 'Kalimantan Selatan'),
+                _InfoRow(label: 'Total Aparatur', value: '13 Orang (termasuk BPD dan RT)'),
               ],
             ),
             const SizedBox(height: 8),
@@ -282,22 +259,23 @@ class _PhotoCarousel extends StatefulWidget {
 }
 
 class _PhotoCarouselState extends State<_PhotoCarousel> {
-  final PageController _pageController = PageController(viewportFraction: 0.85);
+  late final PageController _pageController;
   int _currentPage = 0;
+  Timer? _timer;
 
   // Dummy foto desa - nanti bisa diganti dengan URL dari Supabase
   final List<_DesaPhoto> _photos = const [
     _DesaPhoto(
       url: 'https://images.unsplash.com/photo-1587474260584-136574528ed5?w=800',
-      caption: 'Balai Desa Sukamaju',
+      caption: 'Balai Desa Melayu Ilir',
     ),
     _DesaPhoto(
       url: 'https://images.unsplash.com/photo-1590736969955-71cc94901144?w=800',
-      caption: 'Pemandangan Perkebunan Teh',
+      caption: 'Pemandangan Desa',
     ),
     _DesaPhoto(
       url: 'https://images.unsplash.com/photo-1536431311719-398b6704d4cc?w=800',
-      caption: 'Masjid Al-Ikhlas',
+      caption: 'Masjid Desa',
     ),
     _DesaPhoto(
       url: 'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=800',
@@ -310,7 +288,34 @@ class _PhotoCarouselState extends State<_PhotoCarousel> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    final len = _photos.length;
+    final initialPage = len * 1000; // Start at a large number for infinite scroll
+    _pageController = PageController(
+      viewportFraction: 0.85,
+      initialPage: initialPage,
+    );
+    _currentPage = initialPage;
+    _startAutoScroll();
+  }
+
+  void _startAutoScroll() {
+    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (_pageController.hasClients) {
+        final nextPage = _currentPage + 1;
+        _pageController.animateToPage(
+          nextPage,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
+  }
+
+  @override
   void dispose() {
+    _timer?.cancel();
     _pageController.dispose();
     super.dispose();
   }
@@ -328,8 +333,9 @@ class _PhotoCarouselState extends State<_PhotoCarousel> {
                 _currentPage = index;
               });
             },
-            itemCount: _photos.length,
+            itemCount: null, // Infinite scroll
             itemBuilder: (context, index) {
+              final photoIndex = index % _photos.length;
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8.0),
                 child: ClipRRect(
@@ -338,7 +344,7 @@ class _PhotoCarouselState extends State<_PhotoCarousel> {
                     fit: StackFit.expand,
                     children: [
                       Image.network(
-                        _photos[index].url,
+                        _photos[photoIndex].url,
                         fit: BoxFit.cover,
                         loadingBuilder: (context, child, loadingProgress) {
                           if (loadingProgress == null) return child;
@@ -382,7 +388,7 @@ class _PhotoCarouselState extends State<_PhotoCarousel> {
                           ),
                           padding: const EdgeInsets.all(12),
                           child: Text(
-                            _photos[index].caption,
+                            _photos[photoIndex].caption,
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w600,
@@ -407,9 +413,9 @@ class _PhotoCarouselState extends State<_PhotoCarousel> {
               duration: const Duration(milliseconds: 200),
               margin: const EdgeInsets.symmetric(horizontal: 3),
               height: 6,
-              width: _currentPage == index ? 18 : 6,
+              width: (_currentPage % _photos.length) == index ? 18 : 6,
               decoration: BoxDecoration(
-                color: _currentPage == index
+                color: (_currentPage % _photos.length) == index
                     ? const Color(0xFF9333EA)
                     : Colors.grey.shade300,
                 borderRadius: BorderRadius.circular(999),

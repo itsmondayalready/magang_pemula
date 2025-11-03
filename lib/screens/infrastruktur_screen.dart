@@ -118,8 +118,8 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      Color(0xFF2563EB), // blue
-                      Color(0xFF06B6D4), // cyan
+                      Color(0xFFF97316), // orange
+                      Color(0xFFEC4899), // pink
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -152,25 +152,25 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
                     label: 'Fasilitas Pendidikan',
                     value: _sum(_data['pendidikan']).toString(),
                     icon: Icons.school_rounded,
-                    color: const Color(0xFF2563EB),
+                    color: const Color(0xFFF97316),
                   ),
                   _buildSummaryCard(
                     label: 'Fasilitas Kesehatan',
                     value: _sum(_data['kesehatan']).toString(),
                     icon: Icons.local_hospital_rounded,
-                    color: const Color(0xFF10B981),
+                    color: const Color(0xFFF97316),
                   ),
                   _buildSummaryCard(
                     label: 'Moda Transportasi',
                     value: _sum(_data['angkutan']).toString(),
                     icon: Icons.directions_bus_filled_rounded,
-                    color: const Color(0xFFF59E0B),
+                    color: const Color(0xFFF97316),
                   ),
                   _buildSummaryCard(
                     label: 'Sarana Sanitasi',
                     value: _sum(_data['sanitasi']).toString(),
                     icon: Icons.wash_rounded,
-                    color: const Color(0xFF9333EA),
+                    color: const Color(0xFFF97316),
                   ),
                 ],
               ),
@@ -178,7 +178,7 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
           ),
         ],
         body: Padding(
-          padding: const EdgeInsets.only(bottom: 16),
+          padding: EdgeInsets.zero,
           child: TabBarView(
             controller: _tabController,
             children: [
@@ -198,9 +198,9 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
           top: false,
           child: TabBar(
             controller: _tabController,
-            labelColor: const Color(0xFF2563EB),
+            labelColor: const Color(0xFFF97316),
             unselectedLabelColor: Colors.grey[600],
-            indicatorColor: const Color(0xFF2563EB),
+            indicatorColor: const Color(0xFFF97316),
             indicatorWeight: 3,
             labelStyle: const TextStyle(
               fontSize: 12,
@@ -237,6 +237,7 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
 
   // ---- Helpers UI ----
   Widget _buildSection(Widget child) => SingleChildScrollView(
+    physics: const ClampingScrollPhysics(),
     padding: const EdgeInsets.all(16),
     child: AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),
@@ -1040,10 +1041,10 @@ class _Card extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2563EB).withValues(alpha: 0.1),
+                  color: const Color(0xFFF97316).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: const Color(0xFF2563EB), size: 24),
+                child: Icon(icon, color: const Color(0xFFF97316), size: 24),
               ),
               const SizedBox(width: 12),
               Expanded(

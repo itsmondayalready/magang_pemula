@@ -13,53 +13,57 @@ class _KependudukanScreenState extends State<KependudukanScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
 
-  // Data dummy untuk visualisasi
+  // Data dummy untuk visualisasi (Update sesuai Monografi Juni 2025)
   final Map<String, dynamic> _dataDummy = {
-    'total_penduduk': 5234,
-    'total_kk': 1247,
-    'total_rt': 45,
-    'total_rw': 9,
-    'gender': {'laki_laki': 2630, 'perempuan': 2604},
+    'total_penduduk': 590,
+    'total_kk': 1187,
+    'total_rt': 3,
+    'total_rw': 1,
+    'gender': {'laki_laki': 302, 'perempuan': 288}, // Estimasi dari total 590
     'kelompok_usia': {
-      '0-4': 235,
-      '5-9': 288,
-      '10-14': 342,
-      '15-19': 414,
-      '20-24': 456,
-      '25-29': 489,
-      '30-34': 512,
-      '35-39': 498,
-      '40-44': 445,
-      '45-49': 378,
-      '50-54': 312,
-      '55-59': 267,
-      '60-64': 223,
-      '65+': 375,
+      '0-4': 45,
+      '5-9': 52,
+      '10-14': 58,
+      '15-19': 65,
+      '20-24': 72,
+      '25-29': 68,
+      '30-34': 54,
+      '35-39': 48,
+      '40-44': 42,
+      '45-49': 36,
+      '50-54': 28,
+      '55-59': 22,
+      '60-64': 18,
+      '65+': 32,
     },
     'pendidikan': {
-      'Tidak Sekolah': 145,
-      'SD': 1234,
-      'SMP': 978,
-      'SMA': 1456,
-      'Diploma': 234,
-      'Sarjana': 321,
-      'Pascasarjana': 200,
+      'Tidak Tamat SD': 65,
+      'Tamat SD': 90,
+      'Tamat SMP': 110,
+      'Tamat SMA': 95,
+      'Akademi/PT': 20,
     },
+    'produktivitas': {
+      'Bekerja': 380,
+      'Tidak Bekerja': 650,
+    },
+    'total_usia_produktif': 1030, // Total penduduk usia kerja 15-64 tahun
     'pekerjaan': {
-      'Belum Bekerja': 456,
-      'Pelajar': 890,
-      'Petani': 1234,
-      'Pedagang': 567,
-      'PNS': 345,
-      'Wiraswasta': 789,
-      'Lainnya': 953,
+      'Mengurus Rumah Tangga': 288,
+      'Tidak atau Belum Bekerja': 385,
+      'Pelajar dan Mahasiswa': 105,
+      'Wiraswasta': 7,
+      'Buruh Harian Lepas': 8,
+      'Pegawai Negeri Sipil (PNS)': 8,
+      'Karyawan Swasta': 9,
+      'Lain-lainnya': 0,
     },
   };
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -169,6 +173,7 @@ class _KependudukanScreenState extends State<KependudukanScreen>
               _buildChartSection(_buildGenderChart()),
               _buildChartSection(_buildPendidikanChart()),
               _buildChartSection(_buildPekerjaanChart()),
+              _buildChartSection(_buildDetailPekerjaanChart()),
             ],
           ),
         ),
@@ -198,6 +203,7 @@ class _KependudukanScreenState extends State<KependudukanScreen>
                 icon: Icon(Icons.school_rounded, size: 20),
                 text: 'Pendidikan',
               ),
+              Tab(icon: Icon(Icons.trending_up_rounded, size: 20), text: 'Produktivitas'),
               Tab(icon: Icon(Icons.work_rounded, size: 20), text: 'Pekerjaan'),
             ],
           ),
@@ -208,7 +214,8 @@ class _KependudukanScreenState extends State<KependudukanScreen>
 
   Widget _buildChartSection(Widget chart) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      physics: const ClampingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       child: AnimatedSwitcher(
         duration: const Duration(milliseconds: 300),
         child: chart,
@@ -493,8 +500,21 @@ class _KependudukanScreenState extends State<KependudukanScreen>
 
   Widget _buildPendidikanChart() {
     final pendidikanData = _dataDummy['pendidikan'] as Map<String, dynamic>;
-    final sortedEntries = pendidikanData.entries.toList()
-      ..sort((a, b) => (b.value as int).compareTo(a.value as int));
+    
+    // Urutan dari tingkat rendah ke tinggi
+    final educationOrder = [
+      'Tidak Tamat SD',
+      'Tamat SD',
+      'Tamat SMP',
+      'Tamat SMA',
+      'Akademi/PT',
+    ];
+    
+    final sortedEntries = educationOrder
+        .where((key) => pendidikanData.containsKey(key))
+        .map((key) => MapEntry(key, pendidikanData[key]))
+        .toList();
+    
     final total = pendidikanData.values.cast<int>().reduce((a, b) => a + b);
 
     return Container(
@@ -566,17 +586,221 @@ class _KependudukanScreenState extends State<KependudukanScreen>
   }
 
   Widget _buildPekerjaanChart() {
+    final produktivitasData = _dataDummy['produktivitas'] as Map<String, dynamic>;
+    final totalUsiaProduktif = _dataDummy['total_usia_produktif'] as int;
+    final bekerja = produktivitasData['Bekerja'] as int;
+    final tidakBekerja = produktivitasData['Tidak Bekerja'] as int;
+    
+    final colors = [
+      const Color(0xFF10B981), // Hijau untuk Bekerja
+      const Color(0xFFEF4444), // Merah untuk Tidak Bekerja
+    ];
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0B7A75).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.trending_up_rounded,
+                  color: Color(0xFF0B7A75),
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Produktivitas Usia Produktif',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1A1A1A),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Usia Kerja (15-64 tahun): ${totalUsiaProduktif.toString()} orang',
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 32),
+          // Responsive layout
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isSmallScreen = constraints.maxWidth < 600;
+              return Column(
+                children: [
+                  // Pie Chart
+                  Center(
+                    child: SizedBox(
+                      height: isSmallScreen ? 250 : 300,
+                      child: PieChart(
+                        PieChartData(
+                          sectionsSpace: 4,
+                          centerSpaceRadius: isSmallScreen ? 60 : 70,
+                          sections: [
+                            PieChartSectionData(
+                              value: bekerja.toDouble(),
+                              title: '${(bekerja / totalUsiaProduktif * 100).toStringAsFixed(1)}%',
+                              color: colors[0],
+                              radius: isSmallScreen ? 80 : 90,
+                              titleStyle: TextStyle(
+                                fontSize: isSmallScreen ? 16 : 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            PieChartSectionData(
+                              value: tidakBekerja.toDouble(),
+                              title: '${(tidakBekerja / totalUsiaProduktif * 100).toStringAsFixed(1)}%',
+                              color: colors[1],
+                              radius: isSmallScreen ? 80 : 90,
+                              titleStyle: TextStyle(
+                                fontSize: isSmallScreen ? 16 : 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: isSmallScreen ? 24 : 32),
+                  // Summary Cards
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildProduktivitasCard(
+                          label: 'Bekerja',
+                          value: bekerja,
+                          total: totalUsiaProduktif,
+                          color: colors[0],
+                          icon: Icons.work_rounded,
+                          isSmallScreen: isSmallScreen,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildProduktivitasCard(
+                          label: 'Tidak Bekerja',
+                          value: tidakBekerja,
+                          total: totalUsiaProduktif,
+                          color: colors[1],
+                          icon: Icons.person_off_rounded,
+                          isSmallScreen: isSmallScreen,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProduktivitasCard({
+    required String label,
+    required int value,
+    required int total,
+    required Color color,
+    required IconData icon,
+    bool isSmallScreen = false,
+  }) {
+    final percentage = (value / total * 100).toStringAsFixed(1);
+    return Container(
+      padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 2),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: isSmallScreen ? 24 : 28),
+          ),
+          SizedBox(height: isSmallScreen ? 8 : 12),
+          Text(
+            value.toString(),
+            style: TextStyle(
+              fontSize: isSmallScreen ? 24 : 32,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: isSmallScreen ? 12 : 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[800],
+            ),
+          ),
+          const SizedBox(height: 4),
+          Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: isSmallScreen ? 8 : 12,
+              vertical: 4,
+            ),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              '$percentage%',
+              style: TextStyle(
+                fontSize: isSmallScreen ? 10 : 12,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailPekerjaanChart() {
     final pekerjaanData = _dataDummy['pekerjaan'] as Map<String, dynamic>;
     final total = pekerjaanData.values.cast<int>().reduce((a, b) => a + b);
-    final colors = [
-      const Color(0xFFEF4444),
-      const Color(0xFFF97316),
-      const Color(0xFFF59E0B),
-      const Color(0xFF10B981),
-      const Color(0xFF3B82F6),
-      const Color(0xFF6366F1),
-      const Color(0xFF8B5CF6),
-    ];
+    
+    // Urutan berdasarkan jumlah (dari terbesar ke terkecil)
     final sortedEntries = pekerjaanData.entries.toList()
       ..sort((a, b) => (b.value as int).compareTo(a.value as int));
 
@@ -634,55 +858,65 @@ class _KependudukanScreenState extends State<KependudukanScreen>
             ],
           ),
           const SizedBox(height: 32),
-          Center(
-            child: SizedBox(
-              height: 300,
-              child: PieChart(
-                PieChartData(
-                  sectionsSpace: 3,
-                  centerSpaceRadius: 60,
-                  sections: List.generate(sortedEntries.length, (index) {
-                    final entry = sortedEntries[index];
-                    final value = entry.value as int;
-                    final percentage = value / total * 100;
-                    return PieChartSectionData(
-                      value: value.toDouble(),
-                      title: percentage > 8
-                          ? '${percentage.toStringAsFixed(0)}%'
-                          : '',
-                      color: colors[index % colors.length],
-                      radius: 90,
-                      titleStyle: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+          // Pie Chart
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isSmallScreen = constraints.maxWidth < 600;
+              return Column(
+                children: [
+                  Center(
+                    child: SizedBox(
+                      height: isSmallScreen ? 250 : 300,
+                      child: PieChart(
+                        PieChartData(
+                          sectionsSpace: 2,
+                          centerSpaceRadius: isSmallScreen ? 50 : 60,
+                          sections: sortedEntries.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final data = entry.value;
+                            final value = data.value as int;
+                            final percentage = (value / total * 100);
+                            
+                            return PieChartSectionData(
+                              value: value.toDouble(),
+                              title: percentage >= 5 ? '${percentage.toStringAsFixed(1)}%' : '',
+                              color: _getPekerjaanColor(data.key),
+                              radius: isSmallScreen ? 70 : 80,
+                              titleStyle: TextStyle(
+                                fontSize: isSmallScreen ? 11 : 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            );
+                          }).toList(),
+                        ),
                       ),
-                    );
-                  }),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 32),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 3,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-            ),
-            itemCount: sortedEntries.length,
-            itemBuilder: (context, index) {
-              final entry = sortedEntries[index];
-              final percentage = ((entry.value as int) / total * 100)
-                  .toStringAsFixed(1);
-              return _buildModernLegendItem(
-                color: colors[index % colors.length],
-                label: entry.key,
-                value: entry.value as int,
-                percentage: percentage,
+                    ),
+                  ),
+                  SizedBox(height: isSmallScreen ? 24 : 32),
+                  // Legend
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final itemWidth = (constraints.maxWidth - 16) / 2; // 2 columns with gap
+                      return Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: sortedEntries.map((entry) {
+                          final value = entry.value as int;
+                          if (value == 0) return const SizedBox.shrink();
+                          return SizedBox(
+                            width: itemWidth,
+                            child: _buildLegendItem(
+                              color: _getPekerjaanColor(entry.key),
+                              label: entry.key,
+                              value: value,
+                            ),
+                          );
+                        }).toList(),
+                      );
+                    },
+                  ),
+                ],
               );
             },
           ),
@@ -691,11 +925,10 @@ class _KependudukanScreenState extends State<KependudukanScreen>
     );
   }
 
-  Widget _buildModernLegendItem({
+  Widget _buildLegendItem({
     required Color color,
     required String label,
     required int value,
-    required String percentage,
   }) {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -705,35 +938,36 @@ class _KependudukanScreenState extends State<KependudukanScreen>
         border: Border.all(color: color.withValues(alpha: 0.3), width: 1.5),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 8,
-            height: 8,
+            width: 10,
+            height: 10,
             decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   label,
                   style: TextStyle(
                     fontSize: 11,
-                    fontWeight: FontWeight.w600,
                     color: Colors.grey[800],
+                    fontWeight: FontWeight.w600,
                   ),
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '$value ($percentage%)',
+                  '$value orang',
                   style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500,
+                    fontSize: 13,
+                    color: color,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
@@ -742,6 +976,27 @@ class _KependudukanScreenState extends State<KependudukanScreen>
         ],
       ),
     );
+  }
+
+  Color _getPekerjaanColor(String pekerjaan) {
+    switch (pekerjaan) {
+      case 'Mengurus Rumah Tangga':
+        return const Color(0xFFEC4899); // Pink
+      case 'Tidak atau Belum Bekerja':
+        return const Color(0xFFEF4444); // Red
+      case 'Pelajar dan Mahasiswa':
+        return const Color(0xFF3B82F6); // Blue
+      case 'Wiraswasta':
+        return const Color(0xFF10B981); // Green
+      case 'Buruh Harian Lepas':
+        return const Color(0xFFF59E0B); // Amber
+      case 'Pegawai Negeri Sipil (PNS)':
+        return const Color(0xFF8B5CF6); // Purple
+      case 'Karyawan Swasta':
+        return const Color(0xFF06B6D4); // Cyan
+      default:
+        return const Color(0xFF6B7280); // Gray
+    }
   }
 
   Widget _buildModernHorizontalBar({

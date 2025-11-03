@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../utils/responsive.dart';
@@ -117,20 +118,20 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
     // Prepare carousel items
     final summaryItems = <_SummaryItem>[
-      _SummaryItem(
+      const _SummaryItem(
         title: 'Ringkasan Desa',
         gradient: _gradLogin,
         icon: Icons.landscape_rounded,
         chips: [
           _SummaryChip(
-            icon: Icons.people_alt_rounded,
-            label: 'Penduduk',
-            value: widget.totalPenduduk.toString(),
+            icon: Icons.map_rounded,
+            label: 'Luas Wilayah',
+            value: '2.5 km²',
           ),
           _SummaryChip(
-            icon: Icons.home_rounded,
-            label: 'KK',
-            value: widget.totalKK.toString(),
+            icon: Icons.location_city_rounded,
+            label: 'RT/RW',
+            value: '3/1',
           ),
         ],
       ),
@@ -141,13 +142,13 @@ class _MainMenuPageState extends State<MainMenuPage> {
         chips: [
           _SummaryChip(
             icon: Icons.group_rounded,
-            label: 'Total',
-            value: '0',
+            label: 'Total Penduduk',
+            value: '590',
           ),
           _SummaryChip(
             icon: Icons.badge_rounded,
             label: 'KK',
-            value: '0',
+            value: '1187',
           ),
         ],
       ),
@@ -175,13 +176,13 @@ class _MainMenuPageState extends State<MainMenuPage> {
         chips: [
           _SummaryChip(
             icon: Icons.local_hospital_rounded,
-            label: 'Faskes',
-            value: '0',
+            label: 'Fasilitas',
+            value: '4',
           ),
           _SummaryChip(
             icon: Icons.volunteer_activism_rounded,
             label: 'Tenaga',
-            value: '0',
+            value: '4',
           ),
         ],
       ),
@@ -218,7 +219,17 @@ class _MainMenuPageState extends State<MainMenuPage> {
           // Static summary carousel (not vertically scrollable)
           // Put a solid white background behind it so the menu underneath is hidden.
           Container(
-            color: Colors.white,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                  spreadRadius: 0,
+                ),
+              ],
+            ),
             child: Padding(
               padding: EdgeInsets.fromLTRB(
                 context.horizontalPadding,
@@ -253,7 +264,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
       ),
       floatingActionButton: isGuest
           ? null
-          : FloatingActionButton.extended(
+          : FloatingActionButton(
               onPressed: () {
                 showModalBottomSheet(
                   context: context,
@@ -261,8 +272,9 @@ class _MainMenuPageState extends State<MainMenuPage> {
                   builder: (_) => const _QuickActionsSheet(),
                 );
               },
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Aksi Cepat'),
+              backgroundColor: const Color(0xFF2563EB),
+              elevation: 4,
+              child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
             ),
     );
   }
@@ -1090,6 +1102,7 @@ class _SummaryCarousel extends StatefulWidget {
 class _SummaryCarouselState extends State<_SummaryCarousel> {
   late final PageController _pageController;
   int _index = 0;
+  Timer? _timer;
 
   @override
   void initState() {
@@ -1120,13 +1133,28 @@ class _SummaryCarouselState extends State<_SummaryCarousel> {
         initialPage: base,
       );
       _isControllerInitialized = true;
+      _startAutoScroll();
     }
+  }
+
+  void _startAutoScroll() {
+    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (_pageController.hasClients && widget.items.isNotEmpty) {
+        final nextPage = _pageController.page!.toInt() + 1;
+        _pageController.animateToPage(
+          nextPage,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
   }
 
   bool _isControllerInitialized = false;
 
   @override
   void dispose() {
+    _timer?.cancel();
     if (_isControllerInitialized) {
       _pageController.dispose();
     }

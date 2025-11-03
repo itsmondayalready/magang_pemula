@@ -189,7 +189,7 @@ class _PendidikanScreenState extends State<PendidikanScreen>
                     label: 'Lembaga Swasta Lokal',
                     value: '$totalSwastaLokal',
                     icon: Icons.apartment_rounded,
-                    color: const Color(0xFF7C3AED),
+                    color: const Color(0xFF2563EB),
                   ),
                 ],
               ),
@@ -197,7 +197,7 @@ class _PendidikanScreenState extends State<PendidikanScreen>
           ),
         ],
         body: Padding(
-          padding: const EdgeInsets.only(bottom: 16),
+          padding: EdgeInsets.zero,
           child: TabBarView(
             controller: _tabController,
             children: [
@@ -777,6 +777,7 @@ class _PendidikanScreenState extends State<PendidikanScreen>
 
   // --- containers ---
   Widget _section(Widget child) => SingleChildScrollView(
+    physics: const ClampingScrollPhysics(),
     padding: const EdgeInsets.all(16),
     child: AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),

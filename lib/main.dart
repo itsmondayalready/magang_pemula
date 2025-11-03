@@ -64,8 +64,8 @@ class RootPage extends StatelessWidget {
           return MainMenuPage(
             desaName: 'Desa Melayu Ilir',
             kodeWilayah: '6303052009',
-            totalPenduduk: 0,
-            totalKK: 0,
+            totalPenduduk: 590,
+            totalKK: 1187,
             isAdmin: auth.isAdmin,
           );
         }

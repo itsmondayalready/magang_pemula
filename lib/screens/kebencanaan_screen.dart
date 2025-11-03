@@ -111,7 +111,7 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
               child: Container(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Color(0xFFF97316), Color(0xFFEF4444)],
+                    colors: [Color(0xFFDC2626), Color(0xFFF97316)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -135,13 +135,13 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
                     label: 'Rumah',
                     value: '${_dataBanjir['total_rumah']}',
                     icon: Icons.home_rounded,
-                    color: const Color(0xFFF97316),
+                    color: const Color(0xFFDC2626),
                   ),
                   _buildSummaryCard(
                     label: 'Kepala Keluarga',
                     value: '${_dataBanjir['total_kk']}',
                     icon: Icons.people_rounded,
-                    color: const Color(0xFFEF4444),
+                    color: const Color(0xFFDC2626),
                   ),
                   _buildSummaryCard(
                     label: 'Jiwa Terdampak',
@@ -153,7 +153,7 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
                     label: 'Kelompok Rentan',
                     value: '${_dataBanjir['lansia'] + _dataBanjir['bumil'] + _dataBanjir['balita']}',
                     icon: Icons.warning_amber_rounded,
-                    color: const Color(0xFFEA580C),
+                    color: const Color(0xFFDC2626),
                   ),
                 ],
               ),
@@ -161,7 +161,7 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
           ),
         ],
         body: Padding(
-          padding: const EdgeInsets.only(bottom: 16),
+          padding: EdgeInsets.zero,
           child: TabBarView(
             controller: _tabController,
             children: [
@@ -180,9 +180,9 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
           top: false,
           child: TabBar(
             controller: _tabController,
-            labelColor: const Color(0xFFEF4444),
+            labelColor: const Color(0xFFDC2626),
             unselectedLabelColor: Colors.grey,
-            indicatorColor: const Color(0xFFEF4444),
+            indicatorColor: const Color(0xFFDC2626),
             indicatorWeight: 3,
             labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
             unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
@@ -270,6 +270,7 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
 
   Widget _buildStatistik() {
     return SingleChildScrollView(
+      physics: const ClampingScrollPhysics(),
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
@@ -285,7 +286,7 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.bar_chart, color: Colors.orange.shade700),
+                      Icon(Icons.bar_chart, color: const Color(0xFFDC2626)),
                       const SizedBox(width: 8),
                       const Text(
                         'Jumlah Jiwa Terdampak Per RT',
@@ -440,7 +441,7 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.pie_chart, color: Colors.purple.shade700),
+                      Icon(Icons.pie_chart, color: const Color(0xFFDC2626)),
                       const SizedBox(width: 8),
                       const Text(
                         'Distribusi Kelompok Rentan',
@@ -540,6 +541,7 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
   Widget _buildPerRT() {
     final rtData = _dataBanjir['rt'] as Map<String, dynamic>;
     return SingleChildScrollView(
+      physics: const ClampingScrollPhysics(),
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
@@ -555,7 +557,7 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.home_work, color: Colors.orange.shade700),
+                      Icon(Icons.home_work, color: const Color(0xFFDC2626)),
                       const SizedBox(width: 8),
                       const Text(
                         'Perbandingan Rumah Per RT',
@@ -784,6 +786,7 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
   Widget _buildBantuan() {
     final bantuanList = _dataBanjir['bantuan'] as List<dynamic>;
     return SingleChildScrollView(
+      physics: const ClampingScrollPhysics(),
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
@@ -957,6 +960,7 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
   Widget _buildPenanganan() {
     final penangananList = _dataBanjir['penanganan'] as List<dynamic>;
     return SingleChildScrollView(
+      physics: const ClampingScrollPhysics(),
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1126,7 +1130,7 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
             ),
             child: Row(
               children: [
-                Icon(Icons.info_outline, color: Colors.green.shade700),
+                Icon(Icons.info_outline, color: const Color(0xFFDC2626)),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(

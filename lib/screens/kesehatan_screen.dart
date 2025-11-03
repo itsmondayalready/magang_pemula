@@ -13,31 +13,17 @@ class _KesehatanScreenState extends State<KesehatanScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  // Dummy breakdown data for UC-D01
+  // Data berdasarkan Monografi Desa Melayu Ilir
   Map<String, dynamic> get _data => {
     'fasilitas': {
-      'Rumah Sakit': 1,
-      'Puskesmas': 2,
-      'Poliklinik': 2,
-      'Poskesdes': 3,
-      'Posyandu': 12,
-      'Apotek': 6,
+      'Polindes': 1,
+      'Posyandu Aktif': 2,
+      'Posbindu': 1,
     },
-    'tenaga_medis': {'Dokter': 5, 'Perawat': 12, 'Bidan': 9, 'Kader': 30},
-    'imunisasi': {
-      'BCG': 120,
-      'DPT': 200,
-      'Polio': 180,
-      'Campak/MR': 160,
-      'Hepatitis B': 140,
-    },
-    'penyakit': {
-      'ISPA': 90,
-      'Diare': 75,
-      'Hipertensi': 48,
-      'Diabetes': 22,
-      'DBD': 15,
-      'Lainnya': 30,
+    'tenaga_medis': {
+      'Bidan': 1,
+      'Kader KB/KIA': 2,
+      'Tenaga Kesehatan Lain': 1,
     },
   };
 
@@ -46,7 +32,7 @@ class _KesehatanScreenState extends State<KesehatanScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
   }
 
   @override
@@ -133,23 +119,7 @@ class _KesehatanScreenState extends State<KesehatanScreen>
                       Map<String, int>.from(_data['tenaga_medis']),
                     ).toString(),
                     icon: Icons.volunteer_activism_rounded,
-                    color: const Color(0xFF10B981),
-                  ),
-                  _SummaryCard(
-                    label: 'Imunisasi',
-                    value: _sum(
-                      Map<String, int>.from(_data['imunisasi']),
-                    ).toString(),
-                    icon: Icons.vaccines_rounded,
-                    color: const Color(0xFFF59E0B),
-                  ),
-                  _SummaryCard(
-                    label: 'Penyakit',
-                    value: _sum(
-                      Map<String, int>.from(_data['penyakit']),
-                    ).toString(),
-                    icon: Icons.sick_rounded,
-                    color: const Color(0xFFEF4444),
+                    color: const Color(0xFF06B6D4),
                   ),
                 ],
               ),
@@ -157,11 +127,11 @@ class _KesehatanScreenState extends State<KesehatanScreen>
           ),
         ],
         body: Padding(
-          padding: const EdgeInsets.only(bottom: 16),
+          padding: EdgeInsets.zero,
           child: TabBarView(
             controller: _tabController,
             children: [
-              _buildSection(
+              _buildChartSection(
                 _Card(
                   icon: Icons.local_hospital_rounded,
                   title: 'Fasilitas Kesehatan',
@@ -171,7 +141,7 @@ class _KesehatanScreenState extends State<KesehatanScreen>
                   ),
                 ),
               ),
-              _buildSection(
+              _buildChartSection(
                 _Card(
                   icon: Icons.volunteer_activism_rounded,
                   title: 'Tenaga Medis',
@@ -179,16 +149,6 @@ class _KesehatanScreenState extends State<KesehatanScreen>
                   child: _HorizontalBars(
                     data: Map<String, int>.from(_data['tenaga_medis']),
                     colorFor: (k) => const Color(0xFF10B981),
-                  ),
-                ),
-              ),
-              _buildSection(
-                _Card(
-                  icon: Icons.vaccines_rounded,
-                  title: 'Imunisasi',
-                  subtitle: 'Cakupan (dummy) per jenis imunisasi',
-                  child: _ImunisasiBars(
-                    data: Map<String, int>.from(_data['imunisasi']),
                   ),
                 ),
               ),
@@ -224,10 +184,6 @@ class _KesehatanScreenState extends State<KesehatanScreen>
                 icon: Icon(Icons.volunteer_activism_rounded, size: 20),
                 text: 'Tenaga',
               ),
-              Tab(
-                icon: Icon(Icons.vaccines_rounded, size: 20),
-                text: 'Imunisasi',
-              ),
             ],
           ),
         ),
@@ -236,8 +192,9 @@ class _KesehatanScreenState extends State<KesehatanScreen>
   }
 
   // Section wrapper for body tabs
-  Widget _buildSection(Widget child) => SingleChildScrollView(
-    padding: const EdgeInsets.all(16),
+  Widget _buildChartSection(Widget child) => SingleChildScrollView(
+    physics: const ClampingScrollPhysics(),
+    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
     child: AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),
       child: child,
@@ -494,125 +451,6 @@ class _HorizontalBars extends StatelessWidget {
           );
         }),
       ],
-    );
-  }
-}
-
-// ---------- Imunisasi vertical bars ----------
-class _ImunisasiBars extends StatelessWidget {
-  const _ImunisasiBars({required this.data});
-  final Map<String, int> data;
-
-  @override
-  Widget build(BuildContext context) {
-    final maxValue = data.values.fold<int>(0, (p, c) => c > p ? c : p);
-    final keys = data.keys.toList();
-    final values = data.values.map((e) => e.toDouble()).toList();
-
-    return SizedBox(
-      height: 300,
-      child: BarChart(
-        BarChartData(
-          alignment: BarChartAlignment.spaceAround,
-          maxY: (maxValue * 1.2).toDouble(),
-          barTouchData: BarTouchData(
-            enabled: true,
-            touchTooltipData: BarTouchTooltipData(
-              getTooltipColor: (g) => const Color(0xFFF59E0B),
-              tooltipPadding: const EdgeInsets.all(8),
-              getTooltipItem: (g, gi, rod, ri) {
-                final label = keys[g.x.toInt()];
-                return BarTooltipItem(
-                  '$label\n${rod.toY.toInt()} dosis',
-                  const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                );
-              },
-            ),
-          ),
-          titlesData: FlTitlesData(
-            show: true,
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 40,
-                getTitlesWidget: (v, m) {
-                  if (v.toInt() >= 0 && v.toInt() < keys.length) {
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        keys[v.toInt()],
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                    );
-                  }
-                  return const SizedBox();
-                },
-              ),
-            ),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 42,
-                interval: (maxValue / 4).clamp(1, maxValue.toDouble()),
-                getTitlesWidget: (v, m) => Text(
-                  v.toInt().toString(),
-                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                ),
-              ),
-            ),
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-          ),
-          gridData: FlGridData(
-            show: true,
-            drawVerticalLine: false,
-            horizontalInterval: (maxValue / 4).clamp(1, maxValue.toDouble()),
-            getDrawingHorizontalLine: (v) => FlLine(
-              color: Colors.grey[200],
-              strokeWidth: 1,
-              dashArray: [5, 5],
-            ),
-          ),
-          borderData: FlBorderData(
-            show: true,
-            border: Border(
-              bottom: BorderSide(color: Colors.grey[300]!, width: 1),
-              left: BorderSide(color: Colors.grey[300]!, width: 1),
-            ),
-          ),
-          barGroups: List.generate(keys.length, (i) {
-            final color = const Color(0xFFF59E0B);
-            return BarChartGroupData(
-              x: i,
-              barRods: [
-                BarChartRodData(
-                  toY: values[i],
-                  gradient: LinearGradient(
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
-                    colors: [color, color.withValues(alpha: 0.7)],
-                  ),
-                  width: 18,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(6),
-                  ),
-                ),
-              ],
-            );
-          }),
-        ),
-      ),
     );
   }
 }
