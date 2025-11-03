@@ -113,8 +113,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
     final auth = Provider.of<AuthService>(context);
     final isGuest = auth.isGuest;
     // Static paddings for the fixed carousel
-  const double topPad = 12;
-  const double bottomPad = 20; // loosen spacing below carousel
+    const double topPad = 12;
+    const double bottomPad = 20; // loosen spacing below carousel
 
     // Prepare carousel items
     final summaryItems = <_SummaryItem>[
@@ -145,11 +145,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
             label: 'Total Penduduk',
             value: '590',
           ),
-          _SummaryChip(
-            icon: Icons.badge_rounded,
-            label: 'KK',
-            value: '1187',
-          ),
+          _SummaryChip(icon: Icons.badge_rounded, label: 'KK', value: '1187'),
         ],
       ),
       const _SummaryItem(
@@ -223,7 +219,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
+                  color: Colors.black.withValues(alpha: 0.08),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                   spreadRadius: 0,
@@ -274,7 +270,11 @@ class _MainMenuPageState extends State<MainMenuPage> {
               },
               backgroundColor: const Color(0xFF2563EB),
               elevation: 4,
-              child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
+              child: const Icon(
+                Icons.add_rounded,
+                color: Colors.white,
+                size: 28,
+              ),
             ),
     );
   }
@@ -463,7 +463,11 @@ class _HeaderContentState extends State<_HeaderContent>
 // Disable default overscroll glow/indicator
 class _NoGlowBehavior extends ScrollBehavior {
   @override
-  Widget buildOverscrollIndicator(BuildContext context, Widget child, ScrollableDetails details) {
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) {
     return child; // no glow/bounce indicator
   }
 }
@@ -478,7 +482,7 @@ class _FeatureGrid extends StatelessWidget {
     // Responsive grid: 2 columns for mobile, 3 for tablet, 4 for desktop
     final crossAxisCount = context.gridCount(mobile: 2, tablet: 3, desktop: 4);
     final childAspectRatio = context.isTablet || context.isDesktop ? 1.2 : 1.15;
-    
+
     return SliverGrid(
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
@@ -1120,12 +1124,12 @@ class _SummaryCarouselState extends State<_SummaryCarousel> {
     super.didChangeDependencies();
     // Initialize controller with responsive viewport fraction
     if (!_isControllerInitialized) {
-      final viewportFraction = context.isDesktop 
-          ? 0.4 
-          : context.isTablet 
-              ? 0.6 
-              : 0.92;
-      
+      final viewportFraction = context.isDesktop
+          ? 0.4
+          : context.isTablet
+          ? 0.6
+          : 0.97;
+
       final len = widget.items.length;
       final base = len == 0 ? 0 : len * 1000;
       _pageController = PageController(
@@ -1163,21 +1167,21 @@ class _SummaryCarouselState extends State<_SummaryCarousel> {
 
   @override
   Widget build(BuildContext context) {
-    // Responsive height untuk carousel
-    final height = context.isDesktop 
-        ? 160.0 
-        : context.isTablet 
-            ? 145.0 
-            : 130.0;
-    
+    // Responsive height untuk carousel (ditambah agar muat layout vertikal pills)
+    final height = context.isDesktop
+        ? 170.0
+        : context.isTablet
+        ? 150.0
+        : 140.0;
+
     if (widget.items.isEmpty) {
       return const SizedBox.shrink();
     }
-    
+
     if (!_isControllerInitialized) {
       return SizedBox(height: height);
     }
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1252,11 +1256,15 @@ class _SummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     // Responsive sizing
     final horizontalPadding = context.rs(6);
-    final cardPadding = context.rs(16);
-    final borderRadius = context.rs(20);
+    // Split card padding into four parts for granular control
+    final double cardPaddingTop = context.rs(10.5);
+    final double cardPaddingRight = context.rs(20.5);
+    final double cardPaddingBottom = context.rs(10.5);
+    final double cardPaddingLeft = context.rs(15.0);
+    final borderRadius = context.rs(16);
     final iconSize = context.rs(44);
     final titleFontSize = context.rf(16);
-    
+
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
       child: Container(
@@ -1264,7 +1272,12 @@ class _SummaryCard extends StatelessWidget {
           gradient: data.gradient,
           borderRadius: BorderRadius.circular(borderRadius),
         ),
-        padding: EdgeInsets.all(cardPadding),
+        padding: EdgeInsets.fromLTRB(
+          cardPaddingLeft,
+          cardPaddingTop,
+          cardPaddingRight,
+          cardPaddingBottom,
+        ),
         child: Row(
           children: [
             Expanded(
@@ -1281,18 +1294,20 @@ class _SummaryCard extends StatelessWidget {
                     ),
                   ),
                   SizedBox(height: context.rs(8)),
-                  Wrap(
-                    spacing: context.rs(8),
-                    runSpacing: context.rs(8),
-                    children: data.chips
-                        .map(
-                          (c) => _SummaryPill(
-                            icon: c.icon,
-                            label: c.label,
-                            value: c.value,
-                          ),
-                        )
-                        .toList(),
+                  // Susun seluruh pill menjadi atas-bawah (vertikal)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (int i = 0; i < data.chips.length; i++) ...[
+                        _SummaryPill(
+                          icon: data.chips[i].icon,
+                          label: data.chips[i].label,
+                          value: data.chips[i].value,
+                        ),
+                        if (i < data.chips.length - 1)
+                          SizedBox(height: context.rs(8)),
+                      ],
+                    ],
                   ),
                 ],
               ),
@@ -1305,11 +1320,7 @@ class _SummaryCard extends StatelessWidget {
                 color: Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(context.rs(12)),
               ),
-              child: Icon(
-                data.icon, 
-                color: Colors.white,
-                size: context.rs(24),
-              ),
+              child: Icon(data.icon, color: Colors.white, size: context.rs(24)),
             ),
           ],
         ),
@@ -1332,7 +1343,7 @@ class _SummaryPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: context.rs(10), 
+        horizontal: context.rs(10),
         vertical: context.rs(8),
       ),
       decoration: BoxDecoration(
@@ -1342,11 +1353,7 @@ class _SummaryPill extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon, 
-            color: Colors.white, 
-            size: context.rs(16),
-          ),
+          Icon(icon, color: Colors.white, size: context.rs(16)),
           SizedBox(width: context.rs(6)),
           Text(
             '$label: $value',
