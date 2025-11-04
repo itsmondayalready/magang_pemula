@@ -1,9 +1,86 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../utils/responsive.dart';
+import '../services/desa_repository.dart';
+class ProfilDesaScreen extends StatefulWidget {
+  const ProfilDesaScreen({super.key, required this.kodeWilayah, required this.desaName});
+  final String kodeWilayah;
+  final String desaName;
 
-class ProfilDesaScreen extends StatelessWidget {
-  const ProfilDesaScreen({super.key});
+  @override
+  State<ProfilDesaScreen> createState() => _ProfilDesaScreenState();
+}
+
+class _ProfilDesaScreenState extends State<ProfilDesaScreen> {
+  final _repo = DesaRepository();
+  bool _loading = true;
+  List<Map<String, dynamic>> _aparatur = const [];
+  String? _kecamatan;
+  String? _kabupaten;
+  String? _provinsi;
+  int? _totalRT;
+  int? _totalRW;
+  double? _luasKm2;
+  String? _teleponKantor;
+  String? _emailKantor;
+  String? _website;
+  Map<String, dynamic>? _sosmed;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      await Future(() async {
+        final detail = await _repo.fetchDesaDetailByKode(widget.kodeWilayah);
+        if (detail != null) {
+          _kecamatan = detail['kecamatan'] as String?;
+          _kabupaten = detail['kabupaten'] as String?;
+          _provinsi = detail['provinsi'] as String?;
+          final p = detail['desa_profile'] as Map<String, dynamic>?;
+          _totalRT = p?['total_rt'] as int?;
+          _totalRW = p?['total_rw'] as int?;
+          _luasKm2 = (p?['luas_wilayah'] as num?)?.toDouble();
+          _teleponKantor = p?['telepon_kantor'] as String?;
+          _emailKantor = p?['email_kantor'] as String?;
+          _website = p?['website'] as String?;
+          final sos = p?['sosmed'];
+          if (sos is Map<String, dynamic>) {
+            _sosmed = sos;
+          } else {
+            _sosmed = null;
+          }
+        }
+
+        // Load aparatur desa
+        _aparatur = await _repo.fetchAparaturByKode(widget.kodeWilayah);
+
+        if (mounted) setState(() {});
+      }).timeout(const Duration(seconds: 8));
+    } on TimeoutException {
+      // timeout: leave values null and proceed to show placeholders
+    } catch (_) {
+      // ignore
+    } finally { if (mounted) setState(() { _loading = false; }); }
+  }
+
+  String _formatSosmed(Map<String, dynamic>? s) {
+    if (s == null || s.isEmpty) return '—';
+    final parts = <String>[];
+    void addIf(String key, String label) {
+      final v = s[key];
+      if (v is String && v.trim().isNotEmpty) parts.add('$label: $v');
+    }
+    addIf('ig', 'IG');
+    addIf('facebook', 'FB');
+    addIf('yt', 'YT');
+    addIf('tiktok', 'TT');
+    addIf('x', 'X');
+    return parts.isEmpty ? '—' : parts.join(' • ');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,16 +106,18 @@ class ProfilDesaScreen extends StatelessWidget {
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
       ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(
-          context.horizontalPadding,
-          16,
-          context.horizontalPadding,
-          24,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(
+              context.horizontalPadding,
+              16,
+              context.horizontalPadding,
+              24,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
             // Galeri Foto Desa
             _SectionCard(
               title: 'Galeri Foto Desa',
@@ -63,14 +142,16 @@ class ProfilDesaScreen extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              children: const [
-                _InfoRow(label: 'Nama Desa', value: 'Desa Melayu Ilir'),
-                _InfoRow(label: 'Kode Wilayah', value: '6303052009'),
-                _InfoRow(label: 'Kecamatan', value: 'Martapura'),
-                _InfoRow(label: 'Kabupaten', value: 'Banjar'),
-                _InfoRow(label: 'Provinsi', value: 'Kalimantan Selatan'),
-                _InfoRow(label: 'Jumlah RT', value: '3 RT'),
-                _InfoRow(label: 'Jumlah RW', value: '1 RW'),
+              children: [
+                _InfoRow(label: 'Nama Desa', value: widget.desaName),
+                _InfoRow(label: 'Kode Wilayah', value: widget.kodeWilayah),
+                _InfoRow(label: 'Kecamatan', value: _kecamatan ?? '—'),
+                _InfoRow(label: 'Kabupaten', value: _kabupaten ?? '—'),
+                _InfoRow(label: 'Provinsi', value: _provinsi ?? '—'),
+                _InfoRow(label: 'Jumlah RT', value: _totalRT != null ? '$_totalRT RT' : '—'),
+                _InfoRow(label: 'Jumlah RW', value: _totalRW != null ? '$_totalRW RW' : '—'),
+                if (_luasKm2 != null)
+                  _InfoRow(label: 'Luas Wilayah', value: '${_luasKm2!.toStringAsFixed(2)} km²'),
               ],
             ),
             const SizedBox(height: 16),
@@ -84,24 +165,16 @@ class ProfilDesaScreen extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              children: const [
-                _InfoRow(label: 'Kepala Desa', value: 'MURJANI'),
-                _InfoRow(label: 'Sekretaris Desa', value: 'NUR LUTFIA'),
-                _InfoRow(label: 'Kasi Pemerintahan', value: 'H. BUNAWAR'),
-                _InfoRow(label: 'Kasi Pelayanan dan Kesejahteraan', value: 'A. JAILANI'),
-                _InfoRow(label: 'Kaur Umum dan Perencanaan', value: 'FATHURRIZOAH, S.PD.I'),
-                _InfoRow(label: 'Kaur Keuangan', value: 'NAFILAH'),
-                _InfoRow(label: 'Kepala Lingkungan I', value: 'MUHAMMAD KADRI'),
-                _InfoRow(label: 'Kepala Lingkungan II', value: 'ANDI HIDAYAT'),
-                _InfoRow(label: 'Ketua BPD', value: 'RAFI\'I, S.PD.I'),
-                _InfoRow(label: 'Wakil Ketua BPD', value: 'PITRIANI'),
-                _InfoRow(label: 'Sekretaris BPD', value: 'SRI MULIYANI, S.PD'),
-                _InfoRow(label: 'Anggota BPD', value: 'RAHMADI'),
-                _InfoRow(label: 'Anggota BPD', value: 'SAUFI, S.E'),
-                _InfoRow(label: 'Ketua RT I', value: 'AHMAD MUJAHIT'),
-                _InfoRow(label: 'Ketua RT II', value: 'M. HATTA'),
-                _InfoRow(label: 'Ketua RT III', value: 'H. SYA\'RANI'),
-              ],
+              children: _aparatur.isEmpty
+                  ? const [
+                      _InfoRow(label: '—', value: 'Belum ada data'),
+                    ]
+                  : _aparatur
+                      .map((a) => _InfoRow(
+                            label: (a['jabatan'] as String?) ?? '—',
+                            value: (a['nama'] as String?) ?? '—',
+                          ))
+                      .toList(),
             ),
             const SizedBox(height: 16),
 
@@ -114,17 +187,28 @@ class ProfilDesaScreen extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              children: const [
-                _InfoRow(label: 'Nama Desa', value: 'Desa Melayu Ilir'),
-                _InfoRow(label: 'Kecamatan', value: 'Martapura'),
-                _InfoRow(label: 'Kabupaten', value: 'Banjar'),
-                _InfoRow(label: 'Provinsi', value: 'Kalimantan Selatan'),
-                _InfoRow(label: 'Total Aparatur', value: '13 Orang (termasuk BPD dan RT)'),
+              children: [
+                _InfoRow(label: 'Telepon Kantor', value: _teleponKantor ?? '—'),
+                _InfoRow(label: 'Email Kantor', value: _emailKantor ?? '—'),
+                _InfoRow(label: 'Website', value: _website ?? '—'),
+                _InfoRow(label: 'Sosial Media', value: _formatSosmed(_sosmed)),
               ],
             ),
             const SizedBox(height: 8),
-          ],
-        ),
+              ],
+            ),
+          ),
+          if (_loading)
+            Positioned.fill(
+              child: AbsorbPointer(
+                absorbing: true,
+                child: ColoredBox(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  child: const Center(child: CircularProgressIndicator()),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

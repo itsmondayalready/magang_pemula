@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
+import '../services/desa_repository.dart';
+import '../services/kesehatan_repository.dart';
 import '../utils/responsive.dart';
 import 'kependudukan_screen.dart';
+import 'kesehatan_screen.dart';
 import 'kebencanaan_screen.dart';
 import 'metadata_screen.dart';
 import 'profil_desa_screen.dart';
@@ -31,11 +35,59 @@ class MainMenuPage extends StatefulWidget {
 
 class _MainMenuPageState extends State<MainMenuPage> {
   late String _desaName;
+  late String _kodeWilayah;
+
+  // Summary data (loaded from DB)
+  double? _luasWilayahKm2;
+  int? _totalRT;
+  int? _totalRW;
+  int? _latestPenduduk;
+  int? _latestKK;
+  int? _totalFasilitas;
+  int? _totalTenagaMedis;
+  bool _loadingSummary = true;
+  final _repo = DesaRepository();
+  final _kesehatanRepo = KesehatanRepository();
 
   @override
   void initState() {
     super.initState();
     _desaName = widget.desaName;
+    _kodeWilayah = widget.kodeWilayah;
+    _loadSummary();
+  }
+
+  Future<void> _loadSummary() async {
+  // load summary from DB
+    if (mounted) setState(() { _loadingSummary = true; }); // show loader
+    try {
+      await Future(() async {
+        // Detail desa + profile (luas, RT/RW)
+        final detail = await _repo.fetchDesaDetailByKode(_kodeWilayah);
+        if (detail != null) {
+          final p = detail['desa_profile'] as Map<String, dynamic>?;
+          _luasWilayahKm2 = (p?['luas_wilayah'] as num?)?.toDouble();
+          _totalRT = p?['total_rt'] as int?;
+          _totalRW = p?['total_rw'] as int?;
+        }
+
+        // Kependudukan terbaru (total penduduk & KK)
+        final kep = await _repo.fetchLatestKependudukanByKode(_kodeWilayah);
+        _latestPenduduk = kep?['total_penduduk'] as int?;
+        _latestKK = kep?['total_kk'] as int?;
+
+        // Kesehatan terbaru (fasilitas & tenaga medis)
+        final kes = await _kesehatanRepo.fetchLatest(_kodeWilayah);
+        _totalFasilitas = (kes?['total_fasilitas'] ?? 0) as int?;
+        _totalTenagaMedis = (kes?['total_tenaga_medis'] ?? 0) as int?;
+      }).timeout(const Duration(seconds: 8));
+    } on TimeoutException {
+      // timeout: leave values as null so UI shows placeholders
+    } catch (_) {
+      // ignore errors, keep nulls
+    } finally {
+      if (mounted) setState(() { _loadingSummary = false; });
+    }
   }
 
   Future<void> _changeWilayah() async {
@@ -50,8 +102,15 @@ class _MainMenuPageState extends State<MainMenuPage> {
     if (selected != null) {
       setState(() {
         _desaName = selected.nama;
-        // TODO: update kodeWilayah juga jika perlu
+        _kodeWilayah = selected.kode;
       });
+      // Persist selection for next app launch
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('last_desa_kode', selected.kode);
+        await prefs.setString('last_desa_name', selected.nama);
+      } catch (_) {}
+      await _loadSummary();
     }
   }
 
@@ -116,146 +175,138 @@ class _MainMenuPageState extends State<MainMenuPage> {
     const double topPad = 12;
     const double bottomPad = 20; // loosen spacing below carousel
 
-    // Prepare carousel items
+    // Prepare carousel items (dynamic from DB with graceful fallback)
+    final luasStr = _luasWilayahKm2 != null ? '${_luasWilayahKm2!.toStringAsFixed(2)} km²' : '—';
+  final rtRwStr = (_totalRT != null && _totalRW != null) ? '$_totalRT/$_totalRW' : '—';
+    final pendudukStr = _latestPenduduk?.toString() ?? '—';
+    final kkStr = _latestKK?.toString() ?? '—';
     final summaryItems = <_SummaryItem>[
-      const _SummaryItem(
+      _SummaryItem(
         title: 'Ringkasan Desa',
         gradient: _gradLogin,
         icon: Icons.landscape_rounded,
         chips: [
-          _SummaryChip(
-            icon: Icons.map_rounded,
-            label: 'Luas Wilayah',
-            value: '2.5 km²',
-          ),
-          _SummaryChip(
-            icon: Icons.location_city_rounded,
-            label: 'RT/RW',
-            value: '3/1',
-          ),
+          _SummaryChip(icon: Icons.map_rounded, label: 'Luas Wilayah', value: luasStr),
+          _SummaryChip(icon: Icons.location_city_rounded, label: 'RT/RW', value: rtRwStr),
         ],
       ),
-      const _SummaryItem(
+      _SummaryItem(
         title: 'Kependudukan',
         gradient: _gradEmeraldGold,
         icon: Icons.people_rounded,
         chips: [
-          _SummaryChip(
-            icon: Icons.group_rounded,
-            label: 'Total Penduduk',
-            value: '590',
-          ),
-          _SummaryChip(icon: Icons.badge_rounded, label: 'KK', value: '1187'),
+          _SummaryChip(icon: Icons.group_rounded, label: 'Total Penduduk', value: pendudukStr),
+          _SummaryChip(icon: Icons.badge_rounded, label: 'KK', value: kkStr),
         ],
       ),
+      // Tetap tampilkan kartu lain (dummy) sampai integrasi lanjut
       const _SummaryItem(
         title: 'Pendidikan',
         gradient: _gradBluePurple,
         icon: Icons.school_rounded,
         chips: [
-          _SummaryChip(
-            icon: Icons.account_balance_rounded,
-            label: 'Negeri',
-            value: '0',
-          ),
-          _SummaryChip(
-            icon: Icons.child_care_rounded,
-            label: 'PAUD Swasta',
-            value: '1',
-          ),
+          _SummaryChip(icon: Icons.account_balance_rounded, label: 'Negeri', value: '0'),
+          _SummaryChip(icon: Icons.child_care_rounded, label: 'PAUD Swasta', value: '1'),
         ],
       ),
-      const _SummaryItem(
+      _SummaryItem(
         title: 'Kesehatan',
         gradient: _gradCyanBlue,
         icon: Icons.local_hospital_rounded,
         chips: [
-          _SummaryChip(
-            icon: Icons.local_hospital_rounded,
-            label: 'Fasilitas',
-            value: '4',
-          ),
-          _SummaryChip(
-            icon: Icons.volunteer_activism_rounded,
-            label: 'Tenaga',
-            value: '4',
-          ),
+          _SummaryChip(icon: Icons.local_hospital_rounded, label: 'Fasilitas', value: _totalFasilitas?.toString() ?? '—'),
+          _SummaryChip(icon: Icons.volunteer_activism_rounded, label: 'Tenaga', value: _totalTenagaMedis?.toString() ?? '—'),
         ],
       ),
     ];
 
     // Fixed (non-scrollable) header + carousel on top, scrollable menu below
     return Scaffold(
-      body: Column(
+      body: Stack(
         children: [
-          // Static header (not vertically scrollable)
-          Container(
-            decoration: const BoxDecoration(
-              gradient: _gradLogin,
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(20),
-                bottomRight: Radius.circular(20),
-              ),
-            ),
-            child: _HeaderContent(
-              desaName: _desaName,
-              kodeWilayah: widget.kodeWilayah,
-              isAdmin: widget.isAdmin,
-              onChangeWilayah: _changeWilayah,
-              onLogout: () async {
-                final auth = Provider.of<AuthService>(context, listen: false);
-                await auth.signOut();
-              },
-              // Keep animation fully visible (no shrink)
-              shrinkOffset: 0,
-              minExtent: 140,
-              maxExtent: 180,
-            ),
-          ),
-          // Static summary carousel (not vertically scrollable)
-          // Put a solid white background behind it so the menu underneath is hidden.
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                  spreadRadius: 0,
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                context.horizontalPadding,
-                topPad,
-                context.horizontalPadding,
-                bottomPad,
-              ),
-              child: _SummaryCarousel(items: summaryItems),
-            ),
-          ),
-          // Scrollable menu grid below
-          Expanded(
-            child: ScrollConfiguration(
-              behavior: _NoGlowBehavior(),
-              child: CustomScrollView(
-                physics: const ClampingScrollPhysics(),
-                slivers: [
-                  SliverPadding(
-                    padding: EdgeInsets.fromLTRB(
-                      context.horizontalPadding,
-                      0,
-                      context.horizontalPadding,
-                      24,
-                    ),
-                    sliver: _FeatureGrid(features: dataCategories),
+          Column(
+            children: [
+              // Static header (not vertically scrollable)
+              Container(
+                decoration: const BoxDecoration(
+                  gradient: _gradLogin,
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(20),
+                    bottomRight: Radius.circular(20),
                   ),
-                ],
+                ),
+                child: _HeaderContent(
+                  desaName: _desaName,
+                  kodeWilayah: widget.kodeWilayah,
+                  isAdmin: widget.isAdmin,
+                  onChangeWilayah: _changeWilayah,
+                  onLogout: () async {
+                    final auth = Provider.of<AuthService>(context, listen: false);
+                    await auth.signOut();
+                  },
+                  // Keep animation fully visible (no shrink)
+                  shrinkOffset: 0,
+                  minExtent: 140,
+                  maxExtent: 180,
+                ),
+              ),
+              // Static summary carousel (not vertically scrollable)
+              // Put a solid white background behind it so the menu underneath is hidden.
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                      spreadRadius: 0,
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    context.horizontalPadding,
+                    topPad,
+                    context.horizontalPadding,
+                    bottomPad,
+                  ),
+                  child: _SummaryCarousel(items: summaryItems),
+                ),
+              ),
+              // Scrollable menu grid below
+              Expanded(
+                child: ScrollConfiguration(
+                  behavior: _NoGlowBehavior(),
+                  child: CustomScrollView(
+                    physics: const ClampingScrollPhysics(),
+                    slivers: [
+                      SliverPadding(
+                        padding: EdgeInsets.fromLTRB(
+                          context.horizontalPadding,
+                          0,
+                          context.horizontalPadding,
+                          24,
+                        ),
+                        sliver: _FeatureGrid(features: dataCategories),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (_loadingSummary)
+            Positioned.fill(
+              child: AbsorbPointer(
+                absorbing: true,
+                child: ColoredBox(
+                  // Darker overlay so the loading state stands out more
+                  color: Colors.black.withValues(alpha: 0.18),
+                  child: const Center(child: CircularProgressIndicator()),
+                ),
               ),
             ),
-          ),
         ],
       ),
       floatingActionButton: isGuest
@@ -508,14 +559,43 @@ class _FeatureCard extends StatelessWidget {
       onTap: () {
         // Navigate berdasarkan route
         if (feature.route == '/profil-desa') {
+          final parent = context.findAncestorStateOfType<_MainMenuPageState>();
+          final kode = parent?._kodeWilayah ?? '';
+          final nama = parent?._desaName ?? 'Desa';
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const ProfilDesaScreen()),
+            MaterialPageRoute(
+              builder: (context) => ProfilDesaScreen(
+                kodeWilayah: kode,
+                desaName: nama,
+              ),
+            ),
           );
         } else if (feature.route == '/kependudukan') {
+          final parent = context.findAncestorStateOfType<_MainMenuPageState>();
+          final kode = parent?._kodeWilayah ?? '';
+          final nama = parent?._desaName ?? 'Desa';
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const KependudukanScreen()),
+            MaterialPageRoute(
+              builder: (context) => KependudukanScreen(
+                kodeWilayah: kode,
+                desaName: nama,
+              ),
+            ),
+          );
+        } else if (feature.route == '/kesehatan') {
+          final parent = context.findAncestorStateOfType<_MainMenuPageState>();
+          final kode = parent?._kodeWilayah ?? '';
+          final nama = parent?._desaName ?? 'Desa';
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => KesehatanScreen(
+                kodeWilayah: kode,
+                desaName: nama,
+              ),
+            ),
           );
         } else if (feature.route == '/kebencanaan') {
           Navigator.push(
@@ -792,70 +872,6 @@ class _DesaData {
   });
 }
 
-// Data dummy desa - nanti diganti dengan data dari Firestore
-final _dummyDesaList = <_DesaData>[
-  _DesaData(
-    nama: 'Desa Sukamaju',
-    kode: '3201012001',
-    kecamatan: 'Ciwidey',
-    penduduk: 5420,
-  ),
-  _DesaData(
-    nama: 'Desa Mekar Sari',
-    kode: '3201012002',
-    kecamatan: 'Ciwidey',
-    penduduk: 4230,
-  ),
-  _DesaData(
-    nama: 'Desa Sindang Jaya',
-    kode: '3201012003',
-    kecamatan: 'Pasir Jambu',
-    penduduk: 6150,
-  ),
-  _DesaData(
-    nama: 'Desa Cibodas',
-    kode: '3201012004',
-    kecamatan: 'Rancabali',
-    penduduk: 3890,
-  ),
-  _DesaData(
-    nama: 'Desa Alam Endah',
-    kode: '3201012005',
-    kecamatan: 'Ciwidey',
-    penduduk: 7200,
-  ),
-  _DesaData(
-    nama: 'Desa Patengan',
-    kode: '3201012006',
-    kecamatan: 'Rancabali',
-    penduduk: 2450,
-  ),
-  _DesaData(
-    nama: 'Desa Sukamanah',
-    kode: '3201012007',
-    kecamatan: 'Pasir Jambu',
-    penduduk: 5630,
-  ),
-  _DesaData(
-    nama: 'Desa Nengkelan',
-    kode: '3201012008',
-    kecamatan: 'Ciwidey',
-    penduduk: 4120,
-  ),
-  _DesaData(
-    nama: 'Desa Rawabogo',
-    kode: '3201012009',
-    kecamatan: 'Rancabali',
-    penduduk: 3340,
-  ),
-  _DesaData(
-    nama: 'Desa Cipanjalu',
-    kode: '3201012010',
-    kecamatan: 'Pasir Jambu',
-    penduduk: 4890,
-  ),
-];
-
 class _DesaPickerSheet extends StatefulWidget {
   const _DesaPickerSheet();
 
@@ -865,7 +881,16 @@ class _DesaPickerSheet extends StatefulWidget {
 
 class _DesaPickerSheetState extends State<_DesaPickerSheet> {
   final _searchController = TextEditingController();
-  List<_DesaData> _filteredList = _dummyDesaList;
+  final _repo = DesaRepository();
+  List<_DesaData> _all = const [];
+  List<_DesaData> _filteredList = const [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
 
   @override
   void dispose() {
@@ -873,19 +898,41 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
     super.dispose();
   }
 
+  Future<void> _load({String? search}) async {
+    setState(() => _loading = true);
+    try {
+      final rows = await _repo.fetchDesaList(search: search, limit: 200);
+      final mapped = rows.map<_DesaData>((r) {
+        return _DesaData(
+          nama: (r['nama'] ?? '') as String,
+          kode: (r['kode_wilayah'] ?? '') as String,
+          kecamatan: (r['kecamatan'] ?? '') as String,
+          penduduk: (r['total_penduduk'] as int?) ?? 0, // mungkin tidak ada
+        );
+      }).toList();
+      _all = mapped;
+      _filteredList = mapped;
+    } catch (_) {
+      // fallback ke list kosong
+      _all = const [];
+      _filteredList = const [];
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   void _filterDesa(String query) {
-    setState(() {
-      if (query.isEmpty) {
-        _filteredList = _dummyDesaList;
-      } else {
-        final lowercaseQuery = query.toLowerCase();
-        _filteredList = _dummyDesaList.where((desa) {
-          return desa.nama.toLowerCase().contains(lowercaseQuery) ||
-              desa.kecamatan.toLowerCase().contains(lowercaseQuery) ||
-              desa.kode.contains(query);
-        }).toList();
-      }
-    });
+    if (query.isEmpty) {
+      setState(() => _filteredList = _all);
+    } else {
+      final q = query.toLowerCase();
+      setState(() {
+        _filteredList = _all.where((d) =>
+            d.nama.toLowerCase().contains(q) ||
+            d.kecamatan.toLowerCase().contains(q) ||
+            d.kode.contains(query)).toList();
+      });
+    }
   }
 
   @override
@@ -964,7 +1011,9 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
             const SizedBox(height: 16),
             // Desa list
             Expanded(
-              child: _filteredList.isEmpty
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _filteredList.isEmpty
                   ? Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -1021,14 +1070,16 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
                             children: [
                               const SizedBox(height: 4),
                               Text('Kec. ${desa.kecamatan} • ${desa.kode}'),
-                              const SizedBox(height: 2),
-                              Text(
-                                '${desa.penduduk} penduduk',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade600,
+                              if (desa.penduduk > 0) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${desa.penduduk} penduduk',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                  ),
                                 ),
-                              ),
+                              ]
                             ],
                           ),
                           trailing: const Icon(Icons.chevron_right_rounded),

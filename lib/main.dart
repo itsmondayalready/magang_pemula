@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'services/auth_service.dart';
+import 'services/desa_repository.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_menu.dart';
 import 'screens/infrastruktur_screen.dart';
@@ -41,9 +43,27 @@ class MyApp extends StatelessWidget {
         home: const RootPage(),
         routes: {
           '/infrastruktur': (context) => const InfrastrukturScreen(),
-          '/kependudukan': (context) => const KependudukanScreen(),
+          '/kependudukan': (context) {
+            final args = ModalRoute.of(context)?.settings.arguments;
+            String kode = '';
+            String nama = 'Desa';
+            if (args is Map) {
+              kode = (args['kodeWilayah'] ?? '') as String;
+              nama = (args['desaName'] ?? 'Desa') as String;
+            }
+            return KependudukanScreen(kodeWilayah: kode, desaName: nama);
+          },
+          '/kesehatan': (context) {
+            final args = ModalRoute.of(context)?.settings.arguments;
+            String kode = '';
+            String nama = 'Desa';
+            if (args is Map) {
+              kode = (args['kodeWilayah'] ?? '') as String;
+              nama = (args['desaName'] ?? 'Desa') as String;
+            }
+            return KesehatanScreen(kodeWilayah: kode, desaName: nama);
+          },
           '/pendidikan': (context) => const PendidikanScreen(),
-          '/kesehatan': (context) => const KesehatanScreen(),
           '/kebencanaan': (context) => const KebencanaanScreen(),
           '/metadata': (context) => const MetadataScreen(),
         },
@@ -52,24 +72,76 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class RootPage extends StatelessWidget {
+class RootPage extends StatefulWidget {
   const RootPage({super.key});
+
+  @override
+  State<RootPage> createState() => _RootPageState();
+}
+
+class _RootPageState extends State<RootPage> {
+  final _repo = DesaRepository();
+  String? _initialKode;
+  String? _initialNama;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInitialDesa();
+  }
+
+  Future<void> _loadInitialDesa() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final kode = prefs.getString('last_desa_kode');
+      final nama = prefs.getString('last_desa_name');
+      if (kode != null && nama != null) {
+        _initialKode = kode;
+        _initialNama = nama;
+      } else {
+        final row = await _repo.fetchDefaultDesa();
+        if (row != null) {
+          final k = (row['kode_wilayah'] ?? row['kode'] ?? '') as String;
+          final n = (row['nama'] ?? '') as String;
+          if (k.isNotEmpty && n.isNotEmpty) {
+            _initialKode = k;
+            _initialNama = n;
+            // Persist for next time
+            try {
+              await prefs.setString('last_desa_kode', k);
+              await prefs.setString('last_desa_name', n);
+            } catch (_) {}
+          }
+        }
+      }
+    } catch (_) {
+      // fallback handled below
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Consumer<AuthService>(
       builder: (context, auth, _) {
-        // Show MainMenu when signed in, otherwise Login screen
-        if (auth.isSignedIn) {
-          return MainMenuPage(
-            desaName: 'Desa Melayu Ilir',
-            kodeWilayah: '6303052009',
-            totalPenduduk: 590,
-            totalKK: 1187,
-            isAdmin: auth.isAdmin,
+        if (!auth.isSignedIn) return const LoginScreen();
+        if (_loading) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
           );
         }
-        return const LoginScreen();
+        // Fallback if nothing could be loaded
+        final nama = _initialNama ?? 'Desa Melayu Ilir';
+        final kode = _initialKode ?? '6303052009';
+        return MainMenuPage(
+          desaName: nama,
+          kodeWilayah: kode,
+          totalPenduduk: 0,
+          totalKK: 0,
+          isAdmin: auth.isAdmin,
+        );
       },
     );
   }

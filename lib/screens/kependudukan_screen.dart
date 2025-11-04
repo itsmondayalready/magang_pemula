@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../utils/responsive.dart';
+import '../services/kependudukan_repository.dart';
 
 class KependudukanScreen extends StatefulWidget {
-  const KependudukanScreen({super.key});
+  const KependudukanScreen({super.key, required this.kodeWilayah, required this.desaName});
+
+  final String kodeWilayah;
+  final String desaName;
 
   @override
   State<KependudukanScreen> createState() => _KependudukanScreenState();
@@ -12,58 +16,25 @@ class KependudukanScreen extends StatefulWidget {
 class _KependudukanScreenState extends State<KependudukanScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  final _repo = KependudukanRepository();
+  bool _loading = true;
 
-  // Data dummy untuk visualisasi (Update sesuai Monografi Juni 2025)
-  final Map<String, dynamic> _dataDummy = {
-    'total_penduduk': 590,
-    'total_kk': 1187,
-    'total_rt': 3,
-    'total_rw': 1,
-    'gender': {'laki_laki': 302, 'perempuan': 288}, // Estimasi dari total 590
-    'kelompok_usia': {
-      '0-4': 45,
-      '5-9': 52,
-      '10-14': 58,
-      '15-19': 65,
-      '20-24': 72,
-      '25-29': 68,
-      '30-34': 54,
-      '35-39': 48,
-      '40-44': 42,
-      '45-49': 36,
-      '50-54': 28,
-      '55-59': 22,
-      '60-64': 18,
-      '65+': 32,
-    },
-    'pendidikan': {
-      'Tidak Tamat SD': 65,
-      'Tamat SD': 90,
-      'Tamat SMP': 110,
-      'Tamat SMA': 95,
-      'Akademi/PT': 20,
-    },
-    'produktivitas': {
-      'Bekerja': 380,
-      'Tidak Bekerja': 650,
-    },
-    'total_usia_produktif': 1030, // Total penduduk usia kerja 15-64 tahun
-    'pekerjaan': {
-      'Mengurus Rumah Tangga': 288,
-      'Tidak atau Belum Bekerja': 385,
-      'Pelajar dan Mahasiswa': 105,
-      'Wiraswasta': 7,
-      'Buruh Harian Lepas': 8,
-      'Pegawai Negeri Sipil (PNS)': 8,
-      'Karyawan Swasta': 9,
-      'Lain-lainnya': 0,
-    },
-  };
+  // State data dari DB
+  int? _totalPenduduk;
+  int? _totalKK;
+  int? _lakiLaki;
+  int? _perempuan;
+  int? _produktifBekerja;
+  int? _produktifTidak;
+  int? _totalUsiaProduktif;
+  Map<String, int> _pendidikan = const {};
+  Map<String, int> _pekerjaan = const {};
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _load();
   }
 
   @override
@@ -76,7 +47,9 @@ class _KependudukanScreenState extends State<KependudukanScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      body: NestedScrollView(
+      body: Stack(
+        children: [
+          NestedScrollView(
         headerSliverBuilder: (context, inner) => [
           SliverAppBar(
             pinned: true,
@@ -138,28 +111,17 @@ class _KependudukanScreenState extends State<KependudukanScreen>
                 children: [
                   _buildSummaryCard(
                     label: 'Total Penduduk',
-                    value: '${_dataDummy['total_penduduk']}',
+                    value: _totalPenduduk?.toString() ?? '—',
                     icon: Icons.people_rounded,
                     color: const Color(0xFF0B7A75),
                   ),
                   _buildSummaryCard(
                     label: 'Kepala Keluarga',
-                    value: '${_dataDummy['total_kk']}',
+                    value: _totalKK?.toString() ?? '—',
                     icon: Icons.home_rounded,
                     color: const Color(0xFF1A8B85),
                   ),
-                  _buildSummaryCard(
-                    label: 'Rukun Tetangga',
-                    value: '${_dataDummy['total_rt']}',
-                    icon: Icons.location_city_rounded,
-                    color: const Color(0xFF2A9C95),
-                  ),
-                  _buildSummaryCard(
-                    label: 'Rukun Warga',
-                    value: '${_dataDummy['total_rw']}',
-                    icon: Icons.apartment_rounded,
-                    color: const Color(0xFF0B7A75),
-                  ),
+                  // RT/RW tidak tersedia di header kependudukan; bisa diambil dari profil jika ingin
                 ],
               ),
             ),
@@ -177,6 +139,18 @@ class _KependudukanScreenState extends State<KependudukanScreen>
             ],
           ),
         ),
+          ),
+          if (_loading)
+            Positioned.fill(
+              child: AbsorbPointer(
+                absorbing: true,
+                child: ColoredBox(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  child: const Center(child: CircularProgressIndicator()),
+                ),
+              ),
+            ),
+        ],
       ),
       bottomNavigationBar: Material(
         color: Colors.white,
@@ -212,7 +186,58 @@ class _KependudukanScreenState extends State<KependudukanScreen>
     );
   }
 
-  Widget _buildChartSection(Widget chart) {
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    try {
+      // Timeout agar UI tidak mengunci lama saat jaringan lambat
+      final headerFuture = _repo.fetchLatestHeader(widget.kodeWilayah);
+      final pendidikanFuture = _repo.fetchPendidikanLatest(widget.kodeWilayah);
+      final pekerjaanFuture = _repo.fetchPekerjaanLatest(widget.kodeWilayah);
+
+      final results = await Future.wait([
+        headerFuture,
+        pendidikanFuture,
+        pekerjaanFuture,
+      ]).timeout(const Duration(seconds: 8));
+
+      final headerObj = results[0];
+      final pendidikan = results[1] as Map<String, int>;
+      final pekerjaan = results[2] as Map<String, int>;
+
+      // Debug logging
+      print('=== KEPENDUDUKAN DEBUG ===');
+      print('kodeWilayah: ${widget.kodeWilayah}');
+      print('Header: $headerObj');
+      print('Pendidikan raw: $pendidikan');
+      print('Pekerjaan raw: $pekerjaan');
+      print('========================');
+
+      if (mounted) {
+        setState(() {
+          if (headerObj is Map) {
+            final map = headerObj as Map;
+            _totalPenduduk = (map['total_penduduk'] ?? map['total'] ?? 0) as int?;
+            _totalKK = (map['total_kk'] ?? 0) as int?;
+            _lakiLaki = (map['laki_laki'] ?? map['l'] ?? 0) as int?;
+            _perempuan = (map['perempuan'] ?? map['p'] ?? 0) as int?;
+            final bekerja = map['produktif_bekerja'] as int?;
+            final tidak = map['produktif_tidak_bekerja'] as int?;
+            _produktifBekerja = bekerja;
+            _produktifTidak = tidak;
+            if (bekerja != null && tidak != null) {
+              _totalUsiaProduktif = bekerja + tidak;
+            }
+          }
+          _pendidikan = pendidikan;
+          _pekerjaan = pekerjaan;
+        });
+      }
+    } catch (e) {
+      print('Error loading kependudukan: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }  Widget _buildChartSection(Widget chart) {
     return SingleChildScrollView(
       physics: const ClampingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
@@ -294,10 +319,9 @@ class _KependudukanScreenState extends State<KependudukanScreen>
   }
 
   Widget _buildGenderChart() {
-    final genderData = _dataDummy['gender'] as Map<String, dynamic>;
-    final lakiLaki = genderData['laki_laki'] as int;
-    final perempuan = genderData['perempuan'] as int;
-    final total = lakiLaki + perempuan;
+    final lakiLaki = _lakiLaki ?? 0;
+    final perempuan = _perempuan ?? 0;
+    final total = (lakiLaki + perempuan).clamp(0, 1 << 31);
 
     return Container(
       decoration: BoxDecoration(
@@ -387,7 +411,7 @@ class _KependudukanScreenState extends State<KependudukanScreen>
                   sections: [
                     PieChartSectionData(
                       value: lakiLaki.toDouble(),
-                      title: '${(lakiLaki / total * 100).toStringAsFixed(1)}%',
+                      title: total == 0 ? '' : '${(lakiLaki / total * 100).toStringAsFixed(1)}%',
                       color: const Color(0xFF3B82F6),
                       radius: 80,
                       titleStyle: const TextStyle(
@@ -403,7 +427,7 @@ class _KependudukanScreenState extends State<KependudukanScreen>
                     ),
                     PieChartSectionData(
                       value: perempuan.toDouble(),
-                      title: '${(perempuan / total * 100).toStringAsFixed(1)}%',
+                      title: total == 0 ? '' : '${(perempuan / total * 100).toStringAsFixed(1)}%',
                       color: const Color(0xFFEC4899),
                       radius: 80,
                       titleStyle: const TextStyle(
@@ -499,9 +523,24 @@ class _KependudukanScreenState extends State<KependudukanScreen>
   }
 
   Widget _buildPendidikanChart() {
-    final pendidikanData = _dataDummy['pendidikan'] as Map<String, dynamic>;
-    
-    // Urutan dari tingkat rendah ke tinggi
+    final Map<String, int> pendidikanData = _pendidikan;
+
+    // Normalisasi label dari DB ke 5 kategori tetap, lalu agregasi
+    final Map<String, int> aggregated = {
+      'Tidak Tamat SD': 0,
+      'Tamat SD': 0,
+      'Tamat SMP': 0,
+      'Tamat SMA': 0,
+      'Akademi/PT': 0,
+    };
+    for (final entry in pendidikanData.entries) {
+      final normalized = _normalizeEduLabel(entry.key);
+      if (normalized != null) {
+        aggregated[normalized] = (aggregated[normalized] ?? 0) + entry.value;
+      }
+    }
+
+    // Urutan dari rendah ke tinggi
     final educationOrder = [
       'Tidak Tamat SD',
       'Tamat SD',
@@ -509,13 +548,15 @@ class _KependudukanScreenState extends State<KependudukanScreen>
       'Tamat SMA',
       'Akademi/PT',
     ];
-    
+
     final sortedEntries = educationOrder
-        .where((key) => pendidikanData.containsKey(key))
-        .map((key) => MapEntry(key, pendidikanData[key]))
+        .map((k) => MapEntry(k, aggregated[k] ?? 0))
+        .where((e) => e.value > 0)
         .toList();
-    
-    final total = pendidikanData.values.cast<int>().reduce((a, b) => a + b);
+
+    final total = aggregated.values.isEmpty
+        ? 0
+        : aggregated.values.reduce((a, b) => a + b);
 
     return Container(
       decoration: BoxDecoration(
@@ -571,11 +612,18 @@ class _KependudukanScreenState extends State<KependudukanScreen>
             ],
           ),
           const SizedBox(height: 32),
+          if (sortedEntries.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(8.0),
+              child: Text('Belum ada data pendidikan untuk periode terbaru',
+                  style: TextStyle(color: Colors.grey)),
+            ),
           ...sortedEntries.map((entry) {
-            final percentage = (entry.value as int) / total * 100;
+            final int v = entry.value;
+            final percentage = total == 0 ? 0.0 : v / total * 100;
             return _buildModernHorizontalBar(
               label: entry.key,
-              value: entry.value as int,
+              value: v,
               percentage: percentage,
               color: _getPendidikanColor(entry.key),
             );
@@ -585,11 +633,68 @@ class _KependudukanScreenState extends State<KependudukanScreen>
     );
   }
 
+  // Pemetaan label bebas dari DB ke 5 kategori tetap
+  String? _normalizeEduLabel(String raw) {
+    final s = raw.trim().toLowerCase();
+    if (s.isEmpty) return null;
+    // Tidak Tamat SD
+    const notSd = {
+      'tidak tamat sd',
+      'belum tamat sd',
+      'tidak sekolah',
+      'belum sekolah',
+    };
+    if (notSd.contains(s)) return 'Tidak Tamat SD';
+
+    // Tamat SD
+    const sd = {
+      'tamat sd',
+      'sd',
+      'sekolah dasar',
+    };
+    if (sd.contains(s)) return 'Tamat SD';
+
+    // Tamat SMP
+    const smp = {
+      'tamat smp',
+      'smp',
+      'sekolah menengah pertama',
+    };
+    if (smp.contains(s)) return 'Tamat SMP';
+
+    // Tamat SMA
+    const sma = {
+      'tamat sma',
+      'sma',
+      'smu',
+      'smk',
+      'ma',
+      'sekolah menengah atas',
+    };
+    if (sma.contains(s)) return 'Tamat SMA';
+
+    // Akademi/PT (Diploma/Sarjana/Pasca)
+    const pt = {
+      'akademi/pt',
+      'akademi',
+      'pt',
+      'perguruan tinggi',
+      'd1', 'd2', 'd3', 'd4',
+      'diploma',
+      's1', 's2', 's3',
+      'sarjana',
+      'pascasarjana',
+    };
+    if (pt.contains(s)) return 'Akademi/PT';
+
+    // Tidak dikenali -> null (abaikan)
+    return null;
+  }
+
   Widget _buildPekerjaanChart() {
-    final produktivitasData = _dataDummy['produktivitas'] as Map<String, dynamic>;
-    final totalUsiaProduktif = _dataDummy['total_usia_produktif'] as int;
-    final bekerja = produktivitasData['Bekerja'] as int;
-    final tidakBekerja = produktivitasData['Tidak Bekerja'] as int;
+  final bekerja = _produktifBekerja ?? 0;
+  final tidakBekerja = _produktifTidak ?? 0;
+  final totalUsiaProduktif = _totalUsiaProduktif ?? (bekerja + tidakBekerja);
     
     final colors = [
       const Color(0xFF10B981), // Hijau untuk Bekerja
@@ -667,7 +772,9 @@ class _KependudukanScreenState extends State<KependudukanScreen>
                           sections: [
                             PieChartSectionData(
                               value: bekerja.toDouble(),
-                              title: '${(bekerja / totalUsiaProduktif * 100).toStringAsFixed(1)}%',
+                title: totalUsiaProduktif == 0
+                  ? ''
+                  : '${(bekerja / totalUsiaProduktif * 100).toStringAsFixed(1)}%',
                               color: colors[0],
                               radius: isSmallScreen ? 80 : 90,
                               titleStyle: TextStyle(
@@ -678,7 +785,9 @@ class _KependudukanScreenState extends State<KependudukanScreen>
                             ),
                             PieChartSectionData(
                               value: tidakBekerja.toDouble(),
-                              title: '${(tidakBekerja / totalUsiaProduktif * 100).toStringAsFixed(1)}%',
+                title: totalUsiaProduktif == 0
+                  ? ''
+                  : '${(tidakBekerja / totalUsiaProduktif * 100).toStringAsFixed(1)}%',
                               color: colors[1],
                               radius: isSmallScreen ? 80 : 90,
                               titleStyle: TextStyle(
@@ -797,12 +906,30 @@ class _KependudukanScreenState extends State<KependudukanScreen>
   }
 
   Widget _buildDetailPekerjaanChart() {
-    final pekerjaanData = _dataDummy['pekerjaan'] as Map<String, dynamic>;
-    final total = pekerjaanData.values.cast<int>().reduce((a, b) => a + b);
+    final Map<String, int> pekerjaanData = _pekerjaan;
+    if (pekerjaanData.isEmpty) {
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.all(24),
+        child: const Text('Belum ada data pekerjaan untuk periode terbaru',
+            style: TextStyle(color: Colors.grey)),
+      );
+    }
+    final total = pekerjaanData.values.reduce((a, b) => a + b);
     
     // Urutan berdasarkan jumlah (dari terbesar ke terkecil)
     final sortedEntries = pekerjaanData.entries.toList()
-      ..sort((a, b) => (b.value as int).compareTo(a.value as int));
+      ..sort((a, b) => b.value.compareTo(a.value));
 
     return Container(
       decoration: BoxDecoration(
@@ -872,10 +999,9 @@ class _KependudukanScreenState extends State<KependudukanScreen>
                           sectionsSpace: 2,
                           centerSpaceRadius: isSmallScreen ? 50 : 60,
                           sections: sortedEntries.asMap().entries.map((entry) {
-                            final index = entry.key;
                             final data = entry.value;
-                            final value = data.value as int;
-                            final percentage = (value / total * 100);
+                            final value = data.value;
+                            final percentage = total == 0 ? 0.0 : (value / total * 100);
                             
                             return PieChartSectionData(
                               value: value.toDouble(),
@@ -902,7 +1028,7 @@ class _KependudukanScreenState extends State<KependudukanScreen>
                         spacing: 8,
                         runSpacing: 8,
                         children: sortedEntries.map((entry) {
-                          final value = entry.value as int;
+                          final value = entry.value;
                           if (value == 0) return const SizedBox.shrink();
                           return SizedBox(
                             width: itemWidth,
@@ -979,24 +1105,44 @@ class _KependudukanScreenState extends State<KependudukanScreen>
   }
 
   Color _getPekerjaanColor(String pekerjaan) {
-    switch (pekerjaan) {
-      case 'Mengurus Rumah Tangga':
-        return const Color(0xFFEC4899); // Pink
-      case 'Tidak atau Belum Bekerja':
-        return const Color(0xFFEF4444); // Red
-      case 'Pelajar dan Mahasiswa':
-        return const Color(0xFF3B82F6); // Blue
-      case 'Wiraswasta':
-        return const Color(0xFF10B981); // Green
-      case 'Buruh Harian Lepas':
-        return const Color(0xFFF59E0B); // Amber
-      case 'Pegawai Negeri Sipil (PNS)':
-        return const Color(0xFF8B5CF6); // Purple
-      case 'Karyawan Swasta':
-        return const Color(0xFF06B6D4); // Cyan
-      default:
-        return const Color(0xFF6B7280); // Gray
+    // Palet warna yang lebih beragam dan kontras untuk setiap kategori pekerjaan
+    final colorMap = <String, Color>{
+      'Mengurus Rumah Tangga': const Color(0xFFEC4899), // Pink
+      'Tidak atau Belum Bekerja': const Color(0xFFEF4444), // Red
+      'Pelajar dan Mahasiswa': const Color(0xFF3B82F6), // Blue
+      'Wiraswasta': const Color(0xFF10B981), // Green
+      'Buruh Harian Lepas': const Color(0xFFF59E0B), // Amber
+      'Pegawai Negeri Sipil (PNS)': const Color(0xFF8B5CF6), // Purple
+      'Karyawan Swasta': const Color(0xFF06B6D4), // Cyan
+      'Petani': const Color(0xFF84CC16), // Lime
+      'Nelayan': const Color(0xFF0EA5E9), // Sky
+      'Pedagang': const Color(0xFFF97316), // Orange
+      'Buruh Tani': const Color(0xFFA3E635), // Light Green
+      'Guru': const Color(0xFF6366F1), // Indigo
+      'Bidan': const Color(0xFFDB2777), // Deep Pink
+      'Perawat': const Color(0xFFE11D48), // Rose
+      'Sopir': const Color(0xFF0891B2), // Dark Cyan
+      'Tukang': const Color(0xFFEAB308), // Yellow
+      'Lain-lainnya': const Color(0xFF6B7280), // Gray
+    };
+    
+    // Jika nama pekerjaan ada di map, gunakan warna tersebut
+    if (colorMap.containsKey(pekerjaan)) {
+      return colorMap[pekerjaan]!;
     }
+    
+    // Jika tidak ada, generate warna unik berdasarkan hash string
+    final hash = pekerjaan.hashCode;
+    final r = ((hash & 0xFF0000) >> 16);
+    final g = ((hash & 0x00FF00) >> 8);
+    final b = (hash & 0x0000FF);
+    
+    // Pastikan warna cukup terang agar terlihat di chart
+    final adjustedR = (r * 0.7 + 80).toInt().clamp(0, 255);
+    final adjustedG = (g * 0.7 + 80).toInt().clamp(0, 255);
+    final adjustedB = (b * 0.7 + 80).toInt().clamp(0, 255);
+    
+    return Color.fromARGB(255, adjustedR, adjustedG, adjustedB);
   }
 
   Widget _buildModernHorizontalBar({
@@ -1090,20 +1236,16 @@ class _KependudukanScreenState extends State<KependudukanScreen>
 
   Color _getPendidikanColor(String pendidikan) {
     switch (pendidikan) {
-      case 'Tidak Sekolah':
-        return const Color(0xFFF87171);
-      case 'SD':
-        return const Color(0xFFFB923C);
-      case 'SMP':
-        return const Color(0xFFFBBF24);
-      case 'SMA':
-        return const Color(0xFF84CC16);
-      case 'Diploma':
-        return const Color(0xFF06B6D4);
-      case 'Sarjana':
-        return const Color(0xFF2563EB);
-      case 'Pascasarjana':
-        return const Color(0xFF4F46E5);
+      case 'Tidak Tamat SD':
+        return const Color(0xFFF87171); // merah
+      case 'Tamat SD':
+        return const Color(0xFFFB923C); // oranye
+      case 'Tamat SMP':
+        return const Color(0xFFFBBF24); // kuning
+      case 'Tamat SMA':
+        return const Color(0xFF84CC16); // hijau
+      case 'Akademi/PT':
+        return const Color(0xFF2563EB); // biru
       default:
         return Colors.grey;
     }
