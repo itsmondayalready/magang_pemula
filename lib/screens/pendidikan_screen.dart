@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/infrastruktur_repository_single.dart';
+import '../services/notes_repository.dart';
 import '../utils/responsive.dart';
 
 class PendidikanScreen extends StatefulWidget {
@@ -12,11 +15,76 @@ class PendidikanScreen extends StatefulWidget {
 class _PendidikanScreenState extends State<PendidikanScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  final _repo = InfrastrukturRepositorySingle();
+  final _notesRepo = NotesRepository();
 
-  // Data sesuai permintaan
+  bool _loading = true;
+  String? _error;
+
+  // State data yang diisi dari repository (tanpa hardcode)
   final Map<String, dynamic> _data = {
-    // 1) Lembaga Pendidikan Negeri — semua 0
-    'negeri': {
+    'negeri': <String, int>{},
+    'swasta': <Map<String, dynamic>>[],
+    'lb': <String, int>{},
+    'keagamaan': <String, dynamic>{},
+    'keterampilan': <String, int>{},
+  };
+
+  // Catatan dari DB, keyed by section code: 'negeri' | 'swasta' | 'lb_keagamaan_keterampilan'
+  final Map<String, Map<String, dynamic>> _notesBySection = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _initAndLoad());
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _initAndLoad() async {
+    try {
+      // Ambil kode wilayah dari route args atau SharedPreferences
+      final args = ModalRoute.of(context)?.settings.arguments;
+      String? kode;
+      if (args is Map) {
+        kode = (args['kodeWilayah'] as String?)?.trim();
+      }
+      if (kode == null || kode.isEmpty) {
+        final prefs = await SharedPreferences.getInstance();
+        kode = prefs.getString('last_desa_kode');
+      }
+      kode ??= '6303052009';
+
+      // Muat data utama terlebih dahulu; catatan tidak boleh menggagalkan layar
+      await _loadFromRepo(kode);
+      await _loadNotes(kode);
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = e.toString();
+      });
+    }
+  }
+
+  Future<void> _loadFromRepo(String kode) async {
+    final year = DateTime.now().year;
+
+    // Ambil data pendidikan dari tabel serbaguna (jumlah per jenis)
+    final pend = await _repo.getPendidikan(kode, year: year);
+
+    // 1) Negeri: sesuai spesifikasi, semuanya 0 (tetap)
+    _data['negeri'] = {
       'PAUD Negeri': 0,
       'TK Negeri': 0,
       'RA/BA Negeri': 0,
@@ -27,97 +95,139 @@ class _PendidikanScreenState extends State<PendidikanScreen>
       'MA Negeri': 0,
       'SMK Negeri': 0,
       'Perguruan Tinggi Negeri': 0,
-    },
+    };
 
-    // 2) Lembaga Pendidikan Swasta di wilayah & sekitar
-    // value: {count: int, nearest_km: double?, akses: 'mudah'|'sedang'|'sulit', keterangan: 'lokal'|'terdekat'}
-    'swasta': [
+    // 2) Swasta: turunkan dari pend (jenis umum) -> label swasta
+    List<Map<String, dynamic>> swasta = [
       {
         'label': 'PAUD Swasta',
-        'count': 1,
-        'nearest_km': null,
-        'akses': 'lokal',
-        'keterangan': 'unit lokal',
+        'count': (pend['PAUD'] ?? 0),
+        'nearest_km': null, // isi jika ada di DB (metric lain)
+        'akses': (pend['PAUD'] ?? 0) > 0 ? 'lokal' : 'mudah',
+        'keterangan': (pend['PAUD'] ?? 0) > 0 ? 'unit lokal' : '',
       },
       {
         'label': 'TK Swasta',
-        'count': 0,
-        'nearest_km': 1.4,
-        'akses': 'mudah',
-        'keterangan': 'terdekat 1.4 km – mudah',
+        'count': (pend['TK'] ?? 0),
+        'nearest_km': null,
+        'akses': (pend['TK'] ?? 0) > 0 ? 'lokal' : 'mudah',
+        'keterangan': (pend['TK'] ?? 0) > 0 ? 'unit lokal' : '',
       },
       {
         'label': 'SD Swasta',
-        'count': 0,
-        'nearest_km': 0.2,
-        'akses': 'mudah',
-        'keterangan': 'terdekat 0.2 km – mudah',
+        'count': (pend['SD'] ?? 0),
+        'nearest_km': null,
+        'akses': (pend['SD'] ?? 0) > 0 ? 'lokal' : 'mudah',
+        'keterangan': (pend['SD'] ?? 0) > 0 ? 'unit lokal' : '',
       },
       {
         'label': 'SMP Swasta',
-        'count': 0,
-        'nearest_km': 1.5,
-        'akses': 'mudah',
-        'keterangan': 'terdekat 1.5 km – mudah',
+        'count': (pend['SMP'] ?? 0),
+        'nearest_km': null,
+        'akses': (pend['SMP'] ?? 0) > 0 ? 'lokal' : 'mudah',
+        'keterangan': (pend['SMP'] ?? 0) > 0 ? 'unit lokal' : '',
       },
       {
         'label': 'SMA Swasta',
-        'count': 0,
-        'nearest_km': 3.2,
-        'akses': 'mudah',
-        'keterangan': 'terdekat 3.2 km – mudah',
+        'count': (pend['SMA'] ?? 0),
+        'nearest_km': null,
+        'akses': (pend['SMA'] ?? 0) > 0 ? 'lokal' : 'mudah',
+        'keterangan': (pend['SMA'] ?? 0) > 0 ? 'unit lokal' : '',
       },
       {
         'label': 'SMK Swasta',
-        'count': 0,
-        'nearest_km': 5.8,
-        'akses': 'mudah',
-        'keterangan': 'terdekat 5.8 km – mudah',
+        'count': (pend['SMK'] ?? 0),
+        'nearest_km': null,
+        'akses': (pend['SMK'] ?? 0) > 0 ? 'lokal' : 'mudah',
+        'keterangan': (pend['SMK'] ?? 0) > 0 ? 'unit lokal' : '',
       },
       {
         'label': 'Perguruan Tinggi Swasta',
-        'count': 0,
-        'nearest_km': 4.9,
-        'akses': 'mudah',
-        'keterangan': 'terdekat 4.9 km – mudah',
+        'count': (pend['Akademi/PT'] ?? 0),
+        'nearest_km': null,
+        'akses': (pend['Akademi/PT'] ?? 0) > 0 ? 'lokal' : 'mudah',
+        'keterangan': (pend['Akademi/PT'] ?? 0) > 0 ? 'unit lokal' : '',
       },
-    ],
+    ];
 
-    // 3) Pendidikan Luar Biasa (LB/SLB) & Keagamaan & Keterampilan
-    'lb': {'SDLB': 0, 'SMPLB': 0, 'SMALB': 0},
-    'keagamaan': {
-      'Pondok Pesantren': 0,
-      'Madrasah Diniyah Swasta': 1,
-      'Paket A/B/C': 'Ada',
-      'Taman Bacaan Masyarakat (TBM)': 'Ada',
-    },
-    'keterampilan': {'Bahasa': 0, 'Komputer': 0, 'Menjahit': 0, 'Montir': 0},
-  };
+    // 3) Pendidikan Luar Biasa, Keagamaan & Keterampilan
+    final lb = {'SDLB': 0, 'SMPLB': 0, 'SMALB': 0};
+    final keagamaan = {
+      'Pondok Pesantren': (pend['Pesantren'] ?? 0),
+      'Madrasah Diniyah Swasta': (pend['Madrasah'] ?? 0),
+      // Tampilkan 'Ada' jika DB memiliki entri > 0, selain itu 'Tidak Ada'
+      'Paket A/B/C': (pend['Paket A/B/C'] ?? 0) > 0 ? 'Ada' : 'Tidak Ada',
+      'Taman Bacaan Masyarakat (TBM)': (pend['TBM'] ?? 0) > 0
+          ? 'Ada'
+          : 'Tidak Ada',
+    };
+    final keterampilan = {
+      'Bahasa': 0,
+      'Komputer': 0,
+      'Menjahit': 0,
+      'Montir': 0,
+    };
 
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    // Mutakhirkan state data
+    _data['swasta'] = swasta;
+    _data['lb'] = lb;
+    _data['keagamaan'] = keagamaan;
+    _data['keterampilan'] = keterampilan;
   }
 
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
+  Future<void> _loadNotes(String kode) async {
+    try {
+      final year = DateTime.now().year;
+      final notes = await _notesRepo.getPendidikanNotes(kode, year: year);
+      _notesBySection.clear();
+      for (final n in notes) {
+        final section = (n['section'] as String).toLowerCase();
+        _notesBySection[section] = {
+          'title': n['title'] as String,
+          'paras': (n['paras'] as List<String>),
+        };
+      }
+    } catch (_) {
+      // Abaikan error catatan agar layar tetap tampil
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final negeri = Map<String, int>.from(_data['negeri']);
-    final swasta = List<Map<String, dynamic>>.from(_data['swasta']);
-    final lb = Map<String, int>.from(_data['lb']);
-    final keagamaan = Map<String, dynamic>.from(_data['keagamaan']);
-    final keterampilan = Map<String, int>.from(_data['keterampilan']);
+    if (_loading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (_error != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Pendidikan')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              'Gagal memuat data pendidikan.\n$_error',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.red),
+            ),
+          ),
+        ),
+      );
+    }
+    final negeri = Map<String, int>.from(_data['negeri'] ?? <String, int>{});
+    final swasta = List<Map<String, dynamic>>.from(
+      _data['swasta'] ?? <Map<String, dynamic>>[],
+    );
+    final lb = Map<String, int>.from(_data['lb'] ?? <String, int>{});
+    final keagamaan = Map<String, dynamic>.from(
+      _data['keagamaan'] ?? <String, dynamic>{},
+    );
+    final keterampilan = Map<String, int>.from(
+      _data['keterampilan'] ?? <String, int>{},
+    );
 
     final totalNegeri = _sum(negeri);
     final totalSwastaLokal = swasta.fold<int>(
       0,
-      (p, e) => p + (e['count'] as int),
+      (p, e) => p + ((e['count'] as int?) ?? 0),
     );
 
     return Scaffold(
@@ -487,8 +597,8 @@ class _PendidikanScreenState extends State<PendidikanScreen>
     final label = e['label'] as String;
     final count = e['count'] as int;
     final nearestKm = e['nearest_km'] as double?;
-    final akses = e['akses'] as String; // 'lokal' or 'mudah'
-    final ket = e['keterangan'] as String;
+    final akses = e['akses'] as String? ?? 'mudah'; // 'lokal' or 'mudah'
+    final ket = (e['keterangan'] as String?) ?? '';
 
     final color = count > 0 ? const Color(0xFF7C3AED) : Colors.grey.shade600;
 
@@ -536,7 +646,9 @@ class _PendidikanScreenState extends State<PendidikanScreen>
                 Text(
                   count > 0
                       ? 'Tersedia $count ${ket.isNotEmpty ? '($ket)' : ''}'
-                      : 'Tidak ada lokal — $ket',
+                      : (ket.isNotEmpty
+                            ? 'Tidak ada lokal — $ket'
+                            : 'Tidak ada lokal'),
                   style: TextStyle(color: Colors.grey[700], fontSize: 12),
                 ),
               ],
@@ -671,39 +783,20 @@ class _PendidikanScreenState extends State<PendidikanScreen>
   }
 
   Widget _catatan(String bagian) {
-    // Isi catatan diambil dari ringkasan pendidikan.pdf yang kamu berikan
-    late final String title;
-    late final List<String> paras;
+    // Ambil catatan dari DB sesuai section; fallback jika belum tersedia
+    // Map UI label -> section key di DB
+    final sectionKey = switch (bagian) {
+      'Negeri' => 'negeri',
+      'Swasta' => 'swasta',
+      'LB/Keagamaan/Keterampilan' => 'lb_keagamaan_keterampilan',
+      _ => 'unknown',
+    };
 
-    switch (bagian) {
-      case 'Negeri':
-        title = 'Catatan – Lembaga Pendidikan Formal (Negeri dan Swasta)';
-        paras = [
-          'Di Desa Melayu Ilir tidak terdapat satu pun lembaga pendidikan negeri, baik PAUD, TK, SD, SMP, SMA/SMK, maupun Perguruan Tinggi.',
-          'Hanya terdapat satu PAUD swasta yang beroperasi di dalam desa. Sekolah lainnya berada di luar wilayah dengan jarak terdekat antara 0,2 km hingga 5,8 km, seluruhnya dikategorikan mudah dijangkau.',
-          'Kondisi ini menandakan keterbatasan sarana pendidikan lokal dan ketergantungan warga pada fasilitas di desa tetangga.',
-        ];
-        break;
-      case 'Swasta':
-        title = 'Catatan – Akses Pendidikan dan Ketersediaan Fasilitas';
-        paras = [
-          'Walau sarana pendidikan di dalam desa terbatas, akses menuju sekolah di luar wilayah cukup baik. Jalan penghubung relatif mudah dilalui dan transportasi memungkinkan siswa bersekolah di wilayah sekitar.',
-          'Akses tercepat adalah menuju SD swasta terdekat (0,2 km) dan SMP terdekat (1,5 km), sedangkan SMK terdekat berjarak sekitar 5,8 km. Hal ini menunjukkan infrastruktur transportasi dan mobilitas siswa sudah memadai, meskipun ketersediaan sekolah dalam desa masih nol.',
-        ];
-        break;
-      case 'LB/Keagamaan/Keterampilan':
-        title = 'Catatan – Pendidikan Khusus, Keagamaan, dan Keterampilan';
-        paras = [
-          'Tidak terdapat Sekolah Luar Biasa (SLB) di Desa Melayu Ilir, baik jenjang SDLB, SMPLB, maupun SMALB. Anak berkebutuhan khusus kemungkinan harus menempuh pendidikan ke luar wilayah. Diperlukan perhatian terhadap akses pendidikan disabilitas dan inklusi dalam perencanaan pendidikan desa.',
-          'Desa memiliki 1 Madrasah Diniyah swasta dan kegiatan Paket A/B/C aktif bagi warga yang belum menyelesaikan pendidikan dasar-menengah, serta Taman Bacaan Masyarakat (TBM) untuk sarana literasi.',
-          'Namun, belum ada lembaga pelatihan keterampilan (bahasa, komputer, menjahit, kecantikan, montir, elektronika). Pendidikan non-formal masih berfokus pada keagamaan dan literasi dasar, belum pada pelatihan vokasional atau peningkatan keterampilan kerja.',
-        ];
-        break;
-      default:
-        title = 'Catatan';
-        paras = const ['Ringkasan belum tersedia.'];
-        break;
-    }
+    final entry = _notesBySection[sectionKey];
+    final String title = entry != null ? (entry['title'] as String) : 'Catatan';
+    final List<String> paras = entry != null
+        ? List<String>.from(entry['paras'] as List)
+        : const ['Ringkasan belum tersedia.'];
 
     return Container(
       width: double.infinity,

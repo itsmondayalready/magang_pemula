@@ -1,0 +1,87 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+/// Repository sederhana untuk membaca catatan (notes) per domain/section.
+///
+/// Skema tabel yang diasumsikan (lihat DDL di jawaban):
+///   public.catatan(
+///     id uuid pk,
+///     desa_id uuid fk, kode_wilayah varchar(10) fk,
+///     year int not null,
+///     domain text/enum,            -- gunakan nilai 'pendidikan'
+///     section text not null,       -- 'negeri' | 'swasta' | 'lb_keagamaan_keterampilan'
+///     title text not null,
+///     paras jsonb not null,        -- array of paragraphs, contoh: ["Kalimat 1", "Kalimat 2"]
+///     created_at, updated_at, created_by
+///   )
+class NotesRepository {
+  final SupabaseClient _db = Supabase.instance.client;
+  int _defaultYear() => DateTime.now().year;
+
+  /// Ambil catatan pendidikan untuk kode wilayah + tahun.
+  /// Prioritas baca dari tabel khusus `pendidikan_catatan`.
+  /// Fallback ke tabel generik `catatan` (dengan domain = 'pendidikan') bila tabel khusus tidak ada.
+  /// Hasil: List of maps dengan keys: section, title, paras (`List<String>`).
+  Future<List<Map<String, dynamic>>> getPendidikanNotes(
+    String kodeWilayah, {
+    int? year,
+  }) async {
+    final y = year ?? _defaultYear();
+    try {
+      // Coba tabel khusus lebih dulu
+      final rows = await _db
+          .from('pendidikan_catatan')
+          .select('section, title, paras')
+          .eq('kode_wilayah', kodeWilayah)
+          .eq('year', y)
+          .order('section');
+      return rows
+          .map<Map<String, dynamic>>(
+            (r) => {
+              'section': r['section'] as String,
+              'title': r['title'] as String,
+              'paras':
+                  (r['paras'] as List?)
+                      ?.cast<dynamic>()
+                      .map((e) => e.toString())
+                      .toList() ??
+                  <String>[],
+            },
+          )
+          .toList();
+    } on PostgrestException catch (e) {
+      // Tabel tidak ditemukan -> fallback ke tabel generik `catatan`
+      // PGRST205: could not find table in schema cache
+      if (e.code == 'PGRST205' ||
+          (e.message.toLowerCase().contains('could not find the table') &&
+              e.message.toLowerCase().contains('pendidikan_catatan'))) {
+        try {
+          final rows = await _db
+              .from('catatan')
+              .select('section, title, paras')
+              .eq('kode_wilayah', kodeWilayah)
+              .eq('year', y)
+              .eq('domain', 'pendidikan')
+              .order('section');
+          return rows
+              .map<Map<String, dynamic>>(
+                (r) => {
+                  'section': r['section'] as String,
+                  'title': r['title'] as String,
+                  'paras':
+                      (r['paras'] as List?)
+                          ?.cast<dynamic>()
+                          .map((e) => e.toString())
+                          .toList() ??
+                      <String>[],
+                },
+              )
+              .toList();
+        } on PostgrestException {
+          // Kedua tabel tidak ada atau akses ditolak -> kembalikan kosong
+          return <Map<String, dynamic>>[];
+        }
+      }
+      rethrow; // error lain, biarkan caller menangani
+    }
+  }
+}

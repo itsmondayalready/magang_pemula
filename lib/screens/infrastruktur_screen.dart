@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/infrastruktur_repository_single.dart';
 import '../utils/responsive.dart';
 
 class InfrastrukturScreen extends StatefulWidget {
@@ -12,72 +14,30 @@ class InfrastrukturScreen extends StatefulWidget {
 class _InfrastrukturScreenState extends State<InfrastrukturScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  final _repo = InfrastrukturRepositorySingle();
 
-  // Dummy data template (BAB references in comments)
+  bool _loading = true;
+  String? _error;
+
+  // Data state yang akan diisi dari repository (tanpa hardcoded)
   final Map<String, dynamic> _data = {
-    // 1. BAB IV - Pendidikan
-    'pendidikan': {
-      'PAUD': 6,
-      'TK': 5,
-      'SD': 8,
-      'SMP': 4,
-      'SMA': 3,
-      'SMK': 2,
-      'Akademi/PT': 1,
-      'Madrasah': 2,
-      'Pesantren': 1,
-      'TBM': 3,
-      'Lembaga Keterampilan': 4, // bahasa, komputer, menjahit, montir, dll.
-    },
-    // 2. BAB V - Kesehatan
-    'kesehatan': {
-      'Rumah Sakit': 1,
-      'Puskesmas': 2,
-      'Poliklinik': 2,
-      'Rumah Bersalin': 1,
-      'Poskesdes': 3,
-      'Polindes': 2,
-      'Apotek': 6,
-      'Posyandu': 12,
-      'Posbindu': 7,
-    },
-    'tenaga_medis': {'Dokter': 5, 'Bidan': 9, 'Kader Kesehatan': 40},
-    // 3. BAB IX - Transportasi & Jalan
-    'jalan': {'Aspal (km)': 24, 'Beton (km)': 12, 'Tanah (km)': 6},
-    'angkutan': {'Bus/Travel': 3, 'Minibus/Elf': 6, 'Ojek': 25},
-    'akses_pemerintahan': {
-      'Ke Camat': {'jarak_km': 12, 'waktu_menit': 25},
-      'Ke Bupati': {'jarak_km': 38, 'waktu_menit': 70},
-    },
-    // 4. BAB X - Komunikasi & Informasi
-    'komunikasi': {
-      'Menara BTS': 2,
-      'Operator Seluler': 3, // contoh: Telkomsel, XL, Indosat
-      'Sinyal 4G (%)': 85,
-      'Internet Desa': 1,
-      'Komputer (unit)': 14,
-      'TV/Radio (pusat)': 2,
-    },
-    // 5. BAB XVI (bagian akhir) - Sanitasi & Air Bersih
-    'sanitasi': {
-      'MCK Umum': 8,
-      'IPAL Komunal': 2,
-      'TPS/Bank Sampah': 4,
-      'Sarana Air Bersih': 10,
-      'Hidran Umum': 3,
-      'Tandon/Air Baku': 2,
-    },
-    'kebencanaan': {
-      'Posko Siaga': 1,
-      'Peralatan Darurat': 2,
-      'Kegiatan Pelestarian': 5,
-    },
+    'pendidikan': <String, int>{},
+    'kesehatan': <String, int>{},
+    'tenaga_medis': <String, int>{},
+    'jalan': <String, int>{},
+    'angkutan': <String, int>{},
+    'akses_pemerintahan': <String, Map<String, int>>{},
+    'komunikasi': <String, int>{},
+    'sanitasi': <String, int>{},
+    'kebencanaan': <String, int>{},
   };
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 5, vsync: this);
+    // Load kode wilayah (dari route args jika ada, jika tidak dari SharedPreferences), lalu fetch data dari Supabase
+    WidgetsBinding.instance.addPostFrameCallback((_) => _initAndLoad());
   }
 
   @override
@@ -86,8 +46,121 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
     super.dispose();
   }
 
+  Future<void> _initAndLoad() async {
+    try {
+      // 1) Ambil argumen route jika ada
+      final args = ModalRoute.of(context)?.settings.arguments;
+      String? kode;
+      if (args is Map) {
+        kode = (args['kodeWilayah'] as String?)?.trim();
+      }
+      // 2) Jika tidak ada, fallback ke SharedPreferences (last_desa_kode)
+      if (kode == null || kode.isEmpty) {
+        final prefs = await SharedPreferences.getInstance();
+        kode = prefs.getString('last_desa_kode');
+      }
+      // 3) Fallback terakhir (optional): kode default jika masih null/empty
+      kode ??= '6303052009';
+      await _loadFromRepo(kode);
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = e.toString();
+      });
+    }
+  }
+
+  Future<void> _loadFromRepo(String kode) async {
+    final year = DateTime.now().year;
+
+    // Pendidikan
+    final pendidikan = await _repo.getPendidikan(kode, year: year);
+
+    // Kesehatan
+    final fasilitas = await _repo.getKesehatanFasilitas(kode, year: year);
+    final tenaga = await _repo.getTenagaMedis(kode, year: year);
+
+    // Transportasi & Jalan
+    final jalanKm = await _repo.getJalanKm(
+      kode,
+      year: year,
+    ); // Map<String,double>
+    // UI saat ini memakai satuan (km) pada label dan integer untuk nilai, maka konversi ke int dengan pembulatan
+    final jalanInt = <String, int>{
+      for (final e in jalanKm.entries)
+        // Tambahkan " (km)" ke label agar konsisten dengan UI lama
+        '${e.key} (km)': e.value.round(),
+    };
+
+    final angkutan = await _repo.getAngkutan(kode, year: year);
+
+    // Akses Pemerintahan
+    final aksesList = await _repo.getAksesPemerintahan(kode, year: year);
+    // Bentuk ulang ke struktur UI lama: {'Ke Camat': {'jarak_km': 12, 'waktu_menit': 25}, ...}
+    final aksesMap = <String, Map<String, int>>{};
+    for (final r in aksesList) {
+      final label = (r['label'] as String?) ?? (r['tujuan'] as String? ?? '-');
+      final jarak = (r['jarak_km'] as num?)?.toDouble() ?? 0.0;
+      final waktu = (r['waktu_menit'] as num?)?.toInt() ?? 0;
+      aksesMap[label] = {'jarak_km': jarak.round(), 'waktu_menit': waktu};
+    }
+
+    // Komunikasi
+    final komunikasi = await _repo.getKomunikasi(kode, year: year) ?? {};
+    // Transform ke kunci UI lama
+    final komunikasiUi = <String, int>{
+      'Menara BTS': ((komunikasi['bts_count'] as num?)?.toInt() ?? 0),
+      'Operator Seluler':
+          ((komunikasi['operator_count'] as num?)?.toInt() ?? 0),
+      'Sinyal 4G (%)': ((komunikasi['cakupan_4g_pct'] as num?)?.round() ?? 0),
+      'Internet Desa': ((komunikasi['internet_desa'] == true) ? 1 : 0),
+      'Komputer (unit)': ((komunikasi['komputer_unit'] as num?)?.toInt() ?? 0),
+      'TV/Radio (pusat)':
+          ((komunikasi['tv_radio_pusat'] as num?)?.toInt() ?? 0),
+    };
+
+    // Sanitasi & Kebencanaan
+    final sanitasi = await _repo.getSanitasi(kode, year: year);
+    final kebencanaan = await _repo.getKebencanaan(kode, year: year);
+
+    // Update state data (tanpa setState di sini; pemanggil yang setState setelah selesai)
+    _data['pendidikan'] = pendidikan;
+    _data['kesehatan'] = fasilitas;
+    _data['tenaga_medis'] = tenaga;
+    _data['jalan'] = jalanInt;
+    _data['angkutan'] = angkutan;
+    _data['akses_pemerintahan'] = aksesMap;
+    _data['komunikasi'] = komunikasiUi;
+    _data['sanitasi'] = sanitasi;
+    _data['kebencanaan'] = kebencanaan;
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (_error != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Infrastruktur Desa')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              'Gagal memuat data infrastruktur.\n$_error',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.red),
+            ),
+          ),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: Colors.grey[50],
       body: NestedScrollView(
