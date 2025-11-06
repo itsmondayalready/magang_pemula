@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class MetadataScreen extends StatefulWidget {
   const MetadataScreen({super.key});
@@ -9,90 +11,9 @@ class MetadataScreen extends StatefulWidget {
 
 class _MetadataScreenState extends State<MetadataScreen>
     with SingleTickerProviderStateMixin {
-  // Data metadata berdasarkan Excel sheet
-  final List<Map<String, dynamic>> _metadataList = [
-    {
-      'nama': 'Jumlah Penduduk',
-      'definisi': 'Total penduduk yang berdomisili di desa',
-      'sumber': 'Data kependudukan desa',
-      'satuan': 'Jiwa',
-      'tahun': '2024',
-      'frekuensi': 'Triwulan',
-      'penanggungjawab': 'Kasi Pemerintahan',
-    },
-    {
-      'nama': 'Rumah Tangga Miskin',
-      'definisi': 'RT yang masuk kategori miskin menurut DTKS',
-      'sumber': 'DTKS / Pendataan lokal',
-      'satuan': 'Rumah Tangga',
-      'tahun': '2024',
-      'frekuensi': 'Tahunan',
-      'penanggungjawab': 'Kaur Kesejahteraan',
-    },
-    {
-      'nama': 'Anak Tidak Sekolah',
-      'definisi': 'Anak usia sekolah yang tidak sekolah',
-      'sumber': 'Kader/PKK/Karang Taruna',
-      'satuan': 'Orang',
-      'tahun': '2023',
-      'frekuensi': 'Tahunan',
-      'penanggungjawab': 'Kaur Umum',
-    },
-    {
-      'nama': 'Luas Lahan Pertanian',
-      'definisi': 'Total luas sawah dan ladang aktif',
-      'sumber': 'Data PBB / PPL Pertanian',
-      'satuan': 'Hektar',
-      'tahun': '2023',
-      'frekuensi': 'Semesteran',
-      'penanggungjawab': 'Kaur Perencanaan',
-    },
-    {
-      'nama': 'Jumlah Warga yang Terdampak Kriteria Debit Air yang Masuk kedalam Rumah Setinggi 30-50 Cm',
-      'definisi': 'Jumlah Jiwa (orang) dengan kriteria Debit Air yang Masuk kedalam Rumah Setinggi 30-50 Cm',
-      'sumber': 'Kaling/Rt/Aparat Desa',
-      'satuan': 'Jiwa',
-      'tahun': '2025',
-      'frekuensi': 'Tahunan',
-      'penanggungjawab': 'Kaur Kesejahteraan',
-    },
-    {
-      'nama': 'Updating Pendataan Penerima Bantuan Keluarga Miskin',
-      'definisi': 'Keluarga yang masih tergolong miskin',
-      'sumber': 'Pendataan langsung dan Ketua RT',
-      'satuan': 'Keluarga',
-      'tahun': '2023-2025',
-      'frekuensi': 'Tahunan',
-      'penanggungjawab': 'Kasi Kesejahteraan',
-    },
-    {
-      'nama': 'Jumlah Rumah Tangga Yang belum Terpasang PDAM',
-      'definisi': 'Total Rumah Tangga yang belum masang PDAM yang berdomisili di tempat',
-      'sumber': 'Kaling/Rt/Aparat Desa',
-      'satuan': 'Rumah Tangga',
-      'tahun': '2023-2024',
-      'frekuensi': 'sekali data',
-      'penanggungjawab': 'Kepala Lingkungan',
-    },
-    {
-      'nama': 'Jumlah Anak Kurang Gizi (Stunting)',
-      'definisi': 'Anak usia di bawah 5 Tahun',
-      'sumber': 'Kader/Bidan Desa',
-      'satuan': 'Anak',
-      'tahun': '2025',
-      'frekuensi': 'Tahunan',
-      'penanggungjawab': 'Kader KPM',
-    },
-    {
-      'nama': 'Jumlah Lansia di Desa',
-      'definisi': 'Lansia (59 tahun ke atas)',
-      'sumber': 'Kaling/Rt/Aparat Desa',
-      'satuan': 'Orang tua',
-      'tahun': '2025',
-      'frekuensi': 'Tahunan',
-      'penanggungjawab': 'Kasi Pemerintahan',
-    },
-  ];
+  // Data dari Supabase (akan diisi saat init)
+  final SupabaseClient _db = Supabase.instance.client;
+  List<Map<String, dynamic>> _metadataList = [];
 
   late TabController _tabController;
   String _searchQuery = '';
@@ -101,6 +22,7 @@ class _MetadataScreenState extends State<MetadataScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
   @override
@@ -122,6 +44,91 @@ class _MetadataScreenState extends State<MetadataScreen>
           definisi.contains(query) ||
           sumber.contains(query);
     }).toList();
+  }
+
+  Future<void> _load() async {
+    try {
+      // Ambil kode wilayah dari route args atau SharedPreferences
+      String? kode;
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is Map) {
+        kode = (args['kodeWilayah'] as String?)?.trim();
+      }
+      if (kode == null || kode.isEmpty) {
+        final prefs = await SharedPreferences.getInstance();
+        kode = prefs.getString('last_desa_kode');
+      }
+      kode ??= '6303052009';
+
+      // Coba query langsung berdasarkan kolom kode_wilayah (skema terbaru)
+      List rows = [];
+      try {
+        rows = await _db
+            .from('metadata_item')
+            .select()
+            .eq('kode_wilayah', kode)
+            .order('updated_at', ascending: false)
+            .order('created_at', ascending: false);
+      } catch (_) {
+        rows = [];
+      }
+      if (rows.isEmpty) {
+        // Fallback untuk skema lama: cari desa_id lalu filter metadata berdasarkan desa
+        try {
+          final desa = await _db
+              .from('desa')
+              .select('id')
+              .eq('kode_wilayah', kode)
+              .maybeSingle();
+          if (desa != null) {
+            final desaId = desa['id'];
+            rows = await _db
+                .from('metadata_item')
+                .select()
+                .eq('desa_id', desaId)
+                .order('updated_at', ascending: false)
+                .order('created_at', ascending: false);
+          }
+        } catch (_) {}
+      }
+
+      final items = rows
+          .map<Map<String, dynamic>>(
+            (e) => _toScreenItem(Map<String, dynamic>.from(e as Map)),
+          )
+          .toList();
+      if (mounted) {
+        setState(() {
+          _metadataList = items;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error load metadata: $e');
+    }
+  }
+
+  Map<String, dynamic> _toScreenItem(Map<String, dynamic> row) {
+    final tahunText = (row['tahun_text'] as String?)?.trim();
+    String tahun = tahunText ?? '';
+    if (tahun.isEmpty) {
+      final start = row['tahun_start'] as int?;
+      final end = row['tahun_end'] as int?;
+      if (start != null && end != null) {
+        tahun = start == end ? '$start' : '$start-$end';
+      } else if (start != null) {
+        tahun = '$start';
+      }
+    }
+
+    return {
+      'nama': (row['nama'] ?? '-') as String,
+      'definisi': (row['definisi'] ?? '-') as String,
+      'sumber': (row['sumber'] ?? '-') as String,
+      'satuan': (row['satuan'] ?? '-') as String,
+      'tahun': tahun,
+      'frekuensi': (row['frekuensi'] ?? '-') as String,
+      'penanggungjawab': (row['penanggungjawab'] ?? '-') as String,
+    };
   }
 
   @override
@@ -272,8 +279,9 @@ class _MetadataScreenState extends State<MetadataScreen>
                     _buildMetadataList(_filteredMetadata),
                     _buildMetadataList(
                       _filteredMetadata
-                          .where((item) =>
-                              item['tahun'].toString().contains('2025'))
+                          .where(
+                            (item) => item['tahun'].toString().contains('2025'),
+                          )
                           .toList(),
                     ),
                     _buildMetadataList(
@@ -305,10 +313,7 @@ class _MetadataScreenState extends State<MetadataScreen>
             const SizedBox(height: 16),
             Text(
               'Tidak ada data ditemukan',
-              style: TextStyle(
-                color: Colors.grey.shade600,
-                fontSize: 16,
-              ),
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
             ),
           ],
         ),
@@ -339,9 +344,7 @@ class _MetadataScreenState extends State<MetadataScreen>
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         onTap: () => _showDetailDialog(item, color),
         borderRadius: BorderRadius.circular(16),
@@ -510,9 +513,7 @@ class _MetadataScreenState extends State<MetadataScreen>
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: Container(
           constraints: const BoxConstraints(maxWidth: 500),
           child: Column(
