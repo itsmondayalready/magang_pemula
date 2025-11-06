@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+// supabase is used within repository, no direct import needed here
+import '../services/metadata_repository.dart';
 
 class MetadataScreen extends StatefulWidget {
   const MetadataScreen({super.key});
@@ -11,9 +12,10 @@ class MetadataScreen extends StatefulWidget {
 
 class _MetadataScreenState extends State<MetadataScreen>
     with SingleTickerProviderStateMixin {
-  // Data dari Supabase (akan diisi saat init)
-  final SupabaseClient _db = Supabase.instance.client;
+  // Repository & state
+  final _repo = MetadataRepository();
   List<Map<String, dynamic>> _metadataList = [];
+  bool _loading = false;
 
   late TabController _tabController;
   String _searchQuery = '';
@@ -21,7 +23,7 @@ class _MetadataScreenState extends State<MetadataScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+  _tabController = TabController(length: 2, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
@@ -48,6 +50,7 @@ class _MetadataScreenState extends State<MetadataScreen>
 
   Future<void> _load() async {
     try {
+      if (mounted) setState(() => _loading = true);
       // Ambil kode wilayah dari route args atau SharedPreferences
       String? kode;
       final args = ModalRoute.of(context)?.settings.arguments;
@@ -59,44 +62,9 @@ class _MetadataScreenState extends State<MetadataScreen>
         kode = prefs.getString('last_desa_kode');
       }
       kode ??= '6303052009';
-
-      // Coba query langsung berdasarkan kolom kode_wilayah (skema terbaru)
-      List rows = [];
-      try {
-        rows = await _db
-            .from('metadata_item')
-            .select()
-            .eq('kode_wilayah', kode)
-            .order('updated_at', ascending: false)
-            .order('created_at', ascending: false);
-      } catch (_) {
-        rows = [];
-      }
-      if (rows.isEmpty) {
-        // Fallback untuk skema lama: cari desa_id lalu filter metadata berdasarkan desa
-        try {
-          final desa = await _db
-              .from('desa')
-              .select('id')
-              .eq('kode_wilayah', kode)
-              .maybeSingle();
-          if (desa != null) {
-            final desaId = desa['id'];
-            rows = await _db
-                .from('metadata_item')
-                .select()
-                .eq('desa_id', desaId)
-                .order('updated_at', ascending: false)
-                .order('created_at', ascending: false);
-          }
-        } catch (_) {}
-      }
-
-      final items = rows
-          .map<Map<String, dynamic>>(
-            (e) => _toScreenItem(Map<String, dynamic>.from(e as Map)),
-          )
-          .toList();
+      debugPrint('[Metadata] Memuat data untuk kode_wilayah: ' + kode);
+      // Ambil data via repository (akan handle kode_wilayah & fallback desa_id)
+      final items = await _repo.fetchAll(kode);
       if (mounted) {
         setState(() {
           _metadataList = items;
@@ -104,197 +72,186 @@ class _MetadataScreenState extends State<MetadataScreen>
       }
     } catch (e) {
       debugPrint('Error load metadata: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
-  Map<String, dynamic> _toScreenItem(Map<String, dynamic> row) {
-    final tahunText = (row['tahun_text'] as String?)?.trim();
-    String tahun = tahunText ?? '';
-    if (tahun.isEmpty) {
-      final start = row['tahun_start'] as int?;
-      final end = row['tahun_end'] as int?;
-      if (start != null && end != null) {
-        tahun = start == end ? '$start' : '$start-$end';
-      } else if (start != null) {
-        tahun = '$start';
-      }
-    }
-
-    return {
-      'nama': (row['nama'] ?? '-') as String,
-      'definisi': (row['definisi'] ?? '-') as String,
-      'sumber': (row['sumber'] ?? '-') as String,
-      'satuan': (row['satuan'] ?? '-') as String,
-      'tahun': tahun,
-      'frekuensi': (row['frekuensi'] ?? '-') as String,
-      'penanggungjawab': (row['penanggungjawab'] ?? '-') as String,
-    };
-  }
+  // Mapping kini ditangani di MetadataRepository
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          SliverAppBar(
-            pinned: true,
-            elevation: 0,
-            backgroundColor: Colors.transparent,
-            expandedHeight: 100,
-            toolbarHeight: 56,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
-              onPressed: () => Navigator.pop(context),
-            ),
-            title: const Text(
-              'Metadata',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            centerTitle: false,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(20),
-                bottomRight: Radius.circular(20),
-              ),
-            ),
-            flexibleSpace: ClipRRect(
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(20),
-                bottomRight: Radius.circular(20),
-              ),
-              child: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF16A34A), Color(0xFFA3E635)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+      body: Stack(
+        children: [
+          NestedScrollView(
+            headerSliverBuilder: (context, innerBoxIsScrolled) => [
+              SliverAppBar(
+                pinned: true,
+                elevation: 0,
+                backgroundColor: Colors.transparent,
+                expandedHeight: 100,
+                toolbarHeight: 56,
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                title: const Text(
+                  'Metadata',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
-                child: FlexibleSpaceBar(
-                  background: SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 60, 16, 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Row(
+                centerTitle: false,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(20),
+                    bottomRight: Radius.circular(20),
+                  ),
+                ),
+                flexibleSpace: ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(20),
+                    bottomRight: Radius.circular(20),
+                  ),
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF16A34A), Color(0xFFA3E635)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    child: FlexibleSpaceBar(
+                      background: SafeArea(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 60, 16, 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.end,
                             children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Icon(
-                                  Icons.description_outlined,
-                                  color: Colors.white,
-                                  size: 24,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'Informasi Metadata',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(10),
                                     ),
-                                    Text(
-                                      '${_metadataList.length} data tersedia',
-                                      style: const TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 12,
-                                      ),
+                                    child: const Icon(
+                                      Icons.description_outlined,
+                                      color: Colors.white,
+                                      size: 24,
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Informasi Metadata',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        Text(
+                                          '${_metadataList.length} data tersedia',
+                                          style: const TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-              child: TextField(
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value;
-                  });
-                },
-                decoration: InputDecoration(
-                  hintText: 'Cari nama data, definisi, sumber...',
-                  prefixIcon: const Icon(Icons.search_rounded),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    vertical: 14,
-                    horizontal: 16,
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                  child: TextField(
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value;
+                      });
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Cari nama data, definisi, sumber...',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        vertical: 14,
+                        horizontal: 16,
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
-        ],
-        body: Column(
-          children: [
-            TabBar(
-              controller: _tabController,
-              labelColor: const Color(0xFF16A34A),
-              unselectedLabelColor: Colors.grey,
-              indicatorColor: const Color(0xFF16A34A),
-              indicatorWeight: 3,
-              tabs: const [
-                Tab(text: 'Semua'),
-                Tab(text: 'Terbaru'),
-                Tab(text: 'Favorit'),
-              ],
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: TabBarView(
+            ],
+            body: Column(
+              children: [
+                TabBar(
                   controller: _tabController,
-                  children: [
-                    _buildMetadataList(_filteredMetadata),
-                    _buildMetadataList(
-                      _filteredMetadata
-                          .where(
-                            (item) => item['tahun'].toString().contains('2025'),
-                          )
-                          .toList(),
-                    ),
-                    _buildMetadataList(
-                      _filteredMetadata
-                          .where((item) => item['frekuensi'] == 'Tahunan')
-                          .toList(),
-                    ),
+                  labelColor: const Color(0xFF16A34A),
+                  unselectedLabelColor: Colors.grey,
+                  indicatorColor: const Color(0xFF16A34A),
+                  indicatorWeight: 3,
+                  tabs: const [
+                    Tab(text: 'Semua'),
+                    Tab(text: 'Terbaru'),
                   ],
                 ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _buildMetadataList(_filteredMetadata),
+                        _buildMetadataList(
+                          _filteredMetadata
+                              .where(
+                                (item) =>
+                                    item['tahun'].toString().contains('2025'),
+                              )
+                              .toList(),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (_loading)
+            Positioned.fill(
+              child: AbsorbPointer(
+                child: Container(
+                  color: Colors.black.withOpacity(0.08),
+                  child: const Center(child: CircularProgressIndicator()),
+                ),
               ),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -419,11 +376,6 @@ class _MetadataScreenState extends State<MetadataScreen>
                       Icons.source_outlined,
                       item['sumber'],
                       Colors.blue,
-                    ),
-                    _buildChip(
-                      Icons.straighten_rounded,
-                      item['satuan'],
-                      Colors.orange,
                     ),
                     _buildChip(
                       Icons.calendar_today_rounded,
