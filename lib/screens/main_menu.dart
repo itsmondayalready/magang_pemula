@@ -68,6 +68,35 @@ class _MainMenuPageState extends State<MainMenuPage> {
           _totalRT = p?['total_rt'] as int?;
           _totalRW = p?['total_rw'] as int?;
         } else {
+          // Jika kode desa tidak ditemukan, coba ambil desa default/lain
+          try {
+            final fallback = await _repo.fetchDefaultDesa();
+            if (fallback != null && mounted) {
+              final newKode = (fallback['kode_wilayah'] ?? '') as String;
+              final newNama = (fallback['nama'] ?? 'Desa') as String;
+              
+              // Update state dengan desa baru
+              setState(() {
+                _kodeWilayah = newKode;
+                _desaName = newNama;
+              });
+              
+              // Simpan ke SharedPreferences
+              try {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setString('last_desa_kode', newKode);
+                await prefs.setString('last_desa_name', newNama);
+              } catch (_) {}
+              
+              // Panggil ulang loadSummary dengan kode baru
+              if (mounted) {
+                _loadSummary();
+              }
+              return;
+            }
+          } catch (_) {
+            // Jika gagal ambil default, set null
+          }
           _luasWilayahKm2 = null;
           _totalRT = null;
           _totalRW = null;
@@ -152,7 +181,13 @@ class _MainMenuPageState extends State<MainMenuPage> {
       ),
       builder: (context) => const _DesaPickerSheet(),
     );
+    
+    print('DEBUG _changeWilayah: selected = $selected');
+    
     if (selected != null) {
+      print('DEBUG: nama=${selected.nama}, kode=${selected.kode}');
+      // Switch ke desa yang dipilih (termasuk dari hasil add/edit/delete)
+      print('DEBUG: Switching to desa ${selected.nama}');
       setState(() {
         _desaName = selected.nama;
         _kodeWilayah = selected.kode;
@@ -164,6 +199,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
         await prefs.setString('last_desa_name', selected.nama);
       } catch (_) {}
       await _loadSummary();
+    } else {
+      print('DEBUG: selected is null');
     }
   }
 
@@ -991,7 +1028,8 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
   }
 
   Future<void> _showAddDesaForm() async {
-    final created = await showModalBottomSheet<bool>(
+    print('DEBUG _showAddDesaForm: Starting');
+    final result = await showModalBottomSheet<Map<String, String>?>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -1000,7 +1038,8 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
       ),
       builder: (ctx) => const _AddDesaFormSheet(),
     );
-    if (created == true) {
+    print('DEBUG _showAddDesaForm: result = $result');
+    if (result != null) {
       // Refresh list after successful addition
       if (!mounted) return;
       await _load(
@@ -1008,9 +1047,19 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
             ? null
             : _searchController.text.trim(),
       );
+      
+      // Tampilkan notifikasi sukses
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Desa berhasil ditambahkan')),
       );
+      
+      print('DEBUG _showAddDesaForm: Popping with new desa data');
+      // Close bottom sheet dengan data desa yang baru ditambahkan
+      final kode = result['kode'] ?? '';
+      final nama = result['nama'] ?? '';
+      Navigator.pop(context, _DesaData(nama: nama, kode: kode, kecamatan: '', penduduk: 0));
+    } else {
+      print('DEBUG _showAddDesaForm: Not created, not popping with marker');
     }
   }
 
@@ -1237,15 +1286,18 @@ class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
     });
     try {
       final repo = DesaRepository();
+      final kode = _kodeCtrl.text.trim();
+      final nama = _namaCtrl.text.trim();
       await repo.createDesa(
-        kodeWilayah: _kodeCtrl.text.trim(),
-        nama: _namaCtrl.text.trim(),
+        kodeWilayah: kode,
+        nama: nama,
         kecamatan: _kecamatanCtrl.text.trim(),
         kabupaten: _kabupatenCtrl.text.trim(),
         provinsi: _provinsiCtrl.text.trim(),
       );
       if (!mounted) return;
-      Navigator.pop(context, true);
+      // Return kode dan nama desa yang baru ditambahkan
+      Navigator.pop(context, {'kode': kode, 'nama': nama});
     } catch (e) {
       setState(() {
         _error = e.toString().replaceFirst('Exception: ', '');
@@ -1471,9 +1523,13 @@ extension on _DesaPickerSheetState {
   }
 
   Future<void> _showEditFlow() async {
+    print('DEBUG _showEditFlow: Starting');
     final chosen = await _pickDesa(title: 'Pilih Desa untuk Diedit');
-    if (chosen == null) return;
-    final saved = await showModalBottomSheet<bool>(
+    if (chosen == null) {
+      print('DEBUG _showEditFlow: No desa chosen');
+      return;
+    }
+    final result = await showModalBottomSheet<Map<String, String>?>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -1486,22 +1542,37 @@ extension on _DesaPickerSheetState {
         initialKecamatan: chosen.kecamatan,
       ),
     );
-    if (saved == true) {
+    print('DEBUG _showEditFlow: result = $result');
+    if (result != null) {
       await _load(
         search: _searchController.text.trim().isEmpty
             ? null
             : _searchController.text.trim(),
       );
       if (!mounted) return;
+      
+      // Tampilkan notifikasi sukses
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Desa berhasil diperbarui')));
+      
+      print('DEBUG _showEditFlow: Popping with edited desa data');
+      // Close bottom sheet dengan data desa yang baru diedit
+      final kode = result['kode'] ?? '';
+      final nama = result['nama'] ?? '';
+      Navigator.pop(context, _DesaData(nama: nama, kode: kode, kecamatan: '', penduduk: 0));
+    } else {
+      print('DEBUG _showEditFlow: Not saved, not popping with marker');
     }
   }
 
   Future<void> _showDeleteFlow() async {
+    print('DEBUG _showDeleteFlow: Starting');
     final chosen = await _pickDesa(title: 'Pilih Desa untuk Dihapus');
-    if (chosen == null) return;
+    if (chosen == null) {
+      print('DEBUG _showDeleteFlow: No desa chosen');
+      return;
+    }
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dctx) => AlertDialog(
@@ -1522,6 +1593,7 @@ extension on _DesaPickerSheetState {
         ],
       ),
     );
+    print('DEBUG _showDeleteFlow: confirmed = $confirmed');
     if (confirmed != true) return;
 
     try {
@@ -1532,24 +1604,39 @@ extension on _DesaPickerSheetState {
             : _searchController.text.trim(),
       );
       if (!mounted) return;
-      // If the currently active desa is deleted, switch main page to another desa
+      
+      // Tampilkan notifikasi sukses
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Desa berhasil dihapus')));
+      
+      // Cek apakah desa yang dihapus adalah desa aktif
       final parent = context.findAncestorStateOfType<_MainMenuPageState>();
-      if (parent != null && parent._kodeWilayah == chosen.kode) {
+      final needSwitch = parent != null && parent._kodeWilayah == chosen.kode;
+      
+      print('DEBUG _showDeleteFlow: needSwitch = $needSwitch');
+      
+      // Close bottom sheet dengan marker untuk reload
+      if (needSwitch) {
+        // Jika desa aktif dihapus, ambil desa default dulu
         try {
           final fallback = await DesaRepository().fetchDefaultDesa();
           if (fallback != null) {
             final newKode = (fallback['kode_wilayah'] ?? '') as String;
             final newNama = (fallback['nama'] ?? 'Desa') as String;
-            await parent._switchToDesa(newKode, newNama);
-          } else {
-            await parent._switchToDesa('', '—');
+            print('DEBUG _showDeleteFlow: Popping with new desa $newNama');
+            // Return desa baru untuk di-switch
+            Navigator.pop(context, _DesaData(nama: newNama, kode: newKode, kecamatan: '', penduduk: 0));
+            return;
           }
         } catch (_) {}
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Desa berhasil dihapus')));
+      
+      print('DEBUG _showDeleteFlow: Popping with __RELOAD__ marker');
+      // Jika bukan desa aktif atau gagal ambil fallback, return marker reload
+      Navigator.pop(context, const _DesaData(nama: '__RELOAD__', kode: '__RELOAD__', kecamatan: '', penduduk: 0));
     } catch (e) {
+      print('DEBUG _showDeleteFlow: Error = $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1793,15 +1880,17 @@ class _EditDesaFormSheetState extends State<_EditDesaFormSheet> {
       _error = null;
     });
     try {
+      final nama = _namaCtrl.text.trim();
       await DesaRepository().updateDesaByKode(
         kodeWilayah: widget.kodeWilayah,
-        nama: _namaCtrl.text.trim(),
+        nama: nama,
         kecamatan: _kecamatanCtrl.text.trim(),
         kabupaten: _kabupatenCtrl.text.trim(),
         provinsi: _provinsiCtrl.text.trim(),
       );
       if (!mounted) return;
-      Navigator.pop(context, true);
+      // Return kode dan nama desa yang baru diedit
+      Navigator.pop(context, {'kode': widget.kodeWilayah, 'nama': nama});
     } catch (e) {
       setState(() {
         _error = e.toString().replaceFirst('Exception: ', '');
