@@ -5,7 +5,11 @@ class DesaRepository {
 
   // List desa ringan untuk picker/list-card
   // Menggunakan v_desa_list jika tersedia; jika tidak, fallback ke desa saja.
-  Future<List<Map<String, dynamic>>> fetchDesaList({String? search, int limit = 20, int offset = 0}) async {
+  Future<List<Map<String, dynamic>>> fetchDesaList({
+    String? search,
+    int limit = 20,
+    int offset = 0,
+  }) async {
     final tablesToTry = <String>['v_desa_list', 'desa'];
     for (final table in tablesToTry) {
       try {
@@ -15,7 +19,9 @@ class DesaRepository {
           // Sederhanakan: cari di nama saja agar kompatibel
           query = query.ilike('nama', '%$s%');
         }
-        final rows = await query.order('nama').range(offset, offset + limit - 1);
+        final rows = await query
+            .order('nama')
+            .range(offset, offset + limit - 1);
         return List<Map<String, dynamic>>.from(rows);
       } catch (_) {
         // coba table berikutnya
@@ -25,7 +31,9 @@ class DesaRepository {
   }
 
   // Detail desa + profile (1:1)
-  Future<Map<String, dynamic>?> fetchDesaDetailByKode(String kodeWilayah) async {
+  Future<Map<String, dynamic>?> fetchDesaDetailByKode(
+    String kodeWilayah,
+  ) async {
     try {
       final row = await _db
           .from('desa')
@@ -40,12 +48,16 @@ class DesaRepository {
 
   // Ringkasan kependudukan terbaru berdasarkan kode_wilayah
   // Prefer v_kependudukan_latest + join desa, fallback query langsung ke kependudukan inner join desa
-  Future<Map<String, dynamic>?> fetchLatestKependudukanByKode(String kodeWilayah) async {
+  Future<Map<String, dynamic>?> fetchLatestKependudukanByKode(
+    String kodeWilayah,
+  ) async {
     // 1) Coba view latest
     try {
       final List withJoin = await _db
           .from('kependudukan')
-          .select('total_penduduk,total_kk,laki_laki,perempuan,periode_date,tahun,bulan, desa!inner(kode_wilayah)')
+          .select(
+            'total_penduduk,total_kk,laki_laki,perempuan,periode_date,tahun,bulan, desa!inner(kode_wilayah)',
+          )
           .eq('desa.kode_wilayah', kodeWilayah)
           .order('periode_date', ascending: false)
           .limit(1);
@@ -63,13 +75,13 @@ class DesaRepository {
           .maybeSingle();
       if (desa == null) return null;
       final desaId = desa['id'] as String;
-    final List rows = await _db
+      final List rows = await _db
           .from('kependudukan')
           .select()
           .eq('desa_id', desaId)
           .order('periode_date', ascending: false)
           .limit(1);
-    if (rows.isNotEmpty) return Map<String, dynamic>.from(rows.first);
+      if (rows.isNotEmpty) return Map<String, dynamic>.from(rows.first);
     } catch (_) {}
 
     return null;
@@ -77,7 +89,9 @@ class DesaRepository {
 
   // Aparatur desa berdasarkan kode_wilayah
   // Urutkan terutama berdasarkan 'urutan' jika ada, lalu created_at sebagai tie-breaker
-  Future<List<Map<String, dynamic>>> fetchAparaturByKode(String kodeWilayah) async {
+  Future<List<Map<String, dynamic>>> fetchAparaturByKode(
+    String kodeWilayah,
+  ) async {
     try {
       final desa = await _db
           .from('desa')
@@ -125,5 +139,77 @@ class DesaRepository {
       }
     }
     return null;
+  }
+
+  // Create/insert desa
+  // Returns the inserted row (as Map) on success, or throws on error
+  Future<Map<String, dynamic>> createDesa({
+    required String kodeWilayah,
+    required String nama,
+    required String kecamatan,
+    required String kabupaten,
+    required String provinsi,
+  }) async {
+    try {
+      final inserted = await _db
+          .from('desa')
+          .insert({
+            'kode_wilayah': kodeWilayah.trim(),
+            'nama': nama.trim(),
+            'kecamatan': kecamatan.trim(),
+            'kabupaten': kabupaten.trim(),
+            'provinsi': provinsi.trim(),
+          })
+          .select()
+          .single();
+      return Map<String, dynamic>.from(inserted);
+    } on PostgrestException catch (e) {
+      // Re-throw with readable message (e.g., duplicate kode_wilayah)
+      throw Exception(e.message);
+    } catch (e) {
+      throw Exception('Gagal menambahkan desa');
+    }
+  }
+
+  // Update desa by unique kode_wilayah
+  Future<Map<String, dynamic>> updateDesaByKode({
+    required String kodeWilayah,
+    String? nama,
+    String? kecamatan,
+    String? kabupaten,
+    String? provinsi,
+  }) async {
+    final data = <String, dynamic>{};
+    if (nama != null) data['nama'] = nama.trim();
+    if (kecamatan != null) data['kecamatan'] = kecamatan.trim();
+    if (kabupaten != null) data['kabupaten'] = kabupaten.trim();
+    if (provinsi != null) data['provinsi'] = provinsi.trim();
+    if (data.isEmpty) {
+      throw Exception('Tidak ada perubahan');
+    }
+    try {
+      final updated = await _db
+          .from('desa')
+          .update(data)
+          .eq('kode_wilayah', kodeWilayah)
+          .select()
+          .single();
+      return Map<String, dynamic>.from(updated);
+    } on PostgrestException catch (e) {
+      throw Exception(e.message);
+    } catch (e) {
+      throw Exception('Gagal memperbarui desa');
+    }
+  }
+
+  // Delete desa by kode_wilayah (assumes DB has ON DELETE CASCADE for related rows)
+  Future<void> deleteDesaByKode(String kodeWilayah) async {
+    try {
+      await _db.from('desa').delete().eq('kode_wilayah', kodeWilayah);
+    } on PostgrestException catch (e) {
+      throw Exception(e.message);
+    } catch (_) {
+      throw Exception('Gagal menghapus desa');
+    }
   }
 }

@@ -7,11 +7,6 @@ import '../services/desa_repository.dart';
 import '../services/kesehatan_repository.dart';
 import '../services/pendidikan_repository.dart';
 import '../utils/responsive.dart';
-import 'kependudukan_screen.dart';
-import 'kesehatan_screen.dart';
-import 'kebencanaan_screen.dart';
-import 'metadata_screen.dart';
-import 'profil_desa_screen.dart';
 
 // Main menu screen untuk aplikasi Desa — versi yang rapi
 class MainMenuPage extends StatefulWidget {
@@ -62,11 +57,10 @@ class _MainMenuPageState extends State<MainMenuPage> {
   }
 
   Future<void> _loadSummary() async {
-  // load summary from DB
-    if (mounted) setState(() { _loadingSummary = true; }); // show loader
+    if (mounted) setState(() => _loadingSummary = true);
     try {
       await Future(() async {
-        // Detail desa + profile (luas, RT/RW)
+        // Profil desa (luas, RT/RW)
         final detail = await _repo.fetchDesaDetailByKode(_kodeWilayah);
         if (detail != null) {
           final p = detail['desa_profile'] as Map<String, dynamic>?;
@@ -103,10 +97,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
         try {
           final counts = await _pendidikanRepo.getCounts(_kodeWilayah);
           if (counts.isNotEmpty) {
-            // Total negeri selalu 0 (hardcode karena fokus swasta)
-            _totalPendidikanNegeri = 0;
-            
-            // Total swasta: PAUD + TK + SD + SMP + SMA + SMK + Akademi/PT
+            _totalPendidikanNegeri = 0; // fokus swasta untuk saat ini
             final paud = counts['PAUD'] ?? 0;
             final tk = counts['TK'] ?? 0;
             final sd = counts['SD'] ?? 0;
@@ -125,12 +116,31 @@ class _MainMenuPageState extends State<MainMenuPage> {
         }
       }).timeout(const Duration(seconds: 8));
     } on TimeoutException {
-      // timeout: leave values as null so UI shows placeholders
+      // ignore
     } catch (_) {
-      // ignore errors, keep nulls
+      // ignore
     } finally {
-      if (mounted) setState(() { _loadingSummary = false; });
+      if (mounted) setState(() => _loadingSummary = false);
     }
+  }
+
+  Future<void> _switchToDesa(String kode, String nama) async {
+    if (!mounted) return;
+    setState(() {
+      _kodeWilayah = kode;
+      _desaName = nama;
+    });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (kode.isEmpty) {
+        await prefs.remove('last_desa_kode');
+        await prefs.remove('last_desa_name');
+      } else {
+        await prefs.setString('last_desa_kode', kode);
+        await prefs.setString('last_desa_name', nama);
+      }
+    } catch (_) {}
+    await _loadSummary();
   }
 
   Future<void> _changeWilayah() async {
@@ -219,23 +229,35 @@ class _MainMenuPageState extends State<MainMenuPage> {
     const double bottomPad = 20; // loosen spacing below carousel
 
     // Prepare carousel items (dynamic from DB with graceful fallback)
-    final luasStr = _luasWilayahKm2 != null ? '${_luasWilayahKm2!.toStringAsFixed(2)} km²' : '—';
-    final rtRwStr = (_totalRT != null && _totalRW != null) ? '$_totalRT/$_totalRW' : '—';
-    final pendudukStr = _latestPenduduk?.toString() ?? '0';
-    final kkStr = _latestKK?.toString() ?? '0';
-    final fasilitasStr = _totalFasilitas?.toString() ?? '0';
-    final tenagaStr = _totalTenagaMedis?.toString() ?? '0';
-    final negeriStr = _totalPendidikanNegeri?.toString() ?? '0';
-    final swastaStr = _totalSwasta?.toString() ?? '0';
-    
+    final luasStr = _luasWilayahKm2 != null
+        ? '${_luasWilayahKm2!.toStringAsFixed(2)} km²'
+        : '—';
+    final rtRwStr = (_totalRT != null && _totalRW != null)
+        ? '$_totalRT/$_totalRW'
+        : '—';
+    final pendudukStr = _latestPenduduk?.toString() ?? '—';
+    final kkStr = _latestKK?.toString() ?? '—';
+    final fasilitasStr = _totalFasilitas?.toString() ?? '—';
+    final tenagaStr = _totalTenagaMedis?.toString() ?? '—';
+    final negeriStr = _totalPendidikanNegeri?.toString() ?? '—';
+    final swastaStr = _totalSwasta?.toString() ?? '—';
+
     final summaryItems = <_SummaryItem>[
       _SummaryItem(
         title: 'Ringkasan Desa',
         gradient: _gradLogin,
         icon: Icons.landscape_rounded,
         chips: [
-          _SummaryChip(icon: Icons.map_rounded, label: 'Luas Wilayah', value: luasStr),
-          _SummaryChip(icon: Icons.location_city_rounded, label: 'RT/RW', value: rtRwStr),
+          _SummaryChip(
+            icon: Icons.map_rounded,
+            label: 'Luas Wilayah',
+            value: luasStr,
+          ),
+          _SummaryChip(
+            icon: Icons.location_city_rounded,
+            label: 'RT/RW',
+            value: rtRwStr,
+          ),
         ],
       ),
       _SummaryItem(
@@ -243,7 +265,11 @@ class _MainMenuPageState extends State<MainMenuPage> {
         gradient: _gradEmeraldGold,
         icon: Icons.people_rounded,
         chips: [
-          _SummaryChip(icon: Icons.group_rounded, label: 'Total Penduduk', value: pendudukStr),
+          _SummaryChip(
+            icon: Icons.group_rounded,
+            label: 'Total Penduduk',
+            value: pendudukStr,
+          ),
           _SummaryChip(icon: Icons.badge_rounded, label: 'KK', value: kkStr),
         ],
       ),
@@ -252,8 +278,16 @@ class _MainMenuPageState extends State<MainMenuPage> {
         gradient: _gradBluePurple,
         icon: Icons.school_rounded,
         chips: [
-          _SummaryChip(icon: Icons.account_balance_rounded, label: 'Negeri', value: negeriStr),
-          _SummaryChip(icon: Icons.apartment_rounded, label: 'Swasta', value: swastaStr),
+          _SummaryChip(
+            icon: Icons.account_balance_rounded,
+            label: 'Negeri',
+            value: negeriStr,
+          ),
+          _SummaryChip(
+            icon: Icons.apartment_rounded,
+            label: 'Swasta',
+            value: swastaStr,
+          ),
         ],
       ),
       _SummaryItem(
@@ -261,8 +295,16 @@ class _MainMenuPageState extends State<MainMenuPage> {
         gradient: _gradCyanBlue,
         icon: Icons.local_hospital_rounded,
         chips: [
-          _SummaryChip(icon: Icons.local_hospital_rounded, label: 'Fasilitas', value: fasilitasStr),
-          _SummaryChip(icon: Icons.volunteer_activism_rounded, label: 'Tenaga', value: tenagaStr),
+          _SummaryChip(
+            icon: Icons.local_hospital_rounded,
+            label: 'Fasilitas',
+            value: fasilitasStr,
+          ),
+          _SummaryChip(
+            icon: Icons.volunteer_activism_rounded,
+            label: 'Tenaga',
+            value: tenagaStr,
+          ),
         ],
       ),
     ];
@@ -288,7 +330,10 @@ class _MainMenuPageState extends State<MainMenuPage> {
                   isAdmin: widget.isAdmin,
                   onChangeWilayah: _changeWilayah,
                   onLogout: () async {
-                    final auth = Provider.of<AuthService>(context, listen: false);
+                    final auth = Provider.of<AuthService>(
+                      context,
+                      listen: false,
+                    );
                     await auth.signOut();
                   },
                   // Keep animation fully visible (no shrink)
@@ -325,19 +370,24 @@ class _MainMenuPageState extends State<MainMenuPage> {
               Expanded(
                 child: ScrollConfiguration(
                   behavior: _NoGlowBehavior(),
-                  child: CustomScrollView(
-                    physics: const ClampingScrollPhysics(),
-                    slivers: [
-                      SliverPadding(
-                        padding: EdgeInsets.fromLTRB(
-                          context.horizontalPadding,
-                          0,
-                          context.horizontalPadding,
-                          24,
-                        ),
-                        sliver: _FeatureGrid(features: dataCategories),
+                  child: RefreshIndicator(
+                    onRefresh: _loadSummary,
+                    child: CustomScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(
+                        parent: ClampingScrollPhysics(),
                       ),
-                    ],
+                      slivers: [
+                        SliverPadding(
+                          padding: EdgeInsets.fromLTRB(
+                            context.horizontalPadding,
+                            0,
+                            context.horizontalPadding,
+                            24,
+                          ),
+                          sliver: _FeatureGrid(features: dataCategories),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -604,59 +654,13 @@ class _FeatureCard extends StatelessWidget {
     return InkWell(
       borderRadius: BorderRadius.circular(20),
       onTap: () {
-        // Navigate berdasarkan route
-        if (feature.route == '/profil-desa') {
-          final parent = context.findAncestorStateOfType<_MainMenuPageState>();
-          final kode = parent?._kodeWilayah ?? '';
-          final nama = parent?._desaName ?? 'Desa';
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ProfilDesaScreen(
-                kodeWilayah: kode,
-                desaName: nama,
-              ),
-            ),
-          );
-        } else if (feature.route == '/kependudukan') {
-          final parent = context.findAncestorStateOfType<_MainMenuPageState>();
-          final kode = parent?._kodeWilayah ?? '';
-          final nama = parent?._desaName ?? 'Desa';
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => KependudukanScreen(
-                kodeWilayah: kode,
-                desaName: nama,
-              ),
-            ),
-          );
-        } else if (feature.route == '/kesehatan') {
-          final parent = context.findAncestorStateOfType<_MainMenuPageState>();
-          final kode = parent?._kodeWilayah ?? '';
-          final nama = parent?._desaName ?? 'Desa';
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => KesehatanScreen(
-                kodeWilayah: kode,
-                desaName: nama,
-              ),
-            ),
-          );
-        } else if (feature.route == '/kebencanaan') {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const KebencanaanScreen()),
-          );
-        } else if (feature.route == '/metadata') {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const MetadataScreen()),
-          );
-        } else {
-          Navigator.of(context).pushNamed(feature.route);
-        }
+        // Navigate via named route, passing current desa context as arguments
+        final parent = context.findAncestorStateOfType<_MainMenuPageState>();
+        final args = {
+          'kodeWilayah': parent?._kodeWilayah,
+          'desaName': parent?._desaName,
+        };
+        Navigator.of(context).pushNamed(feature.route, arguments: args);
       },
       child: Ink(
         decoration: BoxDecoration(
@@ -974,25 +978,652 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
     } else {
       final q = query.toLowerCase();
       setState(() {
-        _filteredList = _all.where((d) =>
-            d.nama.toLowerCase().contains(q) ||
-            d.kecamatan.toLowerCase().contains(q) ||
-            d.kode.contains(query)).toList();
+        _filteredList = _all
+            .where(
+              (d) =>
+                  d.nama.toLowerCase().contains(q) ||
+                  d.kecamatan.toLowerCase().contains(q) ||
+                  d.kode.contains(query),
+            )
+            .toList();
       });
+    }
+  }
+
+  Future<void> _showAddDesaForm() async {
+    final created = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => const _AddDesaFormSheet(),
+    );
+    if (created == true) {
+      // Refresh list after successful addition
+      if (!mounted) return;
+      await _load(
+        search: _searchController.text.trim().isEmpty
+            ? null
+            : _searchController.text.trim(),
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Desa berhasil ditambahkan')),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final auth = Provider.of<AuthService>(context);
+    final bool isAdmin = !auth.isGuest;
+    final double listBottomPad = isAdmin ? 90 : 20;
+
     return DraggableScrollableSheet(
       initialChildSize: 0.75,
       minChildSize: 0.5,
       maxChildSize: 0.95,
       expand: false,
       builder: (context, scrollController) {
+        return Stack(
+          children: [
+            Column(
+              children: [
+                // Handle bar
+                Container(
+                  margin: const EdgeInsets.only(top: 12, bottom: 8),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                // Header
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Pilih Wilayah Desa',
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${_filteredList.length} desa tersedia',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Search field
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: _filterDesa,
+                    decoration: InputDecoration(
+                      hintText: 'Cari nama desa, kecamatan, atau kode...',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear_rounded),
+                              onPressed: () {
+                                _searchController.clear();
+                                _filterDesa('');
+                              },
+                            )
+                          : null,
+                      filled: true,
+                      fillColor: Colors.grey.shade100,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        vertical: 12,
+                        horizontal: 16,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Desa list
+                Expanded(
+                  child: _loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _filteredList.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.search_off_rounded,
+                                size: 64,
+                                color: Colors.grey.shade400,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Tidak ada desa ditemukan',
+                                style: TextStyle(
+                                  color: Colors.grey.shade600,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.separated(
+                          controller: scrollController,
+                          padding: EdgeInsets.fromLTRB(
+                            20,
+                            0,
+                            20,
+                            listBottomPad,
+                          ),
+                          itemCount: _filteredList.length,
+                          separatorBuilder: (_, index) =>
+                              const Divider(height: 1),
+                          itemBuilder: (context, index) {
+                            final desa = _filteredList[index];
+                            return ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 8,
+                                horizontal: 12,
+                              ),
+                              leading: Container(
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  gradient: _gradLogin,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  Icons.location_city_rounded,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              title: Text(
+                                desa.nama,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: 4),
+                                  Text('Kec. ${desa.kecamatan} • ${desa.kode}'),
+                                  if (desa.penduduk > 0) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '${desa.penduduk} penduduk',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              trailing: const Icon(Icons.chevron_right_rounded),
+                              onTap: () => Navigator.pop(context, desa),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+
+            if (isAdmin)
+              Positioned(
+                right: 20,
+                bottom: 20,
+                child: FloatingActionButton(
+                  onPressed: _openAdminActionsSheet,
+                  backgroundColor: const Color(0xFF2563EB),
+                  child: const Icon(Icons.add_rounded, color: Colors.white),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+// =========================
+// Add Desa Form (Bottom Sheet)
+// =========================
+class _AddDesaFormSheet extends StatefulWidget {
+  const _AddDesaFormSheet();
+
+  @override
+  State<_AddDesaFormSheet> createState() => _AddDesaFormSheetState();
+}
+
+class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _kodeCtrl = TextEditingController();
+  final _namaCtrl = TextEditingController();
+  final _kecamatanCtrl = TextEditingController();
+  final _kabupatenCtrl = TextEditingController();
+  final _provinsiCtrl = TextEditingController();
+  bool _submitting = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _kodeCtrl.dispose();
+    _namaCtrl.dispose();
+    _kecamatanCtrl.dispose();
+    _kabupatenCtrl.dispose();
+    _provinsiCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final valid = _formKey.currentState?.validate() ?? false;
+    if (!valid) return;
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+    try {
+      final repo = DesaRepository();
+      await repo.createDesa(
+        kodeWilayah: _kodeCtrl.text.trim(),
+        nama: _namaCtrl.text.trim(),
+        kecamatan: _kecamatanCtrl.text.trim(),
+        kabupaten: _kabupatenCtrl.text.trim(),
+        provinsi: _provinsiCtrl.text.trim(),
+      );
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } catch (e) {
+      setState(() {
+        _error = e.toString().replaceFirst('Exception: ', '');
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _submitting = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottom),
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Tambah Desa',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 12),
+              if (_error != null) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.red.withValues(alpha: 0.25),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.error_outline_rounded,
+                        color: Colors.red,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(_error!)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    TextFormField(
+                      controller: _kodeCtrl,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        labelText: 'Kode Wilayah',
+                        hintText: 'Misal: 1101010001',
+                        prefixIcon: Icon(Icons.tag_rounded),
+                      ),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) {
+                          return 'Kode wilayah wajib diisi';
+                        }
+                        if (v.trim().length > 10) {
+                          return 'Maksimal 10 karakter';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _namaCtrl,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        labelText: 'Nama Desa',
+                        prefixIcon: Icon(Icons.home_rounded),
+                      ),
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Nama wajib diisi'
+                          : null,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _kecamatanCtrl,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        labelText: 'Kecamatan',
+                        prefixIcon: Icon(Icons.apartment_rounded),
+                      ),
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Kecamatan wajib diisi'
+                          : null,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _kabupatenCtrl,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        labelText: 'Kabupaten/Kota',
+                        prefixIcon: Icon(Icons.location_city_rounded),
+                      ),
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Kabupaten wajib diisi'
+                          : null,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _provinsiCtrl,
+                      textInputAction: TextInputAction.done,
+                      decoration: const InputDecoration(
+                        labelText: 'Provinsi',
+                        prefixIcon: Icon(Icons.map_rounded),
+                      ),
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Provinsi wajib diisi'
+                          : null,
+                      onFieldSubmitted: (_) => _submit(),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: _submitting
+                        ? null
+                        : () => Navigator.pop(context, false),
+                    child: const Text('Batal'),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: _submitting ? null : _submit,
+                    icon: _submitting
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.save_rounded),
+                    label: const Text('Simpan'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// =========================
+// Admin Action Menu (Tambah, Edit, Hapus)
+// =========================
+extension on _DesaPickerSheetState {
+  Future<void> _openAdminActionsSheet() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.add_rounded),
+                title: const Text('Tambah'),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  await _showAddDesaForm();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.edit_rounded),
+                title: const Text('Edit'),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  await _showEditFlow();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_rounded),
+                title: const Text('Hapus'),
+                textColor: Colors.red,
+                iconColor: Colors.red,
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  await _showDeleteFlow();
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<_DesaData?> _pickDesa({required String title}) async {
+    return showModalBottomSheet<_DesaData>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => _SelectDesaSheet(title: title),
+    );
+  }
+
+  Future<void> _showEditFlow() async {
+    final chosen = await _pickDesa(title: 'Pilih Desa untuk Diedit');
+    if (chosen == null) return;
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => _EditDesaFormSheet(
+        kodeWilayah: chosen.kode,
+        initialNama: chosen.nama,
+        initialKecamatan: chosen.kecamatan,
+      ),
+    );
+    if (saved == true) {
+      await _load(
+        search: _searchController.text.trim().isEmpty
+            ? null
+            : _searchController.text.trim(),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Desa berhasil diperbarui')));
+    }
+  }
+
+  Future<void> _showDeleteFlow() async {
+    final chosen = await _pickDesa(title: 'Pilih Desa untuk Dihapus');
+    if (chosen == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dctx) => AlertDialog(
+        title: const Text('Hapus Desa'),
+        content: Text(
+          'Yakin ingin menghapus desa "${chosen.nama}" (Kode ${chosen.kode})?\nTindakan ini akan menghapus data desa dari database.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dctx, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(dctx, true),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await DesaRepository().deleteDesaByKode(chosen.kode);
+      await _load(
+        search: _searchController.text.trim().isEmpty
+            ? null
+            : _searchController.text.trim(),
+      );
+      if (!mounted) return;
+      // If the currently active desa is deleted, switch main page to another desa
+      final parent = context.findAncestorStateOfType<_MainMenuPageState>();
+      if (parent != null && parent._kodeWilayah == chosen.kode) {
+        try {
+          final fallback = await DesaRepository().fetchDefaultDesa();
+          if (fallback != null) {
+            final newKode = (fallback['kode_wilayah'] ?? '') as String;
+            final newNama = (fallback['nama'] ?? 'Desa') as String;
+            await parent._switchToDesa(newKode, newNama);
+          } else {
+            await parent._switchToDesa('', '—');
+          }
+        } catch (_) {}
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Desa berhasil dihapus')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Gagal menghapus desa: ${e.toString().replaceFirst('Exception: ', '')}',
+          ),
+        ),
+      );
+    }
+  }
+}
+
+// =========================
+// Select Desa Sheet (for Edit/Delete)
+// =========================
+class _SelectDesaSheet extends StatefulWidget {
+  const _SelectDesaSheet({required this.title});
+  final String title;
+
+  @override
+  State<_SelectDesaSheet> createState() => _SelectDesaSheetState();
+}
+
+class _SelectDesaSheetState extends State<_SelectDesaSheet> {
+  final _searchController = TextEditingController();
+  final _repo = DesaRepository();
+  List<_DesaData> _items = const [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load({String? search}) async {
+    setState(() => _loading = true);
+    try {
+      final rows = await _repo.fetchDesaList(search: search, limit: 200);
+      _items = rows
+          .map<_DesaData>(
+            (r) => _DesaData(
+              nama: (r['nama'] ?? '') as String,
+              kode: (r['kode_wilayah'] ?? '') as String,
+              kecamatan: (r['kecamatan'] ?? '') as String,
+              penduduk: (r['total_penduduk'] as int?) ?? 0,
+            ),
+          )
+          .toList();
+    } catch (_) {
+      _items = const [];
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _onSearch(String q) => _load(search: q.isEmpty ? null : q);
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.85,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (context, scrollController) {
         return Column(
           children: [
-            // Handle bar
             Container(
               margin: const EdgeInsets.only(top: 12, bottom: 8),
               width: 40,
@@ -1002,21 +1633,20 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            // Header
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Pilih Wilayah Desa',
+                    widget.title,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${_filteredList.length} desa tersedia',
+                    '${_items.length} desa ditemukan',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Colors.grey.shade600,
                     ),
@@ -1024,24 +1654,14 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
                 ],
               ),
             ),
-            // Search field
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: TextField(
                 controller: _searchController,
-                onChanged: _filterDesa,
+                onChanged: _onSearch,
                 decoration: InputDecoration(
                   hintText: 'Cari nama desa, kecamatan, atau kode...',
                   prefixIcon: const Icon(Icons.search_rounded),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear_rounded),
-                          onPressed: () {
-                            _searchController.clear();
-                            _filterDesa('');
-                          },
-                        )
-                      : null,
                   filled: true,
                   fillColor: Colors.grey.shade100,
                   border: OutlineInputBorder(
@@ -1056,78 +1676,35 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
               ),
             ),
             const SizedBox(height: 16),
-            // Desa list
             Expanded(
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
-                  : _filteredList.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.search_off_rounded,
-                            size: 64,
-                            color: Colors.grey.shade400,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Tidak ada desa ditemukan',
-                            style: TextStyle(
-                              color: Colors.grey.shade600,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
                   : ListView.separated(
                       controller: scrollController,
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                      itemCount: _filteredList.length,
-                      separatorBuilder: (_, index) => const Divider(height: 1),
+                      itemCount: _items.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
                       itemBuilder: (context, index) {
-                        final desa = _filteredList[index];
+                        final desa = _items[index];
                         return ListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 8,
-                            horizontal: 12,
-                          ),
                           leading: Container(
-                            width: 48,
-                            height: 48,
+                            width: 40,
+                            height: 40,
                             decoration: BoxDecoration(
                               gradient: _gradLogin,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(10),
                             ),
                             child: const Icon(
-                              Icons.location_city_rounded,
+                              Icons.home_rounded,
                               color: Colors.white,
                             ),
                           ),
                           title: Text(
                             desa.nama,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16,
-                            ),
+                            style: const TextStyle(fontWeight: FontWeight.w600),
                           ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const SizedBox(height: 4),
-                              Text('Kec. ${desa.kecamatan} • ${desa.kode}'),
-                              if (desa.penduduk > 0) ...[
-                                const SizedBox(height: 2),
-                                Text(
-                                  '${desa.penduduk} penduduk',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey.shade600,
-                                  ),
-                                ),
-                              ]
-                            ],
+                          subtitle: Text(
+                            'Kec. ${desa.kecamatan} • ${desa.kode}',
                           ),
                           trailing: const Icon(Icons.chevron_right_rounded),
                           onTap: () => Navigator.pop(context, desa),
@@ -1138,6 +1715,241 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
           ],
         );
       },
+    );
+  }
+}
+
+// =========================
+// Edit Desa Form (Bottom Sheet)
+// =========================
+class _EditDesaFormSheet extends StatefulWidget {
+  const _EditDesaFormSheet({
+    required this.kodeWilayah,
+    this.initialNama,
+    this.initialKecamatan,
+  });
+  final String kodeWilayah;
+  final String? initialNama;
+  final String? initialKecamatan;
+
+  @override
+  State<_EditDesaFormSheet> createState() => _EditDesaFormSheetState();
+}
+
+class _EditDesaFormSheetState extends State<_EditDesaFormSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _namaCtrl = TextEditingController();
+  final _kecamatanCtrl = TextEditingController();
+  final _kabupatenCtrl = TextEditingController();
+  final _provinsiCtrl = TextEditingController();
+  bool _loading = true;
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  @override
+  void dispose() {
+    _namaCtrl.dispose();
+    _kecamatanCtrl.dispose();
+    _kabupatenCtrl.dispose();
+    _provinsiCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _init() async {
+    try {
+      // Prefill quickly with known values to reduce flicker
+      if (widget.initialNama != null) _namaCtrl.text = widget.initialNama!;
+      if (widget.initialKecamatan != null)
+        _kecamatanCtrl.text = widget.initialKecamatan!;
+
+      final detail = await DesaRepository().fetchDesaDetailByKode(
+        widget.kodeWilayah,
+      );
+      if (detail != null) {
+        _namaCtrl.text = (detail['nama'] ?? _namaCtrl.text) as String;
+        _kecamatanCtrl.text =
+            (detail['kecamatan'] ?? _kecamatanCtrl.text) as String;
+        _kabupatenCtrl.text = (detail['kabupaten'] ?? '') as String;
+        _provinsiCtrl.text = (detail['provinsi'] ?? '') as String;
+      }
+    } catch (_) {
+      // ignore
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _submit() async {
+    final valid = _formKey.currentState?.validate() ?? false;
+    if (!valid) return;
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      await DesaRepository().updateDesaByKode(
+        kodeWilayah: widget.kodeWilayah,
+        nama: _namaCtrl.text.trim(),
+        kecamatan: _kecamatanCtrl.text.trim(),
+        kabupaten: _kabupatenCtrl.text.trim(),
+        provinsi: _provinsiCtrl.text.trim(),
+      );
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } catch (e) {
+      setState(() {
+        _error = e.toString().replaceFirst('Exception: ', '');
+      });
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottom),
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Edit Desa',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Kode Wilayah: ${widget.kodeWilayah}',
+                style: const TextStyle(color: Colors.black54),
+              ),
+              const SizedBox(height: 12),
+              if (_error != null) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.red.withValues(alpha: 0.25),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.error_outline_rounded,
+                        color: Colors.red,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(_error!)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              if (_loading)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(12.0),
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+              else
+                Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      TextFormField(
+                        controller: _namaCtrl,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: 'Nama Desa',
+                          prefixIcon: Icon(Icons.home_rounded),
+                        ),
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Nama wajib diisi'
+                            : null,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _kecamatanCtrl,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: 'Kecamatan',
+                          prefixIcon: Icon(Icons.apartment_rounded),
+                        ),
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Kecamatan wajib diisi'
+                            : null,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _kabupatenCtrl,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: 'Kabupaten/Kota',
+                          prefixIcon: Icon(Icons.location_city_rounded),
+                        ),
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Kabupaten wajib diisi'
+                            : null,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _provinsiCtrl,
+                        textInputAction: TextInputAction.done,
+                        decoration: const InputDecoration(
+                          labelText: 'Provinsi',
+                          prefixIcon: Icon(Icons.map_rounded),
+                        ),
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Provinsi wajib diisi'
+                            : null,
+                        onFieldSubmitted: (_) => _submit(),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 18),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: _saving
+                        ? null
+                        : () => Navigator.pop(context, false),
+                    child: const Text('Batal'),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: _saving ? null : _submit,
+                    icon: _saving
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.save_rounded),
+                    label: const Text('Simpan'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
