@@ -397,6 +397,25 @@ class _FasilitasPie extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Check if data is empty (show notice only if no data structure exists)
+    final hasData = data.isNotEmpty;
+    
+    if (!hasData) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 40),
+          child: Text(
+            'Belum ada data fasilitas kesehatan periode ini',
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: 14,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+    
     final total = data.values.fold(0, (p, c) => p + c);
     final entries = data.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
@@ -497,6 +516,25 @@ class _HorizontalBars extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Check if data is empty (show notice only if no data structure exists)
+    final hasData = data.isNotEmpty;
+    
+    if (!hasData) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 40),
+          child: Text(
+            'Belum ada data tenaga medis periode ini',
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: 14,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+    
     final total = data.values.fold(0, (p, c) => p + c);
     final entries = data.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));

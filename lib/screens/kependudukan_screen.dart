@@ -323,6 +323,9 @@ class _KependudukanScreenState extends State<KependudukanScreen>
     final perempuan = _perempuan ?? 0;
     final total = (lakiLaki + perempuan).clamp(0, 1 << 31);
 
+    // Only show notice if both values are null (no data from DB)
+    final hasData = _lakiLaki != null || _perempuan != null;
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -344,12 +347,12 @@ class _KependudukanScreenState extends State<KependudukanScreen>
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0B7A75).withValues(alpha: 0.1),
+                  color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
                   Icons.wc_rounded,
-                  color: Color(0xFF0B7A75),
+                  color: Color(0xFF3B82F6),
                   size: 24,
                 ),
               ),
@@ -359,17 +362,20 @@ class _KependudukanScreenState extends State<KependudukanScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Distribusi Jenis Kelamin',
+                      'Distribusi Gender',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A1A1A),
+                        color: Color(0xFF1F2937),
                       ),
                     ),
-                    SizedBox(height: 2),
+                    SizedBox(height: 4),
                     Text(
-                      'Perbandingan penduduk berdasarkan gender',
-                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                      'Perbandingan jumlah laki-laki dan perempuan',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF6B7280),
+                      ),
                     ),
                   ],
                 ),
@@ -377,75 +383,85 @@ class _KependudukanScreenState extends State<KependudukanScreen>
             ],
           ),
           const SizedBox(height: 32),
-          Row(
-            children: [
-              Expanded(
-                child: _buildGenderCard(
-                  'Laki-laki',
-                  lakiLaki,
-                  total,
-                  Icons.male_rounded,
-                  const Color(0xFF3B82F6),
+          if (!hasData)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 40),
+                child: Text(
+                  'Belum ada data gender periode ini',
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 14,
+                  ),
                 ),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildGenderCard(
-                  'Perempuan',
-                  perempuan,
-                  total,
-                  Icons.female_rounded,
-                  const Color(0xFFEC4899),
+            )
+          else ...[
+            Row(
+              children: [
+                Expanded(
+                  child: _buildGenderCard(
+                    'Laki-laki',
+                    lakiLaki,
+                    total,
+                    Icons.male_rounded,
+                    const Color(0xFF3B82F6),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 32),
-          Center(
-            child: SizedBox(
-              height: 280,
-              child: PieChart(
-                PieChartData(
-                  sectionsSpace: 4,
-                  centerSpaceRadius: 70,
-                  sections: [
-                    PieChartSectionData(
-                      value: lakiLaki.toDouble(),
-                      title: total == 0 ? '' : '${(lakiLaki / total * 100).toStringAsFixed(1)}%',
-                      color: const Color(0xFF3B82F6),
-                      radius: 80,
-                      titleStyle: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildGenderCard(
+                    'Perempuan',
+                    perempuan,
+                    total,
+                    Icons.female_rounded,
+                    const Color(0xFFEC4899),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 32),
+            Center(
+              child: SizedBox(
+                height: 280,
+                child: PieChart(
+                  PieChartData(
+                    sectionsSpace: 4,
+                    centerSpaceRadius: 70,
+                    sections: [
+                      PieChartSectionData(
+                        value: lakiLaki.toDouble(),
+                        title: total == 0 ? '' : '${(lakiLaki / total * 100).toStringAsFixed(1)}%',
+                        color: const Color(0xFF3B82F6),
+                        radius: 80,
+                        titleStyle: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
-                      badgeWidget: _buildBadge(
-                        Icons.male_rounded,
-                        const Color(0xFF3B82F6),
+                      PieChartSectionData(
+                        value: perempuan.toDouble(),
+                        title: total == 0 ? '' : '${(perempuan / total * 100).toStringAsFixed(1)}%',
+                        color: const Color(0xFFEC4899),
+                        radius: 80,
+                        titleStyle: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                        badgeWidget: _buildBadge(
+                          Icons.female_rounded,
+                          const Color(0xFFEC4899),
+                        ),
+                        badgePositionPercentageOffset: 1.06,
                       ),
-                      badgePositionPercentageOffset: 1.06,
-                    ),
-                    PieChartSectionData(
-                      value: perempuan.toDouble(),
-                      title: total == 0 ? '' : '${(perempuan / total * 100).toStringAsFixed(1)}%',
-                      color: const Color(0xFFEC4899),
-                      radius: 80,
-                      titleStyle: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                      badgeWidget: _buildBadge(
-                        Icons.female_rounded,
-                        const Color(0xFFEC4899),
-                      ),
-                      badgePositionPercentageOffset: 1.06,
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -615,7 +631,7 @@ class _KependudukanScreenState extends State<KependudukanScreen>
           if (sortedEntries.isEmpty)
             const Padding(
               padding: EdgeInsets.all(8.0),
-              child: Text('Belum ada data pendidikan untuk periode terbaru',
+              child: Text('Belum ada data pendidikan periode ini',
                   style: TextStyle(color: Colors.grey)),
             ),
           ...sortedEntries.map((entry) {
@@ -695,6 +711,9 @@ class _KependudukanScreenState extends State<KependudukanScreen>
   final bekerja = _produktifBekerja ?? 0;
   final tidakBekerja = _produktifTidak ?? 0;
   final totalUsiaProduktif = _totalUsiaProduktif ?? (bekerja + tidakBekerja);
+  
+  // Only show notice if data is null (no data from DB)
+  final hasData = _produktifBekerja != null || _produktifTidak != null;
     
     final colors = [
       const Color(0xFF10B981), // Hijau untuk Bekerja
@@ -722,12 +741,12 @@ class _KependudukanScreenState extends State<KependudukanScreen>
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0B7A75).withValues(alpha: 0.1),
+                  color: const Color(0xFF10B981).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
                   Icons.trending_up_rounded,
-                  color: Color(0xFF0B7A75),
+                  color: Color(0xFF10B981),
                   size: 24,
                 ),
               ),
@@ -737,17 +756,20 @@ class _KependudukanScreenState extends State<KependudukanScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Produktivitas Usia Produktif',
+                      'Produktivitas',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A1A1A),
+                        color: Color(0xFF1F2937),
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 4),
                     Text(
-                      'Usia Kerja (15-64 tahun): ${totalUsiaProduktif.toString()} orang',
-                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                      'Total: ${totalUsiaProduktif.toString()} orang',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF6B7280),
+                      ),
                     ),
                   ],
                 ),
@@ -755,83 +777,97 @@ class _KependudukanScreenState extends State<KependudukanScreen>
             ],
           ),
           const SizedBox(height: 32),
-          // Responsive layout
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isSmallScreen = constraints.maxWidth < 600;
-              return Column(
-                children: [
-                  // Pie Chart
-                  Center(
-                    child: SizedBox(
-                      height: isSmallScreen ? 250 : 300,
-                      child: PieChart(
-                        PieChartData(
-                          sectionsSpace: 4,
-                          centerSpaceRadius: isSmallScreen ? 60 : 70,
-                          sections: [
-                            PieChartSectionData(
-                              value: bekerja.toDouble(),
-                title: totalUsiaProduktif == 0
-                  ? ''
-                  : '${(bekerja / totalUsiaProduktif * 100).toStringAsFixed(1)}%',
-                              color: colors[0],
-                              radius: isSmallScreen ? 80 : 90,
-                              titleStyle: TextStyle(
-                                fontSize: isSmallScreen ? 16 : 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
+          if (!hasData)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 40),
+                child: Text(
+                  'Belum ada data produktivitas periode ini',
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            )
+          else
+            // Responsive layout
+            LayoutBuilder(
+                builder: (context, constraints) {
+                final isSmallScreen = constraints.maxWidth < 600;
+                return Column(
+                  children: [
+                    // Pie Chart
+                    Center(
+                      child: SizedBox(
+                        height: isSmallScreen ? 250 : 300,
+                        child: PieChart(
+                          PieChartData(
+                            sectionsSpace: 4,
+                            centerSpaceRadius: isSmallScreen ? 60 : 70,
+                            sections: [
+                              PieChartSectionData(
+                                value: bekerja.toDouble(),
+                                title: totalUsiaProduktif == 0
+                                    ? ''
+                                    : '${(bekerja / totalUsiaProduktif * 100).toStringAsFixed(1)}%',
+                                color: colors[0],
+                                radius: isSmallScreen ? 80 : 90,
+                                titleStyle: TextStyle(
+                                  fontSize: isSmallScreen ? 16 : 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
                               ),
-                            ),
-                            PieChartSectionData(
-                              value: tidakBekerja.toDouble(),
-                title: totalUsiaProduktif == 0
-                  ? ''
-                  : '${(tidakBekerja / totalUsiaProduktif * 100).toStringAsFixed(1)}%',
-                              color: colors[1],
-                              radius: isSmallScreen ? 80 : 90,
-                              titleStyle: TextStyle(
-                                fontSize: isSmallScreen ? 16 : 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                              PieChartSectionData(
+                                value: tidakBekerja.toDouble(),
+                                title: totalUsiaProduktif == 0
+                                    ? ''
+                                    : '${(tidakBekerja / totalUsiaProduktif * 100).toStringAsFixed(1)}%',
+                                color: colors[1],
+                                radius: isSmallScreen ? 80 : 90,
+                                titleStyle: TextStyle(
+                                  fontSize: isSmallScreen ? 16 : 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  SizedBox(height: isSmallScreen ? 24 : 32),
-                  // Summary Cards
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildProduktivitasCard(
-                          label: 'Bekerja',
-                          value: bekerja,
-                          total: totalUsiaProduktif,
-                          color: colors[0],
-                          icon: Icons.work_rounded,
-                          isSmallScreen: isSmallScreen,
+                    SizedBox(height: isSmallScreen ? 24 : 32),
+                    // Summary Cards
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildProduktivitasCard(
+                            label: 'Bekerja',
+                            value: bekerja,
+                            total: totalUsiaProduktif,
+                            color: colors[0],
+                            icon: Icons.work_rounded,
+                            isSmallScreen: isSmallScreen,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildProduktivitasCard(
-                          label: 'Tidak Bekerja',
-                          value: tidakBekerja,
-                          total: totalUsiaProduktif,
-                          color: colors[1],
-                          icon: Icons.person_off_rounded,
-                          isSmallScreen: isSmallScreen,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildProduktivitasCard(
+                            label: 'Tidak Bekerja',
+                            value: tidakBekerja,
+                            total: totalUsiaProduktif,
+                            color: colors[1],
+                            icon: Icons.person_off_rounded,
+                            isSmallScreen: isSmallScreen,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
-              );
-            },
-          ),
+                      ],
+                    ),
+                  ],
+                );
+              },
+            ),
         ],
       ),
     );
@@ -907,30 +943,7 @@ class _KependudukanScreenState extends State<KependudukanScreen>
 
   Widget _buildDetailPekerjaanChart() {
     final Map<String, int> pekerjaanData = _pekerjaan;
-    if (pekerjaanData.isEmpty) {
-      return Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.all(24),
-        child: const Text('Belum ada data pekerjaan untuk periode terbaru',
-            style: TextStyle(color: Colors.grey)),
-      );
-    }
-    final total = pekerjaanData.values.reduce((a, b) => a + b);
     
-    // Urutan berdasarkan jumlah (dari terbesar ke terkecil)
-    final sortedEntries = pekerjaanData.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -952,12 +965,12 @@ class _KependudukanScreenState extends State<KependudukanScreen>
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0B7A75).withValues(alpha: 0.1),
+                  color: const Color(0xFF10B981).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
                   Icons.work_rounded,
-                  color: Color(0xFF0B7A75),
+                  color: Color(0xFF10B981),
                   size: 24,
                 ),
               ),
@@ -967,17 +980,22 @@ class _KependudukanScreenState extends State<KependudukanScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Distribusi Jenis Pekerjaan',
+                      'Detail Pekerjaan',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A1A1A),
+                        color: Color(0xFF1F2937),
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 4),
                     Text(
-                      'Total: ${total.toString()} penduduk',
-                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                      pekerjaanData.isEmpty 
+                        ? 'Distribusi jenis pekerjaan penduduk'
+                        : 'Total: ${pekerjaanData.values.reduce((a, b) => a + b)} orang',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF6B7280),
+                      ),
                     ),
                   ],
                 ),
@@ -985,67 +1003,76 @@ class _KependudukanScreenState extends State<KependudukanScreen>
             ],
           ),
           const SizedBox(height: 32),
-          // Pie Chart
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isSmallScreen = constraints.maxWidth < 600;
-              return Column(
-                children: [
-                  Center(
-                    child: SizedBox(
-                      height: isSmallScreen ? 250 : 300,
-                      child: PieChart(
-                        PieChartData(
-                          sectionsSpace: 2,
-                          centerSpaceRadius: isSmallScreen ? 50 : 60,
-                          sections: sortedEntries.asMap().entries.map((entry) {
-                            final data = entry.value;
-                            final value = data.value;
-                            final percentage = total == 0 ? 0.0 : (value / total * 100);
-                            
-                            return PieChartSectionData(
-                              value: value.toDouble(),
-                              title: percentage >= 5 ? '${percentage.toStringAsFixed(1)}%' : '',
-                              color: _getPekerjaanColor(data.key),
-                              radius: isSmallScreen ? 70 : 80,
-                              titleStyle: TextStyle(
-                                fontSize: isSmallScreen ? 11 : 12,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            );
-                          }).toList(),
+          if (pekerjaanData.isEmpty)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 40),
+                child: Text(
+                  'Belum ada data pekerjaan periode ini',
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            )
+          else
+            // Data available - show chart
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final total = pekerjaanData.values.reduce((a, b) => a + b);
+                // Urutan berdasarkan jumlah (dari terbesar ke terkecil)
+                final sortedEntries = pekerjaanData.entries.toList()
+                  ..sort((a, b) => b.value.compareTo(a.value));
+                
+                final isSmallScreen = constraints.maxWidth < 600;
+                return Column(
+                  children: [
+                    Center(
+                      child: SizedBox(
+                        height: isSmallScreen ? 250 : 300,
+                        child: PieChart(
+                          PieChartData(
+                            sectionsSpace: 2,
+                            centerSpaceRadius: isSmallScreen ? 50 : 60,
+                            sections: sortedEntries.asMap().entries.map((entry) {
+                              final data = entry.value;
+                              final value = data.value;
+                              final percentage = total == 0 ? 0.0 : (value / total * 100);
+                              
+                              return PieChartSectionData(
+                                value: value.toDouble(),
+                                title: percentage >= 5 ? '${percentage.toStringAsFixed(1)}%' : '',
+                                color: _getPekerjaanColor(data.key),
+                                radius: isSmallScreen ? 70 : 80,
+                                titleStyle: TextStyle(
+                                  fontSize: isSmallScreen ? 11 : 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              );
+                            }).toList(),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  SizedBox(height: isSmallScreen ? 24 : 32),
-                  // Legend
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final itemWidth = (constraints.maxWidth - 16) / 2; // 2 columns with gap
-                      return Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: sortedEntries.map((entry) {
-                          final value = entry.value;
-                          if (value == 0) return const SizedBox.shrink();
-                          return SizedBox(
-                            width: itemWidth,
-                            child: _buildLegendItem(
-                              color: _getPekerjaanColor(entry.key),
-                              label: entry.key,
-                              value: value,
-                            ),
-                          );
-                        }).toList(),
-                      );
-                    },
-                  ),
-                ],
-              );
-            },
-          ),
+                    SizedBox(height: isSmallScreen ? 24 : 32),
+                    // Legend
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: sortedEntries.map((entry) {
+                        return _buildLegendItem(
+                          color: _getPekerjaanColor(entry.key),
+                          label: entry.key,
+                          value: entry.value,
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                );
+              },
+            ),
         ],
       ),
     );

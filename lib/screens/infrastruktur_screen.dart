@@ -143,9 +143,6 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
     if (_error != null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Infrastruktur Desa')),
@@ -163,7 +160,9 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
     }
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      body: NestedScrollView(
+      body: Stack(
+        children: [
+          NestedScrollView(
         headerSliverBuilder: (context, inner) => [
           SliverAppBar(
             pinned: true,
@@ -264,6 +263,18 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
           ),
         ),
       ),
+      if (_loading)
+        Positioned.fill(
+          child: AbsorbPointer(
+            absorbing: true,
+            child: ColoredBox(
+              color: Colors.black.withValues(alpha: 0.18),
+              child: const Center(child: CircularProgressIndicator()),
+            ),
+          ),
+        ),
+    ],
+  ),
       bottomNavigationBar: Material(
         color: Colors.white,
         elevation: 8,
@@ -400,19 +411,32 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
       title: 'Infrastruktur Pendidikan',
       subtitle:
           'Ketersediaan lembaga pendidikan formal & nonformal — Total: $total unit',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ...entries.map(
-            (e) => _modernHorizontalBar(
-              label: e.key,
-              value: e.value,
-              percentage: e.value / (total == 0 ? 1 : total) * 100,
-              color: _categoryColor(e.key),
+      child: entries.isEmpty
+          ? const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 40),
+                child: Text(
+                  'Belum ada data pendidikan periode ini',
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ...entries.map(
+                  (e) => _modernHorizontalBar(
+                    label: e.key,
+                    value: e.value,
+                    percentage: e.value / (total == 0 ? 1 : total) * 100,
+                    color: _categoryColor(e.key),
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -441,9 +465,22 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
       title: 'Infrastruktur Kesehatan',
       subtitle:
           'Fasilitas pelayanan kesehatan & tenaga medis — Total fasilitas: $totalFasilitas',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      child: entries.isEmpty
+          ? const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 40),
+                child: Text(
+                  'Belum ada data kesehatan periode ini',
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
           Center(
             child: SizedBox(
               height: 280,
@@ -488,34 +525,34 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
                 )
                 .toList(),
           ),
-          const SizedBox(height: 24),
-          Text(
-            'Tenaga Medis',
-            style: Theme.of(
-              context,
-            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: tenaga.entries
-                .map(
-                  (e) => Expanded(
-                    child: _infoStat(
-                      icon: e.key == 'Dokter'
-                          ? Icons.medical_information_rounded
-                          : e.key == 'Bidan'
-                          ? Icons.pregnant_woman_rounded
-                          : Icons.volunteer_activism_rounded,
-                      label: e.key,
-                      value: e.value.toString(),
-                      color: const Color(0xFF10B981),
-                    ),
-                  ),
-                )
-                .toList(),
-          ),
-        ],
-      ),
+                const SizedBox(height: 24),
+                Text(
+                  'Tenaga Medis',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: tenaga.entries
+                      .map(
+                        (e) => Expanded(
+                          child: _infoStat(
+                            icon: e.key == 'Dokter'
+                                ? Icons.medical_information_rounded
+                                : e.key == 'Bidan'
+                                    ? Icons.pregnant_woman_rounded
+                                    : Icons.volunteer_activism_rounded,
+                            label: e.key,
+                            value: e.value.toString(),
+                            color: const Color(0xFF10B981),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ],
+            ),
     );
   }
 
@@ -530,9 +567,22 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
       icon: Icons.directions_car_filled_rounded,
       title: 'Transportasi & Jalan',
       subtitle: 'Akses dan mobilitas, jenis jalan & angkutan umum',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      child: jalan.isEmpty
+          ? const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 40),
+                child: Text(
+                  'Belum ada data transportasi periode ini',
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
           SizedBox(
             height: 260,
             child: BarChart(
@@ -682,8 +732,51 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
               );
             }).toList(),
           ),
-        ],
-      ),
+                const SizedBox(height: 16),
+                Text(
+                  'Angkutan Umum',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: angkutan.entries
+                      .map(
+                        (e) => Expanded(
+                          child: _infoStat(
+                            icon: Icons.directions_bus_rounded,
+                            label: e.key,
+                            value: e.value.toString(),
+                            color: const Color(0xFFF59E0B),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Akses ke Kantor Pemerintahan',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: akses.entries.map((e) {
+                    final map = Map<String, int>.from(e.value);
+                    return _chip(
+                      icon: Icons.place_rounded,
+                      label: e.key,
+                      value:
+                          '${map['jarak_km']} km • ${map['waktu_menit']} menit',
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
     );
   }
 
@@ -779,9 +872,22 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
       icon: Icons.wash_rounded,
       title: 'Sanitasi & Air Bersih',
       subtitle: 'Sarana prasarana sanitasi, air bersih & kesiapsiagaan',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      child: entries.isEmpty
+          ? const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 40),
+                child: Text(
+                  'Belum ada data sanitasi periode ini',
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
           ...entries.map(
             (e) => _modernHorizontalBar(
               label: e.key,
@@ -790,29 +896,29 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
               color: _sanitasiColor(e.key),
             ),
           ),
-          const SizedBox(height: 16),
-          Text(
-            'Penanggulangan Bencana & Pelestarian Alam',
-            style: Theme.of(
-              context,
-            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: bencana.entries
-                .map(
-                  (e) => _chip(
-                    icon: Icons.shield_rounded,
-                    label: e.key,
-                    value: e.value.toString(),
-                  ),
-                )
-                .toList(),
-          ),
-        ],
-      ),
+                const SizedBox(height: 16),
+                Text(
+                  'Penanggulangan Bencana & Pelestarian Alam',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: bencana.entries
+                      .map(
+                        (e) => _chip(
+                          icon: Icons.shield_rounded,
+                          label: e.key,
+                          value: e.value.toString(),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ],
+            ),
     );
   }
 

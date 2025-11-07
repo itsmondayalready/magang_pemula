@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
 import '../services/desa_repository.dart';
 import '../services/kesehatan_repository.dart';
+import '../services/pendidikan_repository.dart';
 import '../utils/responsive.dart';
 import 'kependudukan_screen.dart';
 import 'kesehatan_screen.dart';
@@ -45,9 +46,12 @@ class _MainMenuPageState extends State<MainMenuPage> {
   int? _latestKK;
   int? _totalFasilitas;
   int? _totalTenagaMedis;
+  int? _totalPendidikanNegeri;
+  int? _totalSwasta;
   bool _loadingSummary = true;
   final _repo = DesaRepository();
   final _kesehatanRepo = KesehatanRepository();
+  final _pendidikanRepo = PendidikanRepository();
 
   @override
   void initState() {
@@ -69,17 +73,56 @@ class _MainMenuPageState extends State<MainMenuPage> {
           _luasWilayahKm2 = (p?['luas_wilayah'] as num?)?.toDouble();
           _totalRT = p?['total_rt'] as int?;
           _totalRW = p?['total_rw'] as int?;
+        } else {
+          _luasWilayahKm2 = null;
+          _totalRT = null;
+          _totalRW = null;
         }
 
         // Kependudukan terbaru (total penduduk & KK)
         final kep = await _repo.fetchLatestKependudukanByKode(_kodeWilayah);
-        _latestPenduduk = kep?['total_penduduk'] as int?;
-        _latestKK = kep?['total_kk'] as int?;
+        if (kep != null) {
+          _latestPenduduk = kep['total_penduduk'] as int?;
+          _latestKK = kep['total_kk'] as int?;
+        } else {
+          _latestPenduduk = null;
+          _latestKK = null;
+        }
 
         // Kesehatan terbaru (fasilitas & tenaga medis)
         final kes = await _kesehatanRepo.fetchLatest(_kodeWilayah);
-        _totalFasilitas = (kes?['total_fasilitas'] ?? 0) as int?;
-        _totalTenagaMedis = (kes?['total_tenaga_medis'] ?? 0) as int?;
+        if (kes != null) {
+          _totalFasilitas = kes['total_fasilitas'] as int?;
+          _totalTenagaMedis = kes['total_tenaga_medis'] as int?;
+        } else {
+          _totalFasilitas = null;
+          _totalTenagaMedis = null;
+        }
+
+        // Pendidikan (hitung total dari berbagai jenjang)
+        try {
+          final counts = await _pendidikanRepo.getCounts(_kodeWilayah);
+          if (counts.isNotEmpty) {
+            // Total negeri selalu 0 (hardcode karena fokus swasta)
+            _totalPendidikanNegeri = 0;
+            
+            // Total swasta: PAUD + TK + SD + SMP + SMA + SMK + Akademi/PT
+            final paud = counts['PAUD'] ?? 0;
+            final tk = counts['TK'] ?? 0;
+            final sd = counts['SD'] ?? 0;
+            final smp = counts['SMP'] ?? 0;
+            final sma = counts['SMA'] ?? 0;
+            final smk = counts['SMK'] ?? 0;
+            final pt = counts['Akademi/PT'] ?? 0;
+            _totalSwasta = paud + tk + sd + smp + sma + smk + pt;
+          } else {
+            _totalPendidikanNegeri = null;
+            _totalSwasta = null;
+          }
+        } catch (_) {
+          _totalPendidikanNegeri = null;
+          _totalSwasta = null;
+        }
       }).timeout(const Duration(seconds: 8));
     } on TimeoutException {
       // timeout: leave values as null so UI shows placeholders
@@ -177,9 +220,14 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
     // Prepare carousel items (dynamic from DB with graceful fallback)
     final luasStr = _luasWilayahKm2 != null ? '${_luasWilayahKm2!.toStringAsFixed(2)} km²' : '—';
-  final rtRwStr = (_totalRT != null && _totalRW != null) ? '$_totalRT/$_totalRW' : '—';
-    final pendudukStr = _latestPenduduk?.toString() ?? '—';
-    final kkStr = _latestKK?.toString() ?? '—';
+    final rtRwStr = (_totalRT != null && _totalRW != null) ? '$_totalRT/$_totalRW' : '—';
+    final pendudukStr = _latestPenduduk?.toString() ?? '0';
+    final kkStr = _latestKK?.toString() ?? '0';
+    final fasilitasStr = _totalFasilitas?.toString() ?? '0';
+    final tenagaStr = _totalTenagaMedis?.toString() ?? '0';
+    final negeriStr = _totalPendidikanNegeri?.toString() ?? '0';
+    final swastaStr = _totalSwasta?.toString() ?? '0';
+    
     final summaryItems = <_SummaryItem>[
       _SummaryItem(
         title: 'Ringkasan Desa',
@@ -199,14 +247,13 @@ class _MainMenuPageState extends State<MainMenuPage> {
           _SummaryChip(icon: Icons.badge_rounded, label: 'KK', value: kkStr),
         ],
       ),
-      // Tetap tampilkan kartu lain (dummy) sampai integrasi lanjut
-      const _SummaryItem(
+      _SummaryItem(
         title: 'Pendidikan',
         gradient: _gradBluePurple,
         icon: Icons.school_rounded,
         chips: [
-          _SummaryChip(icon: Icons.account_balance_rounded, label: 'Negeri', value: '0'),
-          _SummaryChip(icon: Icons.child_care_rounded, label: 'PAUD Swasta', value: '1'),
+          _SummaryChip(icon: Icons.account_balance_rounded, label: 'Negeri', value: negeriStr),
+          _SummaryChip(icon: Icons.apartment_rounded, label: 'Swasta', value: swastaStr),
         ],
       ),
       _SummaryItem(
@@ -214,8 +261,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
         gradient: _gradCyanBlue,
         icon: Icons.local_hospital_rounded,
         chips: [
-          _SummaryChip(icon: Icons.local_hospital_rounded, label: 'Fasilitas', value: _totalFasilitas?.toString() ?? '—'),
-          _SummaryChip(icon: Icons.volunteer_activism_rounded, label: 'Tenaga', value: _totalTenagaMedis?.toString() ?? '—'),
+          _SummaryChip(icon: Icons.local_hospital_rounded, label: 'Fasilitas', value: fasilitasStr),
+          _SummaryChip(icon: Icons.volunteer_activism_rounded, label: 'Tenaga', value: tenagaStr),
         ],
       ),
     ];

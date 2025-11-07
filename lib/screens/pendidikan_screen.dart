@@ -194,9 +194,6 @@ class _PendidikanScreenState extends State<PendidikanScreen>
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
     if (_error != null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Pendidikan')),
@@ -232,7 +229,9 @@ class _PendidikanScreenState extends State<PendidikanScreen>
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      body: NestedScrollView(
+      body: Stack(
+        children: [
+          NestedScrollView(
         headerSliverBuilder: (context, inner) => [
           SliverAppBar(
             pinned: true,
@@ -317,6 +316,18 @@ class _PendidikanScreenState extends State<PendidikanScreen>
             ],
           ),
         ),
+      ),
+          if (_loading)
+            Positioned.fill(
+              child: AbsorbPointer(
+                absorbing: true,
+                child: ColoredBox(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  child: const Center(child: CircularProgressIndicator()),
+                ),
+              ),
+            ),
+        ],
       ),
       bottomNavigationBar: Material(
         color: Colors.white,

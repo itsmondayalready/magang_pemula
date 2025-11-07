@@ -388,7 +388,7 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       child: Center(
                         child: Text(
-                          'Belum ada data grafik per RT',
+                          'Belum ada data grafik per RT periode ini',
                           style: TextStyle(color: Colors.grey.shade600),
                         ),
                       ),
@@ -541,7 +541,7 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       child: Center(
                         child: Text(
-                          'Belum ada data kelompok rentan',
+                          'Belum ada data kelompok rentan periode ini',
                           style: TextStyle(color: Colors.grey.shade600),
                         ),
                       ),
@@ -654,7 +654,7 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Text(
-            'Belum ada data per RT',
+            'Belum ada data per RT periode ini',
             style: TextStyle(color: Colors.grey.shade600),
           ),
         ),
@@ -942,7 +942,7 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         child: Text(
-                          'Belum ada data bantuan',
+                          'Belum ada data bantuan periode ini',
                           style: TextStyle(color: Colors.grey.shade600),
                         ),
                       ),
@@ -1179,7 +1179,7 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
           if (penangananList.isEmpty)
             Center(
               child: Text(
-                'Belum ada data penanganan',
+                'Belum ada data penanganan periode ini',
                 style: TextStyle(color: Colors.grey.shade600),
               ),
             )

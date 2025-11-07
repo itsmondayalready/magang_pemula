@@ -269,7 +269,7 @@ class _MetadataScreenState extends State<MetadataScreen>
             ),
             const SizedBox(height: 16),
             Text(
-              'Tidak ada data ditemukan',
+              'Tidak ada data periode ini',
               style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
             ),
           ],
