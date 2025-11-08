@@ -458,11 +458,6 @@ class _KependudukanScreenState extends State<KependudukanScreen>
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
-                        badgeWidget: _buildBadge(
-                          Icons.female_rounded,
-                          const Color(0xFFEC4899),
-                        ),
-                        badgePositionPercentageOffset: 1.06,
                       ),
                     ],
                   ),
@@ -529,20 +524,6 @@ class _KependudukanScreenState extends State<KependudukanScreen>
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildBadge(IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 8),
-        ],
-      ),
-      child: Icon(icon, color: color, size: 20),
     );
   }
 
