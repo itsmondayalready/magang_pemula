@@ -20,6 +20,7 @@ class _ProfilDesaScreenState extends State<ProfilDesaScreen> {
   final _repo = DesaRepository();
   bool _loading = true;
   List<Map<String, dynamic>> _aparatur = const [];
+  List<DesaPhoto> _photos = []; // Dynamic list from database
   String? _kecamatan;
   String? _kabupaten;
   String? _provinsi;
@@ -62,6 +63,9 @@ class _ProfilDesaScreenState extends State<ProfilDesaScreen> {
 
         // Load aparatur desa
         _aparatur = await _repo.fetchAparaturByKode(widget.kodeWilayah);
+
+        // Load galeri foto
+        _photos = await _repo.fetchGaleriFoto(widget.kodeWilayah);
 
         if (mounted) setState(() {});
       }).timeout(const Duration(seconds: 8));
@@ -135,7 +139,7 @@ class _ProfilDesaScreenState extends State<ProfilDesaScreen> {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  children: [_PhotoCarousel()],
+                  children: [_PhotoCarousel(photos: _photos)],
                 ),
                 const SizedBox(height: 16),
 
@@ -346,47 +350,45 @@ class _InfoRow extends StatelessWidget {
 
 // Widget untuk carousel foto desa
 class _PhotoCarousel extends StatefulWidget {
-  const _PhotoCarousel();
+  const _PhotoCarousel({required this.photos});
+
+  final List<DesaPhoto> photos;
 
   @override
   State<_PhotoCarousel> createState() => _PhotoCarouselState();
 }
 
 class _PhotoCarouselState extends State<_PhotoCarousel> {
-  late final PageController _pageController;
+  PageController? _pageController;
   int _currentPage = 0;
   Timer? _timer;
-
-  // Dummy foto desa - nanti bisa diganti dengan URL dari Supabase
-  final List<_DesaPhoto> _photos = const [
-    _DesaPhoto(
-      url: 'https://images.unsplash.com/photo-1587474260584-136574528ed5?w=800',
-      caption: 'Balai Desa Melayu Ilir',
-    ),
-    _DesaPhoto(
-      url: 'https://images.unsplash.com/photo-1590736969955-71cc94901144?w=800',
-      caption: 'Pemandangan Desa',
-    ),
-    _DesaPhoto(
-      url: 'https://images.unsplash.com/photo-1536431311719-398b6704d4cc?w=800',
-      caption: 'Masjid Desa',
-    ),
-    _DesaPhoto(
-      url: 'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=800',
-      caption: 'Kegiatan Gotong Royong',
-    ),
-    _DesaPhoto(
-      url: 'https://images.unsplash.com/photo-1513366884929-f0b3d46eee4b?w=800',
-      caption: 'Festival Desa',
-    ),
-  ];
 
   @override
   void initState() {
     super.initState();
-    final len = _photos.length;
-    final initialPage =
-        len * 1000; // Start at a large number for infinite scroll
+    _initializeController();
+  }
+
+  @override
+  void didUpdateWidget(_PhotoCarousel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Jika photos berubah dari kosong ke ada isi, initialize controller
+    if (oldWidget.photos.isEmpty && widget.photos.isNotEmpty) {
+      _initializeController();
+    }
+    // Jika photos berubah dari ada isi ke kosong, dispose controller
+    else if (oldWidget.photos.isNotEmpty && widget.photos.isEmpty) {
+      _disposeController();
+    }
+  }
+
+  void _initializeController() {
+    if (widget.photos.isEmpty) return;
+
+    _disposeController(); // Dispose dulu jika ada
+
+    final len = widget.photos.length;
+    final initialPage = len * 1000;
     _pageController = PageController(
       viewportFraction: 0.85,
       initialPage: initialPage,
@@ -395,11 +397,21 @@ class _PhotoCarouselState extends State<_PhotoCarousel> {
     _startAutoScroll();
   }
 
+  void _disposeController() {
+    _timer?.cancel();
+    _timer = null;
+    _pageController?.dispose();
+    _pageController = null;
+  }
+
   void _startAutoScroll() {
+    if (widget.photos.isEmpty || _pageController == null) return;
+
+    _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
-      if (_pageController.hasClients) {
+      if (_pageController?.hasClients ?? false) {
         final nextPage = _currentPage + 1;
-        _pageController.animateToPage(
+        _pageController?.animateToPage(
           nextPage,
           duration: const Duration(milliseconds: 400),
           curve: Curves.easeInOut,
@@ -410,13 +422,94 @@ class _PhotoCarouselState extends State<_PhotoCarousel> {
 
   @override
   void dispose() {
-    _timer?.cancel();
-    _pageController.dispose();
+    _disposeController();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth > 600;
+    
+    // Empty state - Responsif dengan padding dan ukuran yang menyesuaikan
+    if (widget.photos.isEmpty || _pageController == null) {
+      return Container(
+        height: isTablet ? 250 : 200,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.grey.shade50,
+              Colors.grey.shade100,
+            ],
+          ),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: Colors.grey.shade200,
+            width: 1,
+          ),
+        ),
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: context.horizontalPadding,
+              vertical: 16,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    Icons.image_outlined,
+                    size: isTablet ? 56 : 48,
+                    color: Colors.grey.shade400,
+                  ),
+                ),
+                SizedBox(height: isTablet ? 20 : 16),
+                Text(
+                  'Belum Ada Galeri Foto',
+                  style: TextStyle(
+                    color: Colors.grey.shade700,
+                    fontSize: isTablet ? 18 : 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isTablet ? 40 : 20,
+                  ),
+                  child: Text(
+                    'Galeri foto desa akan ditampilkan di sini ketika sudah tersedia',
+                    style: TextStyle(
+                      color: Colors.grey.shade500,
+                      fontSize: isTablet ? 14 : 12,
+                      height: 1.5,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Column(
       children: [
         SizedBox(
@@ -430,7 +523,9 @@ class _PhotoCarouselState extends State<_PhotoCarousel> {
             },
             itemCount: null, // Infinite scroll
             itemBuilder: (context, index) {
-              final photoIndex = index % _photos.length;
+              final photoIndex = index % widget.photos.length;
+              final photo = widget.photos[photoIndex];
+
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8.0),
                 child: ClipRRect(
@@ -439,7 +534,7 @@ class _PhotoCarouselState extends State<_PhotoCarousel> {
                     fit: StackFit.expand,
                     children: [
                       Image.network(
-                        _photos[photoIndex].url,
+                        photo.url,
                         fit: BoxFit.cover,
                         loadingBuilder: (context, child, loadingProgress) {
                           if (loadingProgress == null) return child;
@@ -457,41 +552,51 @@ class _PhotoCarouselState extends State<_PhotoCarousel> {
                           );
                         },
                         errorBuilder: (context, error, stackTrace) {
+                          debugPrint('❌ Error loading image: $error');
+                          debugPrint('📸 Image URL: ${photo.url}');
+                          debugPrint('📁 Image path: ${photo.path}');
                           return Container(
                             color: Colors.grey.shade300,
-                            child: const Icon(
-                              Icons.broken_image_rounded,
-                              size: 64,
-                              color: Colors.grey,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.broken_image_rounded,
+                                  size: 64,
+                                  color: Colors.grey,
+                                ),
+                                const SizedBox(height: 8),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  child: Column(
+                                    children: [
+                                      Text(
+                                        'Gagal memuat foto',
+                                        style: TextStyle(
+                                          color: Colors.grey.shade600,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        photo.path,
+                                        style: TextStyle(
+                                          color: Colors.grey.shade500,
+                                          fontSize: 10,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           );
                         },
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.bottomCenter,
-                              end: Alignment.topCenter,
-                              colors: [
-                                Colors.black.withValues(alpha: 0.7),
-                                Colors.transparent,
-                              ],
-                            ),
-                          ),
-                          padding: const EdgeInsets.all(12),
-                          child: Text(
-                            _photos[photoIndex].caption,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
                       ),
                     ],
                   ),
@@ -504,14 +609,14 @@ class _PhotoCarouselState extends State<_PhotoCarousel> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(
-            _photos.length,
+            widget.photos.length,
             (index) => AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               margin: const EdgeInsets.symmetric(horizontal: 3),
               height: 6,
-              width: (_currentPage % _photos.length) == index ? 18 : 6,
+              width: (_currentPage % widget.photos.length) == index ? 18 : 6,
               decoration: BoxDecoration(
-                color: (_currentPage % _photos.length) == index
+                color: (_currentPage % widget.photos.length) == index
                     ? const Color(0xFF9333EA)
                     : Colors.grey.shade300,
                 borderRadius: BorderRadius.circular(999),
@@ -522,11 +627,4 @@ class _PhotoCarouselState extends State<_PhotoCarousel> {
       ],
     );
   }
-}
-
-class _DesaPhoto {
-  final String url;
-  final String caption;
-
-  const _DesaPhoto({required this.url, required this.caption});
 }

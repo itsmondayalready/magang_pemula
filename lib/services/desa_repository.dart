@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 
 class DesaRepository {
   final SupabaseClient _db = Supabase.instance.client;
@@ -212,4 +213,107 @@ class DesaRepository {
       throw Exception('Gagal menghapus desa');
     }
   }
+
+  // Fetch galeri foto from desa_profile.galeri_photos
+  Future<List<DesaPhoto>> fetchGaleriFoto(String kodeWilayah) async {
+    try {
+      debugPrint('🖼️ Fetching galeri foto for kode wilayah: $kodeWilayah');
+      
+      final response = await _db
+          .from('desa')
+          .select('id, desa_profile(galeri_photos)')
+          .eq('kode_wilayah', kodeWilayah)
+          .maybeSingle();
+
+      if (response == null) {
+        debugPrint('📸 No desa found');
+        return [];
+      }
+
+      final desaId = response['id'] as String?;
+      debugPrint('🆔 Desa ID: $desaId');
+
+      final profile = response['desa_profile'];
+      if (profile == null) {
+        debugPrint('📸 No profile data');
+        return [];
+      }
+
+      final galeriPhotos = profile['galeri_photos'];
+      if (galeriPhotos == null || galeriPhotos is! List) {
+        debugPrint('📸 No galeri_photos or not a list');
+        return [];
+      }
+
+      debugPrint('📸 Found ${galeriPhotos.length} photos in galeri_photos');
+
+      return galeriPhotos.asMap().entries.map<DesaPhoto>((entry) {
+        final index = entry.key;
+        final item = entry.value;
+        
+        final String photoUrl;
+        final String caption;
+        final String path;
+        
+        if (item is String) {
+          // Cek apakah sudah full URL atau masih path
+          if (item.startsWith('http://') || item.startsWith('https://')) {
+            // Sudah full URL, langsung pakai
+            photoUrl = item;
+            path = item;
+          } else {
+            // Masih path, generate public URL dari bucket foto-desa
+            path = item;
+            photoUrl = _db.storage.from('foto-desa').getPublicUrl(item);
+          }
+          caption = 'Foto ${index + 1}';
+        } else if (item is Map) {
+          // Support object dengan url/path dan caption
+          final urlOrPath = item['url'] as String? ?? item['path'] as String? ?? '';
+          
+          if (urlOrPath.startsWith('http://') || urlOrPath.startsWith('https://')) {
+            photoUrl = urlOrPath;
+            path = urlOrPath;
+          } else {
+            path = urlOrPath;
+            photoUrl = urlOrPath.isNotEmpty 
+                ? _db.storage.from('foto-desa').getPublicUrl(urlOrPath)
+                : '';
+          }
+          caption = item['caption'] as String? ?? 'Foto ${index + 1}';
+        } else {
+          photoUrl = '';
+          caption = 'Foto ${index + 1}';
+          path = '';
+        }
+        
+        debugPrint('🔗 Path: $path -> URL: $photoUrl');
+        
+        return DesaPhoto(
+          url: photoUrl,
+          caption: caption,
+          path: path,
+        );
+      }).toList();
+    } on PostgrestException catch (e) {
+      debugPrint('❌ Database error fetching galeri: ${e.message}');
+      return [];
+    } catch (e) {
+      debugPrint('❌ Error fetching galeri: $e');
+      return [];
+    }
+  }
+}
+
+// Model class for desa photos
+class DesaPhoto {
+  final String url;
+  final String caption;
+  final String path;
+
+  DesaPhoto({
+    required this.url,
+    required this.caption,
+    required this.path,
+  });
 }
