@@ -73,10 +73,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
     final auth = Provider.of<AuthService>(context, listen: false);
     try {
-      await auth.signIn(
-        email: email,
-        password: password,
-      );
+      await auth.signIn(email: email, password: password);
       // Login berhasil - Consumer di main.dart akan otomatis redirect ke MainMenu
     } on AuthException catch (e) {
       debugPrint('[Login] AuthException: ${e.message}');
@@ -119,26 +116,31 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const SizedBox(height: 6),
-                  Builder(builder: (context) {
-                    return Text(
-                      'Welcome back',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: context.rf(26),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    );
-                  }),
+                  Builder(
+                    builder: (context) {
+                      return Text(
+                        'Welcome back',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: context.rf(26),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      );
+                    },
+                  ),
                   const SizedBox(height: 6),
                   Text(
                     'Sign in to continue',
-                    style: TextStyle(color: Colors.white70, fontSize: context.rf(14)),
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: context.rf(14),
+                    ),
                   ),
                   const SizedBox(height: 20),
                   Container(
-          width: MediaQuery.of(context).size.width < 420
-            ? MediaQuery.of(context).size.width
-            : 420,
+                    width: MediaQuery.of(context).size.width < 420
+                        ? MediaQuery.of(context).size.width
+                        : 420,
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.25),
@@ -384,7 +386,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 10),
-
                 ],
               ),
             ),

@@ -36,7 +36,8 @@ String mapAuthException(AuthException e) {
   // Invalid credentials
   if (message.contains('invalid login credentials') ||
       message.contains('invalid email or password') ||
-      code == '400' || code == '401') {
+      code == '400' ||
+      code == '401') {
     return 'Email atau password salah.';
   }
 
@@ -48,8 +49,7 @@ String mapAuthException(AuthException e) {
   }
 
   // User not found
-  if (message.contains('user not found') ||
-      message.contains('unknown user')) {
+  if (message.contains('user not found') || message.contains('unknown user')) {
     return 'Akun tidak ditemukan. Periksa email Anda.';
   }
 
@@ -59,8 +59,7 @@ String mapAuthException(AuthException e) {
   }
 
   // Too many requests / rate limit
-  if (message.contains('too many requests') ||
-      message.contains('rate limit')) {
+  if (message.contains('too many requests') || message.contains('rate limit')) {
     return 'Terlalu banyak percobaan. Tunggu beberapa menit.';
   }
 
@@ -89,4 +88,3 @@ String mapAuthException(AuthException e) {
   // Default: show original (already localized by us where possible)
   return e.message;
 }
-

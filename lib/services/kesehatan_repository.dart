@@ -29,12 +29,12 @@ class KesehatanRepository {
           .order('periode_date', ascending: false)
           .limit(1);
       print('Rows kesehatan: $rows');
-      
+
       if (rows.isEmpty) {
         print('Tidak ada data kesehatan untuk desa ini');
         return null;
       }
-      
+
       final result = Map<String, dynamic>.from(rows.first as Map);
       print('Result kesehatan: $result');
       return result;
@@ -48,7 +48,7 @@ class KesehatanRepository {
   /// Mengembalikan map nama_fasilitas -> jumlah (semua kategori ditampilkan)
   Map<String, int> extractFasilitas(Map<String, dynamic>? row) {
     if (row == null) return {};
-    
+
     final result = <String, int>{};
     final fields = {
       'rumah_sakit': 'Rumah Sakit',
@@ -62,12 +62,12 @@ class KesehatanRepository {
       'posyandu': 'Posyandu',
       'posbindu': 'Posbindu',
     };
-    
+
     for (final entry in fields.entries) {
       final val = (row[entry.key] ?? 0) as int;
       result[entry.value] = val;
     }
-    
+
     return result;
   }
 
@@ -75,7 +75,7 @@ class KesehatanRepository {
   /// Mengembalikan map nama_tenaga -> jumlah (semua kategori ditampilkan)
   Map<String, int> extractTenagaMedis(Map<String, dynamic>? row) {
     if (row == null) return {};
-    
+
     final result = <String, int>{};
     final fields = {
       'kader_kb_kia': 'Kader KB/KIA',
@@ -86,12 +86,12 @@ class KesehatanRepository {
       'perawat': 'Perawat',
       'tenaga_kesehatan_lain': 'Tenaga Kesehatan Lain',
     };
-    
+
     for (final entry in fields.entries) {
       final val = (row[entry.key] ?? 0) as int;
       result[entry.value] = val;
     }
-    
+
     return result;
   }
 }

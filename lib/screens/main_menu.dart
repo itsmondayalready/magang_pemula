@@ -153,25 +153,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
     }
   }
 
-  Future<void> _switchToDesa(String kode, String nama) async {
-    if (!mounted) return;
-    setState(() {
-      _kodeWilayah = kode;
-      _desaName = nama;
-    });
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      if (kode.isEmpty) {
-        await prefs.remove('last_desa_kode');
-        await prefs.remove('last_desa_name');
-      } else {
-        await prefs.setString('last_desa_kode', kode);
-        await prefs.setString('last_desa_name', nama);
-      }
-    } catch (_) {}
-    await _loadSummary();
-  }
-
   Future<void> _changeWilayah() async {
     final selected = await showModalBottomSheet<_DesaData?>(
       context: context,
@@ -259,8 +240,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
       ),
     ];
 
-    final auth = Provider.of<AuthService>(context);
-    final isGuest = auth.isGuest;
     // Static paddings for the fixed carousel
     const double topPad = 12;
     const double bottomPad = 20; // loosen spacing below carousel
@@ -363,7 +342,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
                 ),
                 child: _HeaderContent(
                   desaName: _desaName,
-                  kodeWilayah: widget.kodeWilayah,
+                  kodeWilayah: _kodeWilayah,
                   isAdmin: widget.isAdmin,
                   onChangeWilayah: _changeWilayah,
                   onLogout: () async {
@@ -407,24 +386,21 @@ class _MainMenuPageState extends State<MainMenuPage> {
               Expanded(
                 child: ScrollConfiguration(
                   behavior: _NoGlowBehavior(),
-                  child: RefreshIndicator(
-                    onRefresh: _loadSummary,
-                    child: CustomScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(
-                        parent: ClampingScrollPhysics(),
-                      ),
-                      slivers: [
-                        SliverPadding(
-                          padding: EdgeInsets.fromLTRB(
-                            context.horizontalPadding,
-                            0,
-                            context.horizontalPadding,
-                            24,
-                          ),
-                          sliver: _FeatureGrid(features: dataCategories),
-                        ),
-                      ],
+                  child: CustomScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: ClampingScrollPhysics(),
                     ),
+                    slivers: [
+                      SliverPadding(
+                        padding: EdgeInsets.fromLTRB(
+                          context.horizontalPadding,
+                          0,
+                          context.horizontalPadding,
+                          24,
+                        ),
+                        sliver: _FeatureGrid(features: dataCategories),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -443,24 +419,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
             ),
         ],
       ),
-      floatingActionButton: isGuest
-          ? null
-          : FloatingActionButton(
-              onPressed: () {
-                showModalBottomSheet(
-                  context: context,
-                  showDragHandle: true,
-                  builder: (_) => const _QuickActionsSheet(),
-                );
-              },
-              backgroundColor: const Color(0xFF2563EB),
-              elevation: 4,
-              child: const Icon(
-                Icons.add_rounded,
-                color: Colors.white,
-                size: 28,
-              ),
-            ),
     );
   }
 }
@@ -818,111 +776,6 @@ class _RoleBadge extends StatelessWidget {
   }
 }
 
-class _QuickActionsSheet extends StatelessWidget {
-  const _QuickActionsSheet();
-  @override
-  Widget build(BuildContext context) {
-    final auth = Provider.of<AuthService>(context, listen: false);
-    final isGuest = auth.isGuest;
-    final actions = <_ActionData>[
-      _ActionData(
-        Icons.note_add_rounded,
-        'Tambah Rencana',
-        '/rencana',
-        _gradEmeraldGold,
-      ),
-      _ActionData(
-        Icons.campaign_rounded,
-        'Catat Kebencanaan',
-        '/kebencanaan',
-        _gradRedOrange,
-      ),
-      _ActionData(
-        Icons.event_available_rounded,
-        'Buat Jadwal',
-        '/kalender',
-        _gradOrangePink,
-      ),
-      _ActionData(
-        Icons.how_to_vote_rounded,
-        'Buat Kuesioner',
-        '/kuesioner',
-        _gradBluePurple,
-      ),
-    ];
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Aksi Cepat',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 12),
-            if (isGuest) ...[
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withValues(alpha: 0.1),
-                  border: Border.all(
-                    color: Colors.orange.withValues(alpha: 0.3),
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: const [
-                    Icon(Icons.visibility_rounded, color: Colors.orange),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Mode Tamu: Tindakan pembuatan data dinonaktifkan.',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Tutup'),
-                ),
-              ),
-            ] else ...[
-              ...actions.map(
-                (a) => ListTile(
-                  leading: Icon(a.icon),
-                  title: Text(a.label),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.pushNamed(context, a.route);
-                  },
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ActionData {
-  final IconData icon;
-  final String label;
-  final String route;
-  final Gradient gradient;
-  const _ActionData(this.icon, this.label, this.route, this.gradient);
-}
-
 // _TopMenuCarousel removed — replaced by _SummaryCarousel above
 
 class PlaceholderPage extends StatelessWidget {
@@ -1048,9 +901,11 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
             : _searchController.text.trim(),
       );
       
-      // Tampilkan notifikasi sukses
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Desa berhasil ditambahkan')),
+      // Tampilkan notifikasi sukses yang cantik
+      _showSuccessNotification(
+        context,
+        message: 'Desa berhasil ditambahkan',
+        icon: Icons.check_circle_rounded,
       );
       
       print('DEBUG _showAddDesaForm: Popping with new desa data');
@@ -1314,150 +1169,415 @@ class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
-    return Padding(
-      padding: EdgeInsets.only(bottom: bottom),
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Tambah Desa',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 12),
-              if (_error != null) ...[
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.red.withValues(alpha: 0.25),
+    final colorScheme = Theme.of(context).colorScheme;
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: Padding(
+        padding: EdgeInsets.only(bottom: bottom),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header
+                Text(
+                  'Tambah Desa Baru',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Isi data desa dengan lengkap',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                
+                if (_error != null) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: colorScheme.errorContainer,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: colorScheme.error.withValues(alpha: 0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.error_rounded,
+                          color: colorScheme.error,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _error!,
+                            style: TextStyle(
+                              color: colorScheme.onErrorContainer,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  child: Row(
+                  const SizedBox(height: 20),
+                ],
+                
+                Form(
+                  key: _formKey,
+                  child: Column(
                     children: [
-                      const Icon(
-                        Icons.error_outline_rounded,
-                        color: Colors.red,
+                      // Kode Wilayah Field
+                      TextFormField(
+                        controller: _kodeCtrl,
+                        textInputAction: TextInputAction.next,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: 'Kode Wilayah',
+                          filled: true,
+                          fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: colorScheme.outline.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: colorScheme.primary,
+                              width: 2,
+                            ),
+                          ),
+                          errorBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: colorScheme.error,
+                            ),
+                          ),
+                        ),
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) {
+                            return 'Kode wilayah wajib diisi';
+                          }
+                          if (v.trim().length > 10) {
+                            return 'Maksimal 10 karakter';
+                          }
+                          return null;
+                        },
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(child: Text(_error!)),
+                      const SizedBox(height: 16),
+                      
+                      // Nama Desa Field
+                      TextFormField(
+                        controller: _namaCtrl,
+                        textInputAction: TextInputAction.next,
+                        decoration: InputDecoration(
+                          labelText: 'Nama Desa',
+                          filled: true,
+                          fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: colorScheme.outline.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: colorScheme.primary,
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Nama desa wajib diisi'
+                            : null,
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // Kecamatan Field
+                      TextFormField(
+                        controller: _kecamatanCtrl,
+                        textInputAction: TextInputAction.next,
+                        decoration: InputDecoration(
+                          labelText: 'Kecamatan',
+                          filled: true,
+                          fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: colorScheme.outline.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: colorScheme.primary,
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Kecamatan wajib diisi'
+                            : null,
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // Kabupaten Field
+                      TextFormField(
+                        controller: _kabupatenCtrl,
+                        textInputAction: TextInputAction.next,
+                        decoration: InputDecoration(
+                          labelText: 'Kabupaten/Kota',
+                          filled: true,
+                          fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: colorScheme.outline.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: colorScheme.primary,
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Kabupaten wajib diisi'
+                            : null,
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // Provinsi Field
+                      TextFormField(
+                        controller: _provinsiCtrl,
+                        textInputAction: TextInputAction.done,
+                        decoration: InputDecoration(
+                          labelText: 'Provinsi',
+                          filled: true,
+                          fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: colorScheme.outline.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: colorScheme.primary,
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Provinsi wajib diisi'
+                            : null,
+                        onFieldSubmitted: (_) => _submit(),
+                      ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
-              ],
-              Form(
-                key: _formKey,
-                child: Column(
+                const SizedBox(height: 28),
+                
+                // Action Buttons
+                Row(
                   children: [
-                    TextFormField(
-                      controller: _kodeCtrl,
-                      textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: 'Kode Wilayah',
-                        hintText: 'Misal: 1101010001',
-                        prefixIcon: Icon(Icons.tag_rounded),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _submitting
+                            ? null
+                            : () => Navigator.pop(context, false),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('Batal'),
                       ),
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) {
-                          return 'Kode wilayah wajib diisi';
-                        }
-                        if (v.trim().length > 10) {
-                          return 'Maksimal 10 karakter';
-                        }
-                        return null;
-                      },
                     ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _namaCtrl,
-                      textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: 'Nama Desa',
-                        prefixIcon: Icon(Icons.home_rounded),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ElevatedButton(
+                          onPressed: _submitting ? null : _submit,
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: _submitting
+                              ? const SizedBox(
+                                  height: 18,
+                                  width: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
+                                  ),
+                                )
+                              : const Text(
+                                  'Simpan',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                        ),
                       ),
-                      validator: (v) => (v == null || v.trim().isEmpty)
-                          ? 'Nama wajib diisi'
-                          : null,
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _kecamatanCtrl,
-                      textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: 'Kecamatan',
-                        prefixIcon: Icon(Icons.apartment_rounded),
-                      ),
-                      validator: (v) => (v == null || v.trim().isEmpty)
-                          ? 'Kecamatan wajib diisi'
-                          : null,
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _kabupatenCtrl,
-                      textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: 'Kabupaten/Kota',
-                        prefixIcon: Icon(Icons.location_city_rounded),
-                      ),
-                      validator: (v) => (v == null || v.trim().isEmpty)
-                          ? 'Kabupaten wajib diisi'
-                          : null,
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _provinsiCtrl,
-                      textInputAction: TextInputAction.done,
-                      decoration: const InputDecoration(
-                        labelText: 'Provinsi',
-                        prefixIcon: Icon(Icons.map_rounded),
-                      ),
-                      validator: (v) => (v == null || v.trim().isEmpty)
-                          ? 'Provinsi wajib diisi'
-                          : null,
-                      onFieldSubmitted: (_) => _submit(),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 18),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: _submitting
-                        ? null
-                        : () => Navigator.pop(context, false),
-                    child: const Text('Batal'),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton.icon(
-                    onPressed: _submitting ? null : _submit,
-                    icon: _submitting
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.save_rounded),
-                    label: const Text('Simpan'),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
+}
+
+// =========================
+// Helper untuk Notifikasi Cantik
+// =========================
+void _showSuccessNotification(BuildContext context, {
+  required String message,
+  required IconData icon,
+}) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              icon,
+              color: Colors.white,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+      backgroundColor: const Color(0xFF10B981), // Green-500
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      duration: const Duration(seconds: 3),
+      elevation: 6,
+    ),
+  );
+}
+
+void _showErrorNotification(BuildContext context, {
+  required String message,
+}) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.error_rounded,
+              color: Colors.white,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+      backgroundColor: const Color(0xFFEF4444), // Red-500
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      duration: const Duration(seconds: 4),
+      elevation: 6,
+    ),
+  );
 }
 
 // =========================
@@ -1551,10 +1671,12 @@ extension on _DesaPickerSheetState {
       );
       if (!mounted) return;
       
-      // Tampilkan notifikasi sukses
-      ScaffoldMessenger.of(
+      // Tampilkan notifikasi sukses yang cantik
+      _showSuccessNotification(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Desa berhasil diperbarui')));
+        message: 'Desa berhasil diperbarui',
+        icon: Icons.edit_rounded,
+      );
       
       print('DEBUG _showEditFlow: Popping with edited desa data');
       // Close bottom sheet dengan data desa yang baru diedit
@@ -1605,10 +1727,12 @@ extension on _DesaPickerSheetState {
       );
       if (!mounted) return;
       
-      // Tampilkan notifikasi sukses
-      ScaffoldMessenger.of(
+      // Tampilkan notifikasi sukses yang cantik
+      _showSuccessNotification(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Desa berhasil dihapus')));
+        message: 'Desa berhasil dihapus',
+        icon: Icons.delete_rounded,
+      );
       
       // Cek apakah desa yang dihapus adalah desa aktif
       final parent = context.findAncestorStateOfType<_MainMenuPageState>();
@@ -1638,12 +1762,9 @@ extension on _DesaPickerSheetState {
     } catch (e) {
       print('DEBUG _showDeleteFlow: Error = $e');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Gagal menghapus desa: ${e.toString().replaceFirst('Exception: ', '')}',
-          ),
-        ),
+      _showErrorNotification(
+        context,
+        message: 'Gagal menghapus desa: ${e.toString().replaceFirst('Exception: ', '')}',
       );
     }
   }
@@ -1903,139 +2024,288 @@ class _EditDesaFormSheetState extends State<_EditDesaFormSheet> {
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
-    return Padding(
-      padding: EdgeInsets.only(bottom: bottom),
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Edit Desa',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Kode Wilayah: ${widget.kodeWilayah}',
-                style: const TextStyle(color: Colors.black54),
-              ),
-              const SizedBox(height: 12),
-              if (_error != null) ...[
+    final colorScheme = Theme.of(context).colorScheme;
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: Padding(
+        padding: EdgeInsets.only(bottom: bottom),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header
+                Text(
+                  'Edit Desa',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 6),
                 Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.red.withValues(alpha: 0.25),
+                    color: colorScheme.secondaryContainer.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    widget.kodeWilayah,
+                    style: TextStyle(
+                      color: colorScheme.onSecondaryContainer,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.error_outline_rounded,
-                        color: Colors.red,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(child: Text(_error!)),
-                    ],
-                  ),
                 ),
-                const SizedBox(height: 12),
-              ],
-              if (_loading)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(12.0),
-                    child: CircularProgressIndicator(),
-                  ),
-                )
-              else
-                Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      TextFormField(
-                        controller: _namaCtrl,
-                        textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          labelText: 'Nama Desa',
-                          prefixIcon: Icon(Icons.home_rounded),
-                        ),
-                        validator: (v) => (v == null || v.trim().isEmpty)
-                            ? 'Nama wajib diisi'
-                            : null,
+                const SizedBox(height: 24),
+                
+                if (_error != null) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: colorScheme.errorContainer,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: colorScheme.error.withValues(alpha: 0.3),
+                        width: 1,
                       ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _kecamatanCtrl,
-                        textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          labelText: 'Kecamatan',
-                          prefixIcon: Icon(Icons.apartment_rounded),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.error_rounded,
+                          color: colorScheme.error,
+                          size: 24,
                         ),
-                        validator: (v) => (v == null || v.trim().isEmpty)
-                            ? 'Kecamatan wajib diisi'
-                            : null,
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _kabupatenCtrl,
-                        textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          labelText: 'Kabupaten/Kota',
-                          prefixIcon: Icon(Icons.location_city_rounded),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _error!,
+                            style: TextStyle(
+                              color: colorScheme.onErrorContainer,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ),
-                        validator: (v) => (v == null || v.trim().isEmpty)
-                            ? 'Kabupaten wajib diisi'
-                            : null,
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _provinsiCtrl,
-                        textInputAction: TextInputAction.done,
-                        decoration: const InputDecoration(
-                          labelText: 'Provinsi',
-                          prefixIcon: Icon(Icons.map_rounded),
-                        ),
-                        validator: (v) => (v == null || v.trim().isEmpty)
-                            ? 'Provinsi wajib diisi'
-                            : null,
-                        onFieldSubmitted: (_) => _submit(),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              const SizedBox(height: 18),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: _saving
-                        ? null
-                        : () => Navigator.pop(context, false),
-                    child: const Text('Batal'),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton.icon(
-                    onPressed: _saving ? null : _submit,
-                    icon: _saving
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.save_rounded),
-                    label: const Text('Simpan'),
-                  ),
+                  const SizedBox(height: 20),
                 ],
-              ),
-            ],
+                
+                if (_loading)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 48.0),
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                else
+                  Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        // Nama Desa Field
+                        TextFormField(
+                          controller: _namaCtrl,
+                          textInputAction: TextInputAction.next,
+                          decoration: InputDecoration(
+                            labelText: 'Nama Desa',
+                            filled: true,
+                            fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: colorScheme.outline.withValues(alpha: 0.2),
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: colorScheme.primary,
+                                width: 2,
+                              ),
+                            ),
+                          ),
+                          validator: (v) => (v == null || v.trim().isEmpty)
+                              ? 'Nama desa wajib diisi'
+                              : null,
+                        ),
+                        const SizedBox(height: 16),
+                        
+                        // Kecamatan Field
+                        TextFormField(
+                          controller: _kecamatanCtrl,
+                          textInputAction: TextInputAction.next,
+                          decoration: InputDecoration(
+                            labelText: 'Kecamatan',
+                            filled: true,
+                            fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: colorScheme.outline.withValues(alpha: 0.2),
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: colorScheme.primary,
+                                width: 2,
+                              ),
+                            ),
+                          ),
+                          validator: (v) => (v == null || v.trim().isEmpty)
+                              ? 'Kecamatan wajib diisi'
+                              : null,
+                        ),
+                        const SizedBox(height: 16),
+                        
+                        // Kabupaten Field
+                        TextFormField(
+                          controller: _kabupatenCtrl,
+                          textInputAction: TextInputAction.next,
+                          decoration: InputDecoration(
+                            labelText: 'Kabupaten/Kota',
+                            filled: true,
+                            fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: colorScheme.outline.withValues(alpha: 0.2),
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: colorScheme.primary,
+                                width: 2,
+                              ),
+                            ),
+                          ),
+                          validator: (v) => (v == null || v.trim().isEmpty)
+                              ? 'Kabupaten wajib diisi'
+                              : null,
+                        ),
+                        const SizedBox(height: 16),
+                        
+                        // Provinsi Field
+                        TextFormField(
+                          controller: _provinsiCtrl,
+                          textInputAction: TextInputAction.done,
+                          decoration: InputDecoration(
+                            labelText: 'Provinsi',
+                            filled: true,
+                            fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: colorScheme.outline.withValues(alpha: 0.2),
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: colorScheme.primary,
+                                width: 2,
+                              ),
+                            ),
+                          ),
+                          validator: (v) => (v == null || v.trim().isEmpty)
+                              ? 'Provinsi wajib diisi'
+                              : null,
+                          onFieldSubmitted: (_) => _submit(),
+                        ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 28),
+                
+                // Action Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _saving
+                            ? null
+                            : () => Navigator.pop(context, false),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('Batal'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFF59E0B), Color(0xFFF97316)],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ElevatedButton(
+                          onPressed: _saving ? null : _submit,
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: _saving
+                              ? const SizedBox(
+                                  height: 18,
+                                  width: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
+                                  ),
+                                )
+                              : const Text(
+                                  'Simpan',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

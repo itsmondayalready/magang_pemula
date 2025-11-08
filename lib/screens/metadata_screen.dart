@@ -23,7 +23,7 @@ class _MetadataScreenState extends State<MetadataScreen>
   @override
   void initState() {
     super.initState();
-  _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 

@@ -72,7 +72,7 @@ class KependudukanRepository {
           .eq('kependudukan_id', kependudukanId)
           .order('kategori');
       print('Rows pendidikan untuk kependudukan_id: $rows');
-      
+
       final result = <String, int>{};
       for (final r in rows) {
         final cat = (r['kategori'] ?? '') as String;
@@ -125,7 +125,7 @@ class KependudukanRepository {
           .eq('kependudukan_id', kependudukanId)
           .order('jumlah', ascending: false);
       print('Rows pekerjaan untuk kependudukan_id: $rows');
-      
+
       final result = <String, int>{};
       for (final r in rows) {
         final ref = r['ref_pekerjaan'] as Map<String, dynamic>?;

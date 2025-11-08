@@ -232,91 +232,91 @@ class _PendidikanScreenState extends State<PendidikanScreen>
       body: Stack(
         children: [
           NestedScrollView(
-        headerSliverBuilder: (context, inner) => [
-          SliverAppBar(
-            pinned: true,
-            elevation: 0,
-            backgroundColor: Colors.transparent,
-            toolbarHeight: 56,
-            title: const _AppBarTitle(
-              title: 'Pendidikan',
-              subtitle: 'Sarana & akses pendidikan desa',
-            ),
-            centerTitle: false,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(20),
-                bottomRight: Radius.circular(20),
+            headerSliverBuilder: (context, inner) => [
+              SliverAppBar(
+                pinned: true,
+                elevation: 0,
+                backgroundColor: Colors.transparent,
+                toolbarHeight: 56,
+                title: const _AppBarTitle(
+                  title: 'Pendidikan',
+                  subtitle: 'Sarana & akses pendidikan desa',
+                ),
+                centerTitle: false,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(20),
+                    bottomRight: Radius.circular(20),
+                  ),
+                ),
+                flexibleSpace: ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(20),
+                    bottomRight: Radius.circular(20),
+                  ),
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Color(0xFF2563EB), // blue
+                          Color(0xFF7C3AED), // purple
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            ),
-            flexibleSpace: ClipRRect(
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(20),
-                bottomRight: Radius.circular(20),
-              ),
-              child: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Color(0xFF2563EB), // blue
-                      Color(0xFF7C3AED), // purple
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    context.horizontalPadding,
+                    0,
+                    context.horizontalPadding,
+                    8,
+                  ),
+                  child: GridView.count(
+                    shrinkWrap: true,
+                    crossAxisCount: context.gridCount(
+                      mobile: 2,
+                      tablet: 3,
+                      desktop: 4,
+                    ),
+                    childAspectRatio: context.summaryAspect,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    children: [
+                      _summaryCard(
+                        label: 'Lembaga Negeri',
+                        value: '$totalNegeri',
+                        icon: Icons.account_balance_rounded,
+                        color: const Color(0xFF2563EB),
+                      ),
+                      _summaryCard(
+                        label: 'Lembaga Swasta Lokal',
+                        value: '$totalSwastaLokal',
+                        icon: Icons.apartment_rounded,
+                        color: const Color(0xFF2563EB),
+                      ),
                     ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
                   ),
                 ),
               ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                context.horizontalPadding,
-                0,
-                context.horizontalPadding,
-                8,
-              ),
-              child: GridView.count(
-                shrinkWrap: true,
-                crossAxisCount: context.gridCount(
-                  mobile: 2,
-                  tablet: 3,
-                  desktop: 4,
-                ),
-                childAspectRatio: context.summaryAspect,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
+            ],
+            body: Padding(
+              padding: EdgeInsets.zero,
+              child: TabBarView(
+                controller: _tabController,
                 children: [
-                  _summaryCard(
-                    label: 'Lembaga Negeri',
-                    value: '$totalNegeri',
-                    icon: Icons.account_balance_rounded,
-                    color: const Color(0xFF2563EB),
-                  ),
-                  _summaryCard(
-                    label: 'Lembaga Swasta Lokal',
-                    value: '$totalSwastaLokal',
-                    icon: Icons.apartment_rounded,
-                    color: const Color(0xFF2563EB),
-                  ),
+                  _section(_buildNegeri(negeri)),
+                  _section(_buildSwasta(swasta)),
+                  _section(_buildLBKeagamaan(lb, keagamaan, keterampilan)),
                 ],
               ),
             ),
           ),
-        ],
-        body: Padding(
-          padding: EdgeInsets.zero,
-          child: TabBarView(
-            controller: _tabController,
-            children: [
-              _section(_buildNegeri(negeri)),
-              _section(_buildSwasta(swasta)),
-              _section(_buildLBKeagamaan(lb, keagamaan, keterampilan)),
-            ],
-          ),
-        ),
-      ),
           if (_loading)
             Positioned.fill(
               child: AbsorbPointer(

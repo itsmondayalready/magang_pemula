@@ -4,7 +4,11 @@ import '../utils/responsive.dart';
 import '../services/kesehatan_repository.dart';
 
 class KesehatanScreen extends StatefulWidget {
-  const KesehatanScreen({super.key, required this.kodeWilayah, required this.desaName});
+  const KesehatanScreen({
+    super.key,
+    required this.kodeWilayah,
+    required this.desaName,
+  });
 
   final String kodeWilayah;
   final String desaName;
@@ -41,9 +45,9 @@ class _KesehatanScreenState extends State<KesehatanScreen>
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final result = await _repo.fetchLatest(widget.kodeWilayah).timeout(
-        const Duration(seconds: 8),
-      );
+      final result = await _repo
+          .fetchLatest(widget.kodeWilayah)
+          .timeout(const Duration(seconds: 8));
 
       print('=== KESEHATAN DEBUG ===');
       print('kodeWilayah: ${widget.kodeWilayah}');
@@ -74,112 +78,111 @@ class _KesehatanScreenState extends State<KesehatanScreen>
       body: Stack(
         children: [
           NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          SliverAppBar(
-            pinned: true,
-            elevation: 0,
-            backgroundColor: Colors.transparent,
-            toolbarHeight: 56,
-            title: const Text(
-              'Kesehatan',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
+            headerSliverBuilder: (context, innerBoxIsScrolled) => [
+              SliverAppBar(
+                pinned: true,
+                elevation: 0,
+                backgroundColor: Colors.transparent,
+                toolbarHeight: 56,
+                title: const Text(
+                  'Kesehatan',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                centerTitle: false,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(20),
+                    bottomRight: Radius.circular(20),
+                  ),
+                ),
+                flexibleSpace: ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(20),
+                    bottomRight: Radius.circular(20),
+                  ),
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Color(0xFF06B6D4), // cyan
+                          Color(0xFF1D4ED8), // blue
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            ),
-            centerTitle: false,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(20),
-                bottomRight: Radius.circular(20),
-              ),
-            ),
-            flexibleSpace: ClipRRect(
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(20),
-                bottomRight: Radius.circular(20),
-              ),
-              child: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Color(0xFF06B6D4), // cyan
-                      Color(0xFF1D4ED8), // blue
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    context.horizontalPadding,
+                    0,
+                    context.horizontalPadding,
+                    8,
+                  ),
+                  child: GridView.count(
+                    shrinkWrap: true,
+                    crossAxisCount: context.gridCount(
+                      mobile: 2,
+                      tablet: 3,
+                      desktop: 4,
+                    ),
+                    childAspectRatio: context.summaryAspect,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    children: [
+                      _SummaryCard(
+                        label: 'Fasilitas',
+                        value: _totalFasilitas?.toString() ?? '—',
+                        icon: Icons.local_hospital_rounded,
+                        color: const Color(0xFF06B6D4),
+                      ),
+                      _SummaryCard(
+                        label: 'Tenaga Medis',
+                        value: _totalTenagaMedis?.toString() ?? '—',
+                        icon: Icons.volunteer_activism_rounded,
+                        color: const Color(0xFF06B6D4),
+                      ),
                     ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
                   ),
                 ),
               ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                context.horizontalPadding,
-                0,
-                context.horizontalPadding,
-                8,
-              ),
-              child: GridView.count(
-                shrinkWrap: true,
-                crossAxisCount: context.gridCount(
-                  mobile: 2,
-                  tablet: 3,
-                  desktop: 4,
-                ),
-                childAspectRatio: context.summaryAspect,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
+            ],
+            body: Padding(
+              padding: EdgeInsets.zero,
+              child: TabBarView(
+                controller: _tabController,
                 children: [
-                  _SummaryCard(
-                    label: 'Fasilitas',
-                    value: _totalFasilitas?.toString() ?? '—',
-                    icon: Icons.local_hospital_rounded,
-                    color: const Color(0xFF06B6D4),
+                  _buildChartSection(
+                    _Card(
+                      icon: Icons.local_hospital_rounded,
+                      title: 'Fasilitas Kesehatan',
+                      subtitle:
+                          'Distribusi fasilitas layanan kesehatan per jenis',
+                      child: _FasilitasPie(data: _fasilitas),
+                    ),
                   ),
-                  _SummaryCard(
-                    label: 'Tenaga Medis',
-                    value: _totalTenagaMedis?.toString() ?? '—',
-                    icon: Icons.volunteer_activism_rounded,
-                    color: const Color(0xFF06B6D4),
+                  _buildChartSection(
+                    _Card(
+                      icon: Icons.volunteer_activism_rounded,
+                      title: 'Tenaga Medis',
+                      subtitle: 'Komposisi tenaga kesehatan per peran',
+                      child: _HorizontalBars(
+                        data: _tenagaMedis,
+                        colorFor: (k) => const Color(0xFF10B981),
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
           ),
-        ],
-        body: Padding(
-          padding: EdgeInsets.zero,
-          child: TabBarView(
-            controller: _tabController,
-            children: [
-              _buildChartSection(
-                _Card(
-                  icon: Icons.local_hospital_rounded,
-                  title: 'Fasilitas Kesehatan',
-                  subtitle: 'Distribusi fasilitas layanan kesehatan per jenis',
-                  child: _FasilitasPie(
-                    data: _fasilitas,
-                  ),
-                ),
-              ),
-              _buildChartSection(
-                _Card(
-                  icon: Icons.volunteer_activism_rounded,
-                  title: 'Tenaga Medis',
-                  subtitle: 'Komposisi tenaga kesehatan per peran',
-                  child: _HorizontalBars(
-                    data: _tenagaMedis,
-                    colorFor: (k) => const Color(0xFF10B981),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
           if (_loading)
             Positioned.fill(
               child: AbsorbPointer(
@@ -399,27 +402,24 @@ class _FasilitasPie extends StatelessWidget {
   Widget build(BuildContext context) {
     // Check if data is empty (show notice only if no data structure exists)
     final hasData = data.isNotEmpty;
-    
+
     if (!hasData) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.symmetric(vertical: 40),
           child: Text(
             'Belum ada data fasilitas kesehatan periode ini',
-            style: TextStyle(
-              color: Colors.grey,
-              fontSize: 14,
-            ),
+            style: TextStyle(color: Colors.grey, fontSize: 14),
             textAlign: TextAlign.center,
           ),
         ),
       );
     }
-    
+
     final total = data.values.fold(0, (p, c) => p + c);
     final entries = data.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-    
+
     // Warna untuk kategori yang memiliki nilai > 0
     final activeColors = [
       const Color(0xFF10B981),
@@ -433,7 +433,7 @@ class _FasilitasPie extends StatelessWidget {
       const Color(0xFF14B8A6),
       const Color(0xFF8B5CF6),
     ];
-    
+
     // Warna abu-abu untuk kategori yang bernilai 0
     const greyColor = Color(0xFFE5E7EB);
 
@@ -450,12 +450,20 @@ class _FasilitasPie extends StatelessWidget {
                   final e = entries[i];
                   final hasValue = e.value > 0;
                   final pct = total == 0 ? 0 : e.value / total * 100;
-                  
+
                   return PieChartSectionData(
-                    value: hasValue ? e.value.toDouble() : 0.1, // Minimal value untuk tampil di chart
-                    title: (hasValue && pct > 8) ? '${pct.toStringAsFixed(0)}%' : '',
-                    color: hasValue ? activeColors[i % activeColors.length] : greyColor,
-                    radius: hasValue ? 90 : 85, // Sedikit lebih kecil untuk nilai 0
+                    value: hasValue
+                        ? e.value.toDouble()
+                        : 0.1, // Minimal value untuk tampil di chart
+                    title: (hasValue && pct > 8)
+                        ? '${pct.toStringAsFixed(0)}%'
+                        : '',
+                    color: hasValue
+                        ? activeColors[i % activeColors.length]
+                        : greyColor,
+                    radius: hasValue
+                        ? 90
+                        : 85, // Sedikit lebih kecil untuk nilai 0
                     titleStyle: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -518,23 +526,20 @@ class _HorizontalBars extends StatelessWidget {
   Widget build(BuildContext context) {
     // Check if data is empty (show notice only if no data structure exists)
     final hasData = data.isNotEmpty;
-    
+
     if (!hasData) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.symmetric(vertical: 40),
           child: Text(
             'Belum ada data tenaga medis periode ini',
-            style: TextStyle(
-              color: Colors.grey,
-              fontSize: 14,
-            ),
+            style: TextStyle(color: Colors.grey, fontSize: 14),
             textAlign: TextAlign.center,
           ),
         ),
       );
     }
-    
+
     final total = data.values.fold(0, (p, c) => p + c);
     final entries = data.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
@@ -571,10 +576,12 @@ Widget _legendItemRow({
       // Responsif: sesuaikan ukuran berdasarkan lebar container
       final isCompact = constraints.maxWidth < 150;
       final circleSize = isCompact ? 10.0 : 12.0;
-      final fontSize = isCompact ? 12.0 : 13.0; // Ukuran font lebih besar agar tetap readable
+      final fontSize = isCompact
+          ? 12.0
+          : 13.0; // Ukuran font lebih besar agar tetap readable
       final horizontalPadding = isCompact ? 8.0 : 12.0;
       final verticalPadding = isCompact ? 8.0 : 10.0;
-      
+
       return Container(
         padding: EdgeInsets.symmetric(
           horizontal: horizontalPadding,
@@ -593,7 +600,8 @@ Widget _legendItemRow({
           ],
         ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center, // Align center untuk multi-line
+          crossAxisAlignment:
+              CrossAxisAlignment.center, // Align center untuk multi-line
           children: [
             Container(
               width: circleSize,
@@ -718,32 +726,36 @@ Widget _modernHorizontalBar({
                 height: 24,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: value == 0 
-                        ? [Colors.grey[300]!, Colors.grey[200]!] 
+                    colors: value == 0
+                        ? [Colors.grey[300]!, Colors.grey[200]!]
                         : [color, color.withValues(alpha: 0.7)],
                   ),
                   borderRadius: BorderRadius.circular(12),
-                  boxShadow: value == 0 ? null : [
-                    BoxShadow(
-                      color: color.withValues(alpha: 0.3),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+                  boxShadow: value == 0
+                      ? null
+                      : [
+                          BoxShadow(
+                            color: color.withValues(alpha: 0.3),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                 ),
                 child: const SizedBox.shrink(),
               ),
             ),
             Positioned.fill(
               child: Center(
-                child: value > 0 ? Text(
-                  '${percentage.toStringAsFixed(1)}%',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ) : const SizedBox.shrink(),
+                child: value > 0
+                    ? Text(
+                        '${percentage.toStringAsFixed(1)}%',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const SizedBox.shrink(),
               ),
             ),
           ],

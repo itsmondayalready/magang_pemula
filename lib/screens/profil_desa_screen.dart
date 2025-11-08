@@ -2,8 +2,13 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import '../utils/responsive.dart';
 import '../services/desa_repository.dart';
+
 class ProfilDesaScreen extends StatefulWidget {
-  const ProfilDesaScreen({super.key, required this.kodeWilayah, required this.desaName});
+  const ProfilDesaScreen({
+    super.key,
+    required this.kodeWilayah,
+    required this.desaName,
+  });
   final String kodeWilayah;
   final String desaName;
 
@@ -64,7 +69,12 @@ class _ProfilDesaScreenState extends State<ProfilDesaScreen> {
       // timeout: leave values null and proceed to show placeholders
     } catch (_) {
       // ignore
-    } finally { if (mounted) setState(() { _loading = false; }); }
+    } finally {
+      if (mounted)
+        setState(() {
+          _loading = false;
+        });
+    }
   }
 
   String _formatSosmed(Map<String, dynamic>? s) {
@@ -74,6 +84,7 @@ class _ProfilDesaScreenState extends State<ProfilDesaScreen> {
       final v = s[key];
       if (v is String && v.trim().isNotEmpty) parts.add('$label: $v');
     }
+
     addIf('ig', 'IG');
     addIf('facebook', 'FB');
     addIf('yt', 'YT');
@@ -88,10 +99,7 @@ class _ProfilDesaScreenState extends State<ProfilDesaScreen> {
       appBar: AppBar(
         title: const Text(
           'Profil Desa',
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white),
         ),
         centerTitle: false,
         flexibleSpace: Container(
@@ -118,83 +126,96 @@ class _ProfilDesaScreenState extends State<ProfilDesaScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-            // Galeri Foto Desa
-            _SectionCard(
-              title: 'Galeri Foto Desa',
-              icon: Icons.photo_library_rounded,
-              gradient: const LinearGradient(
-                colors: [Color(0xFFF97316), Color(0xFFEC4899)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              children: [
-                _PhotoCarousel(),
-              ],
-            ),
-            const SizedBox(height: 16),
+                // Galeri Foto Desa
+                _SectionCard(
+                  title: 'Galeri Foto Desa',
+                  icon: Icons.photo_library_rounded,
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFF97316), Color(0xFFEC4899)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  children: [_PhotoCarousel()],
+                ),
+                const SizedBox(height: 16),
 
-            // Identitas Desa
-            _SectionCard(
-              title: 'Identitas Desa',
-              icon: Icons.location_city_rounded,
-              gradient: const LinearGradient(
-                colors: [Color(0xFF2563EB), Color(0xFF7C3AED)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              children: [
-                _InfoRow(label: 'Nama Desa', value: widget.desaName),
-                _InfoRow(label: 'Kode Wilayah', value: widget.kodeWilayah),
-                _InfoRow(label: 'Kecamatan', value: _kecamatan ?? '—'),
-                _InfoRow(label: 'Kabupaten', value: _kabupaten ?? '—'),
-                _InfoRow(label: 'Provinsi', value: _provinsi ?? '—'),
-                _InfoRow(label: 'Jumlah RT', value: _totalRT != null ? '$_totalRT RT' : '—'),
-                _InfoRow(label: 'Jumlah RW', value: _totalRW != null ? '$_totalRW RW' : '—'),
-                if (_luasKm2 != null)
-                  _InfoRow(label: 'Luas Wilayah', value: '${_luasKm2!.toStringAsFixed(2)} km²'),
-              ],
-            ),
-            const SizedBox(height: 16),
+                // Identitas Desa
+                _SectionCard(
+                  title: 'Identitas Desa',
+                  icon: Icons.location_city_rounded,
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF2563EB), Color(0xFF7C3AED)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  children: [
+                    _InfoRow(label: 'Nama Desa', value: widget.desaName),
+                    _InfoRow(label: 'Kode Wilayah', value: widget.kodeWilayah),
+                    _InfoRow(label: 'Kecamatan', value: _kecamatan ?? '—'),
+                    _InfoRow(label: 'Kabupaten', value: _kabupaten ?? '—'),
+                    _InfoRow(label: 'Provinsi', value: _provinsi ?? '—'),
+                    _InfoRow(
+                      label: 'Jumlah RT',
+                      value: _totalRT != null ? '$_totalRT RT' : '—',
+                    ),
+                    _InfoRow(
+                      label: 'Jumlah RW',
+                      value: _totalRW != null ? '$_totalRW RW' : '—',
+                    ),
+                    if (_luasKm2 != null)
+                      _InfoRow(
+                        label: 'Luas Wilayah',
+                        value: '${_luasKm2!.toStringAsFixed(2)} km²',
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
 
-            // Aparatur Desa
-            _SectionCard(
-              title: 'Aparatur Desa',
-              icon: Icons.groups_3_rounded,
-              gradient: const LinearGradient(
-                colors: [Color(0xFF06B6D4), Color(0xFF1D4ED8)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              children: _aparatur.isEmpty
-                  ? const [
-                      _InfoRow(label: '—', value: 'Belum ada data'),
-                    ]
-                  : _aparatur
-                      .map((a) => _InfoRow(
-                            label: (a['jabatan'] as String?) ?? '—',
-                            value: (a['nama'] as String?) ?? '—',
-                          ))
-                      .toList(),
-            ),
-            const SizedBox(height: 16),
+                // Aparatur Desa
+                _SectionCard(
+                  title: 'Aparatur Desa',
+                  icon: Icons.groups_3_rounded,
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF06B6D4), Color(0xFF1D4ED8)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  children: _aparatur.isEmpty
+                      ? const [_InfoRow(label: '—', value: 'Belum ada data')]
+                      : _aparatur
+                            .map(
+                              (a) => _InfoRow(
+                                label: (a['jabatan'] as String?) ?? '—',
+                                value: (a['nama'] as String?) ?? '—',
+                              ),
+                            )
+                            .toList(),
+                ),
+                const SizedBox(height: 16),
 
-            // Kontak & Sosial Media
-            _SectionCard(
-              title: 'Kontak & Informasi',
-              icon: Icons.contact_phone_rounded,
-              gradient: const LinearGradient(
-                colors: [Color(0xFFDC2626), Color(0xFFF97316)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              children: [
-                _InfoRow(label: 'Telepon Kantor', value: _teleponKantor ?? '—'),
-                _InfoRow(label: 'Email Kantor', value: _emailKantor ?? '—'),
-                _InfoRow(label: 'Website', value: _website ?? '—'),
-                _InfoRow(label: 'Sosial Media', value: _formatSosmed(_sosmed)),
-              ],
-            ),
-            const SizedBox(height: 8),
+                // Kontak & Sosial Media
+                _SectionCard(
+                  title: 'Kontak & Informasi',
+                  icon: Icons.contact_phone_rounded,
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFDC2626), Color(0xFFF97316)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  children: [
+                    _InfoRow(
+                      label: 'Telepon Kantor',
+                      value: _teleponKantor ?? '—',
+                    ),
+                    _InfoRow(label: 'Email Kantor', value: _emailKantor ?? '—'),
+                    _InfoRow(label: 'Website', value: _website ?? '—'),
+                    _InfoRow(
+                      label: 'Sosial Media',
+                      value: _formatSosmed(_sosmed),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
               ],
             ),
           ),
@@ -281,9 +302,7 @@ class _SectionCard extends StatelessWidget {
           // Content
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Column(
-              children: children,
-            ),
+            child: Column(children: children),
           ),
         ],
       ),
@@ -293,10 +312,7 @@ class _SectionCard extends StatelessWidget {
 
 // Widget untuk baris informasi
 class _InfoRow extends StatelessWidget {
-  const _InfoRow({
-    required this.label,
-    required this.value,
-  });
+  const _InfoRow({required this.label, required this.value});
 
   final String label;
   final String value;
@@ -312,20 +328,14 @@ class _InfoRow extends StatelessWidget {
             width: 140,
             child: Text(
               label,
-              style: TextStyle(
-                color: Colors.grey.shade600,
-                fontSize: 14,
-              ),
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
             ),
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
             ),
           ),
         ],
@@ -375,7 +385,8 @@ class _PhotoCarouselState extends State<_PhotoCarousel> {
   void initState() {
     super.initState();
     final len = _photos.length;
-    final initialPage = len * 1000; // Start at a large number for infinite scroll
+    final initialPage =
+        len * 1000; // Start at a large number for infinite scroll
     _pageController = PageController(
       viewportFraction: 0.85,
       initialPage: initialPage,
@@ -436,9 +447,10 @@ class _PhotoCarouselState extends State<_PhotoCarousel> {
                             color: Colors.grey.shade200,
                             child: Center(
                               child: CircularProgressIndicator(
-                                value: loadingProgress.expectedTotalBytes != null
+                                value:
+                                    loadingProgress.expectedTotalBytes != null
                                     ? loadingProgress.cumulativeBytesLoaded /
-                                        loadingProgress.expectedTotalBytes!
+                                          loadingProgress.expectedTotalBytes!
                                     : null,
                               ),
                             ),
@@ -516,8 +528,5 @@ class _DesaPhoto {
   final String url;
   final String caption;
 
-  const _DesaPhoto({
-    required this.url,
-    required this.caption,
-  });
+  const _DesaPhoto({required this.url, required this.caption});
 }

@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 class Responsive {
   static const double mobileBreakpoint = 600.0;
   static const double tabletBreakpoint = 1024.0;
-  
+
   static const double baseWidth = 390.0;
   static const double baseHeight = 844.0;
 
@@ -32,7 +32,7 @@ class Responsive {
   /// Scale factor based on width, with different ranges for device types
   static double scale(BuildContext context) {
     final w = MediaQuery.of(context).size.width;
-    
+
     if (isDesktop(context)) {
       // Desktop: scale up moderately
       return (w / baseWidth).clamp(1.2, 1.8);
@@ -60,10 +60,16 @@ class Responsive {
   static double s(BuildContext context, double value) => value * scale(context);
 
   /// Convenience to scale font size.
-  static double f(BuildContext context, double size) => size * fontScale(context);
+  static double f(BuildContext context, double size) =>
+      size * fontScale(context);
 
   /// Grid cross axis count based on screen size
-  static int gridCrossAxisCount(BuildContext context, {int mobile = 2, int tablet = 3, int desktop = 4}) {
+  static int gridCrossAxisCount(
+    BuildContext context, {
+    int mobile = 2,
+    int tablet = 3,
+    int desktop = 4,
+  }) {
     if (isDesktop(context)) return desktop;
     if (isTablet(context)) return tablet;
     return mobile;
@@ -120,19 +126,24 @@ extension ResponsiveContext on BuildContext {
   double rs(double value) => Responsive.s(this, value);
   double rf(double size) => Responsive.f(this, size);
   double get summaryAspect => Responsive.summaryCardAspectRatio(this);
-  
+
   // Device type helpers
   bool get isMobile => Responsive.isMobile(this);
   bool get isTablet => Responsive.isTablet(this);
   bool get isDesktop => Responsive.isDesktop(this);
-  
+
   // Grid helpers
   int gridCount({int mobile = 2, int tablet = 3, int desktop = 4}) =>
-      Responsive.gridCrossAxisCount(this, mobile: mobile, tablet: tablet, desktop: desktop);
-  
+      Responsive.gridCrossAxisCount(
+        this,
+        mobile: mobile,
+        tablet: tablet,
+        desktop: desktop,
+      );
+
   // Padding helpers
   double get horizontalPadding => Responsive.horizontalPadding(this);
-  
+
   // Max width helper
   double get maxContentWidth => Responsive.maxContentWidth(this);
 }

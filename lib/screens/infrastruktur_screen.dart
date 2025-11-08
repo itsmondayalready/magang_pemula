@@ -163,118 +163,118 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
       body: Stack(
         children: [
           NestedScrollView(
-        headerSliverBuilder: (context, inner) => [
-          SliverAppBar(
-            pinned: true,
-            elevation: 0,
-            backgroundColor: Colors.transparent,
-            toolbarHeight: 56,
-            title: const _AppBarTitle(
-              title: 'Infrastruktur Desa',
-              subtitle:
-                  'Pendidikan • Kesehatan • Transportasi • Komunikasi • Sanitasi',
-            ),
-            centerTitle: false,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(20),
-                bottomRight: Radius.circular(20),
+            headerSliverBuilder: (context, inner) => [
+              SliverAppBar(
+                pinned: true,
+                elevation: 0,
+                backgroundColor: Colors.transparent,
+                toolbarHeight: 56,
+                title: const _AppBarTitle(
+                  title: 'Infrastruktur Desa',
+                  subtitle:
+                      'Pendidikan • Kesehatan • Transportasi • Komunikasi • Sanitasi',
+                ),
+                centerTitle: false,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(20),
+                    bottomRight: Radius.circular(20),
+                  ),
+                ),
+                flexibleSpace: ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(20),
+                    bottomRight: Radius.circular(20),
+                  ),
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Color(0xFFF97316), // orange
+                          Color(0xFFEC4899), // pink
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            ),
-            flexibleSpace: ClipRRect(
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(20),
-                bottomRight: Radius.circular(20),
-              ),
-              child: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Color(0xFFF97316), // orange
-                      Color(0xFFEC4899), // pink
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    context.horizontalPadding,
+                    0,
+                    context.horizontalPadding,
+                    8,
+                  ),
+                  child: GridView.count(
+                    shrinkWrap: true,
+                    crossAxisCount: context.gridCount(
+                      mobile: 2,
+                      tablet: 3,
+                      desktop: 4,
+                    ),
+                    childAspectRatio: context.summaryAspect,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    children: [
+                      _buildSummaryCard(
+                        label: 'Fasilitas Pendidikan',
+                        value: _sum(_data['pendidikan']).toString(),
+                        icon: Icons.school_rounded,
+                        color: const Color(0xFFF97316),
+                      ),
+                      _buildSummaryCard(
+                        label: 'Fasilitas Kesehatan',
+                        value: _sum(_data['kesehatan']).toString(),
+                        icon: Icons.local_hospital_rounded,
+                        color: const Color(0xFFF97316),
+                      ),
+                      _buildSummaryCard(
+                        label: 'Moda Transportasi',
+                        value: _sum(_data['angkutan']).toString(),
+                        icon: Icons.directions_bus_filled_rounded,
+                        color: const Color(0xFFF97316),
+                      ),
+                      _buildSummaryCard(
+                        label: 'Sarana Sanitasi',
+                        value: _sum(_data['sanitasi']).toString(),
+                        icon: Icons.wash_rounded,
+                        color: const Color(0xFFF97316),
+                      ),
                     ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
                   ),
                 ),
               ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                context.horizontalPadding,
-                0,
-                context.horizontalPadding,
-                8,
-              ),
-              child: GridView.count(
-                shrinkWrap: true,
-                crossAxisCount: context.gridCount(
-                  mobile: 2,
-                  tablet: 3,
-                  desktop: 4,
-                ),
-                childAspectRatio: context.summaryAspect,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
+            ],
+            body: Padding(
+              padding: EdgeInsets.zero,
+              child: TabBarView(
+                controller: _tabController,
                 children: [
-                  _buildSummaryCard(
-                    label: 'Fasilitas Pendidikan',
-                    value: _sum(_data['pendidikan']).toString(),
-                    icon: Icons.school_rounded,
-                    color: const Color(0xFFF97316),
-                  ),
-                  _buildSummaryCard(
-                    label: 'Fasilitas Kesehatan',
-                    value: _sum(_data['kesehatan']).toString(),
-                    icon: Icons.local_hospital_rounded,
-                    color: const Color(0xFFF97316),
-                  ),
-                  _buildSummaryCard(
-                    label: 'Moda Transportasi',
-                    value: _sum(_data['angkutan']).toString(),
-                    icon: Icons.directions_bus_filled_rounded,
-                    color: const Color(0xFFF97316),
-                  ),
-                  _buildSummaryCard(
-                    label: 'Sarana Sanitasi',
-                    value: _sum(_data['sanitasi']).toString(),
-                    icon: Icons.wash_rounded,
-                    color: const Color(0xFFF97316),
-                  ),
+                  _buildSection(_buildPendidikan()),
+                  _buildSection(_buildKesehatan()),
+                  _buildSection(_buildTransportasiJalan()),
+                  _buildSection(_buildKomunikasiInformasi()),
+                  _buildSection(_buildSanitasiAirBersih()),
                 ],
               ),
             ),
           ),
-        ],
-        body: Padding(
-          padding: EdgeInsets.zero,
-          child: TabBarView(
-            controller: _tabController,
-            children: [
-              _buildSection(_buildPendidikan()),
-              _buildSection(_buildKesehatan()),
-              _buildSection(_buildTransportasiJalan()),
-              _buildSection(_buildKomunikasiInformasi()),
-              _buildSection(_buildSanitasiAirBersih()),
-            ],
-          ),
-        ),
-      ),
-      if (_loading)
-        Positioned.fill(
-          child: AbsorbPointer(
-            absorbing: true,
-            child: ColoredBox(
-              color: Colors.black.withValues(alpha: 0.18),
-              child: const Center(child: CircularProgressIndicator()),
+          if (_loading)
+            Positioned.fill(
+              child: AbsorbPointer(
+                absorbing: true,
+                child: ColoredBox(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  child: const Center(child: CircularProgressIndicator()),
+                ),
+              ),
             ),
-          ),
-        ),
-    ],
-  ),
+        ],
+      ),
       bottomNavigationBar: Material(
         color: Colors.white,
         elevation: 8,
@@ -417,10 +417,7 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
                 padding: EdgeInsets.symmetric(vertical: 40),
                 child: Text(
                   'Belum ada data pendidikan periode ini',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.grey, fontSize: 14),
                 ),
               ),
             )
@@ -471,60 +468,57 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
                 padding: EdgeInsets.symmetric(vertical: 40),
                 child: Text(
                   'Belum ada data kesehatan periode ini',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.grey, fontSize: 14),
                 ),
               ),
             )
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-          Center(
-            child: SizedBox(
-              height: 280,
-              child: PieChart(
-                PieChartData(
-                  sectionsSpace: 3,
-                  centerSpaceRadius: 60,
-                  sections: List.generate(entries.length, (i) {
-                    final e = entries[i];
-                    final pct = totalFasilitas == 0
-                        ? 0
-                        : e.value / totalFasilitas * 100;
-                    return PieChartSectionData(
-                      value: e.value.toDouble(),
-                      title: pct > 8 ? '${pct.toStringAsFixed(0)}%' : '',
-                      color: colors[i % colors.length],
-                      radius: 90,
-                      titleStyle: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                Center(
+                  child: SizedBox(
+                    height: 280,
+                    child: PieChart(
+                      PieChartData(
+                        sectionsSpace: 3,
+                        centerSpaceRadius: 60,
+                        sections: List.generate(entries.length, (i) {
+                          final e = entries[i];
+                          final pct = totalFasilitas == 0
+                              ? 0
+                              : e.value / totalFasilitas * 100;
+                          return PieChartSectionData(
+                            value: e.value.toDouble(),
+                            title: pct > 8 ? '${pct.toStringAsFixed(0)}%' : '',
+                            color: colors[i % colors.length],
+                            radius: 90,
+                            titleStyle: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          );
+                        }),
                       ),
-                    );
-                  }),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: entries
-                .asMap()
-                .entries
-                .map(
-                  (kv) => _legendItem(
-                    color: colors[kv.key % colors.length],
-                    label: kv.value.key,
-                    value: kv.value.value,
+                    ),
                   ),
-                )
-                .toList(),
-          ),
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: entries
+                      .asMap()
+                      .entries
+                      .map(
+                        (kv) => _legendItem(
+                          color: colors[kv.key % colors.length],
+                          label: kv.value.key,
+                          value: kv.value.value,
+                        ),
+                      )
+                      .toList(),
+                ),
                 const SizedBox(height: 24),
                 Text(
                   'Tenaga Medis',
@@ -541,8 +535,8 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
                             icon: e.key == 'Dokter'
                                 ? Icons.medical_information_rounded
                                 : e.key == 'Bidan'
-                                    ? Icons.pregnant_woman_rounded
-                                    : Icons.volunteer_activism_rounded,
+                                ? Icons.pregnant_woman_rounded
+                                : Icons.volunteer_activism_rounded,
                             label: e.key,
                             value: e.value.toString(),
                             color: const Color(0xFF10B981),
@@ -573,165 +567,169 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
                 padding: EdgeInsets.symmetric(vertical: 40),
                 child: Text(
                   'Belum ada data transportasi periode ini',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.grey, fontSize: 14),
                 ),
               ),
             )
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-          SizedBox(
-            height: 260,
-            child: BarChart(
-              BarChartData(
-                alignment: BarChartAlignment.spaceAround,
-                maxY: (maxJalan * 1.3).toDouble(),
-                barTouchData: BarTouchData(
-                  enabled: true,
-                  touchTooltipData: BarTouchTooltipData(
-                    getTooltipColor: (g) => const Color(0xFF2563EB),
-                    tooltipPadding: const EdgeInsets.all(8),
-                    getTooltipItem: (g, gi, rod, ri) {
-                      final label = jalan.keys.elementAt(g.x.toInt());
-                      return BarTooltipItem(
-                        '$label\n${rod.toY.toStringAsFixed(0)}',
-                        const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
+                SizedBox(
+                  height: 260,
+                  child: BarChart(
+                    BarChartData(
+                      alignment: BarChartAlignment.spaceAround,
+                      maxY: (maxJalan * 1.3).toDouble(),
+                      barTouchData: BarTouchData(
+                        enabled: true,
+                        touchTooltipData: BarTouchTooltipData(
+                          getTooltipColor: (g) => const Color(0xFF2563EB),
+                          tooltipPadding: const EdgeInsets.all(8),
+                          getTooltipItem: (g, gi, rod, ri) {
+                            final label = jalan.keys.elementAt(g.x.toInt());
+                            return BarTooltipItem(
+                              '$label\n${rod.toY.toStringAsFixed(0)}',
+                              const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
-                ),
-                titlesData: FlTitlesData(
-                  show: true,
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 40,
-                      getTitlesWidget: (v, m) {
-                        if (v.toInt() >= 0 && v.toInt() < jalan.length) {
-                          final label = jalan.keys.elementAt(v.toInt());
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text(
-                              label,
+                      ),
+                      titlesData: FlTitlesData(
+                        show: true,
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 40,
+                            getTitlesWidget: (v, m) {
+                              if (v.toInt() >= 0 && v.toInt() < jalan.length) {
+                                final label = jalan.keys.elementAt(v.toInt());
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 8.0),
+                                  child: Text(
+                                    label,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey[700],
+                                    ),
+                                  ),
+                                );
+                              }
+                              return const SizedBox();
+                            },
+                          ),
+                        ),
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 42,
+                            interval: 5,
+                            getTitlesWidget: (v, m) => Text(
+                              v.toInt().toString(),
                               style: TextStyle(
                                 fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey[700],
+                                color: Colors.grey[600],
                               ),
                             ),
-                          );
-                        }
-                        return const SizedBox();
-                      },
-                    ),
-                  ),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 42,
-                      interval: 5,
-                      getTitlesWidget: (v, m) => Text(
-                        v.toInt().toString(),
-                        style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                      ),
-                    ),
-                  ),
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                ),
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: 5,
-                  getDrawingHorizontalLine: (v) => FlLine(
-                    color: Colors.grey[200],
-                    strokeWidth: 1,
-                    dashArray: [5, 5],
-                  ),
-                ),
-                borderData: FlBorderData(
-                  show: true,
-                  border: Border(
-                    bottom: BorderSide(color: Colors.grey[300]!, width: 1),
-                    left: BorderSide(color: Colors.grey[300]!, width: 1),
-                  ),
-                ),
-                barGroups: List.generate(jalan.length, (index) {
-                  final value = jalan.values.elementAt(index).toDouble();
-                  final color = _transportColor(index);
-                  return BarChartGroupData(
-                    x: index,
-                    barRods: [
-                      BarChartRodData(
-                        toY: value,
-                        gradient: LinearGradient(
-                          begin: Alignment.bottomCenter,
-                          end: Alignment.topCenter,
-                          colors: [color, color.withValues(alpha: 0.7)],
+                          ),
                         ),
-                        width: 18,
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(6),
+                        rightTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        topTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
                         ),
                       ),
-                    ],
-                  );
-                }),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Angkutan Umum',
-            style: Theme.of(
-              context,
-            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: angkutan.entries
-                .map(
-                  (e) => Expanded(
-                    child: _infoStat(
-                      icon: Icons.directions_bus_rounded,
+                      gridData: FlGridData(
+                        show: true,
+                        drawVerticalLine: false,
+                        horizontalInterval: 5,
+                        getDrawingHorizontalLine: (v) => FlLine(
+                          color: Colors.grey[200],
+                          strokeWidth: 1,
+                          dashArray: [5, 5],
+                        ),
+                      ),
+                      borderData: FlBorderData(
+                        show: true,
+                        border: Border(
+                          bottom: BorderSide(
+                            color: Colors.grey[300]!,
+                            width: 1,
+                          ),
+                          left: BorderSide(color: Colors.grey[300]!, width: 1),
+                        ),
+                      ),
+                      barGroups: List.generate(jalan.length, (index) {
+                        final value = jalan.values.elementAt(index).toDouble();
+                        final color = _transportColor(index);
+                        return BarChartGroupData(
+                          x: index,
+                          barRods: [
+                            BarChartRodData(
+                              toY: value,
+                              gradient: LinearGradient(
+                                begin: Alignment.bottomCenter,
+                                end: Alignment.topCenter,
+                                colors: [color, color.withValues(alpha: 0.7)],
+                              ),
+                              width: 18,
+                              borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(6),
+                              ),
+                            ),
+                          ],
+                        );
+                      }),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Angkutan Umum',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: angkutan.entries
+                      .map(
+                        (e) => Expanded(
+                          child: _infoStat(
+                            icon: Icons.directions_bus_rounded,
+                            label: e.key,
+                            value: e.value.toString(),
+                            color: const Color(0xFFF59E0B),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Akses ke Kantor Pemerintahan',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: akses.entries.map((e) {
+                    final map = Map<String, int>.from(e.value);
+                    return _chip(
+                      icon: Icons.place_rounded,
                       label: e.key,
-                      value: e.value.toString(),
-                      color: const Color(0xFFF59E0B),
-                    ),
-                  ),
-                )
-                .toList(),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Akses ke Kantor Pemerintahan',
-            style: Theme.of(
-              context,
-            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: akses.entries.map((e) {
-              final map = Map<String, int>.from(e.value);
-              return _chip(
-                icon: Icons.place_rounded,
-                label: e.key,
-                value: '${map['jarak_km']} km • ${map['waktu_menit']} menit',
-              );
-            }).toList(),
-          ),
+                      value:
+                          '${map['jarak_km']} km • ${map['waktu_menit']} menit',
+                    );
+                  }).toList(),
+                ),
                 const SizedBox(height: 16),
                 Text(
                   'Angkutan Umum',
@@ -878,24 +876,21 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
                 padding: EdgeInsets.symmetric(vertical: 40),
                 child: Text(
                   'Belum ada data sanitasi periode ini',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.grey, fontSize: 14),
                 ),
               ),
             )
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-          ...entries.map(
-            (e) => _modernHorizontalBar(
-              label: e.key,
-              value: e.value,
-              percentage: e.value / (total == 0 ? 1 : total) * 100,
-              color: _sanitasiColor(e.key),
-            ),
-          ),
+                ...entries.map(
+                  (e) => _modernHorizontalBar(
+                    label: e.key,
+                    value: e.value,
+                    percentage: e.value / (total == 0 ? 1 : total) * 100,
+                    color: _sanitasiColor(e.key),
+                  ),
+                ),
                 const SizedBox(height: 16),
                 Text(
                   'Penanggulangan Bencana & Pelestarian Alam',

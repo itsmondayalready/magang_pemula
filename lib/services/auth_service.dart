@@ -11,10 +11,10 @@ class AuthService extends ChangeNotifier {
     debugPrint('🚀 ══════════════════════════════════════════════════════');
     debugPrint('[AuthService] INITIALIZING AUTH SERVICE');
     debugPrint('🚀 ══════════════════════════════════════════════════════');
-    
+
     // Initialize with current session user
     _user = _supabase.auth.currentUser;
-    
+
     debugPrint('');
     debugPrint('[AuthService] Current Session Check:');
     debugPrint('[AuthService] Has existing session: ${_user != null}');
@@ -27,7 +27,7 @@ class AuthService extends ChangeNotifier {
       debugPrint('[AuthService] No existing session - user needs to login');
     }
     debugPrint('');
-    
+
     // Listen to auth state changes
     _supabase.auth.onAuthStateChange.listen((data) async {
       debugPrint('');
@@ -35,9 +35,9 @@ class AuthService extends ChangeNotifier {
       debugPrint('[AuthService] AUTH STATE CHANGE DETECTED');
       debugPrint('[AuthService] Event: ${data.event}');
       debugPrint('🔄 ══════════════════════════════════════════════════════');
-      
+
       _user = data.session?.user;
-      
+
       if (_user != null) {
         debugPrint('[AuthService] New User State:');
         debugPrint('[AuthService] User ID: ${_user!.id}');
@@ -49,7 +49,7 @@ class AuthService extends ChangeNotifier {
         _userRole = null;
       }
       debugPrint('');
-      
+
       notifyListeners();
     });
   }
@@ -57,17 +57,23 @@ class AuthService extends ChangeNotifier {
   String? get userEmail => _user?.email;
   bool get isSignedIn {
     final signedIn = _user != null;
-    debugPrint('[AuthService] 🔍 isSignedIn getter called: $signedIn (user: ${_user?.email ?? "null"})');
+    debugPrint(
+      '[AuthService] 🔍 isSignedIn getter called: $signedIn (user: ${_user?.email ?? "null"})',
+    );
     return signedIn;
   }
+
   bool get isGuest {
     final guest = _user != null && _user!.isAnonymous;
     debugPrint('[AuthService] 🔍 isGuest getter called: $guest');
     return guest;
   }
+
   bool get isAdmin {
     final admin = _userRole == 'admin';
-    debugPrint('[AuthService] 🔍 isAdmin getter called: $admin (role: $_userRole)');
+    debugPrint(
+      '[AuthService] 🔍 isAdmin getter called: $admin (role: $_userRole)',
+    );
     return admin;
   }
 
@@ -78,13 +84,13 @@ class AuthService extends ChangeNotifier {
       debugPrint('[AuthService] LOGIN ATTEMPT');
       debugPrint('[AuthService] Email: $email');
       debugPrint('🔐 ══════════════════════════════════════════════════════');
-      
+
       final response = await _supabase.auth.signInWithPassword(
         email: email,
         password: password,
       );
       _user = response.user;
-      
+
       debugPrint('');
       debugPrint('✅ ══════════════════════════════════════════════════════');
       debugPrint('[AuthService] LOGIN SUCCESSFUL');
@@ -94,21 +100,23 @@ class AuthService extends ChangeNotifier {
       debugPrint('[AuthService] Is Anonymous: ${_user?.isAnonymous}');
       debugPrint('✅ ══════════════════════════════════════════════════════');
       debugPrint('');
-      
+
       // Fetch role from Supabase users table
       if (_user != null) {
         await _fetchUserRole(_user!.id);
       }
-      
+
       debugPrint('');
       debugPrint('🎯 ══════════════════════════════════════════════════════');
       debugPrint('[AuthService] LOGIN COMPLETE');
       debugPrint('[AuthService] Final User Role: $_userRole');
       debugPrint('[AuthService] Is Admin: ${_userRole == 'admin'}');
-      debugPrint('[AuthService] Is Signed In: $_user != null = ${_user != null}');
+      debugPrint(
+        '[AuthService] Is Signed In: $_user != null = ${_user != null}',
+      );
       debugPrint('🎯 ══════════════════════════════════════════════════════');
       debugPrint('');
-      
+
       notifyListeners();
     } on AuthException catch (e) {
       debugPrint('');
@@ -126,7 +134,9 @@ class AuthService extends ChangeNotifier {
       debugPrint('[AuthService] Error: $e');
       debugPrint('❌ ══════════════════════════════════════════════════════');
       debugPrint('');
-      throw AuthException('Tidak dapat terhubung ke server. Periksa koneksi internet Anda.');
+      throw AuthException(
+        'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.',
+      );
     } catch (e) {
       debugPrint('');
       debugPrint('❌ ══════════════════════════════════════════════════════');
@@ -135,16 +145,18 @@ class AuthService extends ChangeNotifier {
       debugPrint('[AuthService] Error Type: ${e.runtimeType}');
       debugPrint('❌ ══════════════════════════════════════════════════════');
       debugPrint('');
-      
+
       // Check if it's a network-related error
       final errorStr = e.toString().toLowerCase();
       if (errorStr.contains('socketexception') ||
           errorStr.contains('failed host lookup') ||
           errorStr.contains('network') ||
           errorStr.contains('connection')) {
-        throw AuthException('Tidak ada koneksi internet. Periksa jaringan Anda.');
+        throw AuthException(
+          'Tidak ada koneksi internet. Periksa jaringan Anda.',
+        );
       }
-      
+
       throw AuthException('Terjadi kesalahan. Silakan coba lagi.');
     }
   }
@@ -158,7 +170,9 @@ class AuthService extends ChangeNotifier {
       debugPrint('[AuthService] UID: $uid');
       debugPrint('[AuthService] UID Type: ${uid.runtimeType}');
       debugPrint('[AuthService] UID Length: ${uid.length}');
-      debugPrint('[AuthService] Query: SELECT role FROM users WHERE id = \'$uid\'');
+      debugPrint(
+        '[AuthService] Query: SELECT role FROM users WHERE id = \'$uid\'',
+      );
       debugPrint('════════════════════════════════════════════════════════');
 
       // 0) Try to read role from JWT first (app_metadata/user_metadata) to avoid DB hit when possible
@@ -174,25 +188,27 @@ class AuthService extends ChangeNotifier {
       } catch (_) {
         // Ignore metadata parsing issues and fall through to DB lookup
       }
-      
-    // 1) Try direct query to users table (RLS must allow reading own row)
+
+      // 1) Try direct query to users table (RLS must allow reading own row)
       final response = await _supabase
           .from('users')
           .select('role')
           .eq('id', uid)
           .maybeSingle();
-      
+
       debugPrint('');
       debugPrint('════════════════════════════════════════════════════════');
       debugPrint('[AuthService] 📦 QUERY RESPONSE');
       debugPrint('[AuthService] Response: $response');
       debugPrint('[AuthService] Response Type: ${response.runtimeType}');
       debugPrint('[AuthService] Is Null: ${response == null}');
-      
+
       // 2) Try alternative query with explicit UUID cast
       if (response == null) {
         debugPrint('');
-        debugPrint('[AuthService] ⚠️ First query returned null, trying with explicit cast...');
+        debugPrint(
+          '[AuthService] ⚠️ First query returned null, trying with explicit cast...',
+        );
         final altResponse = await _supabase
             .from('users')
             .select('*')
@@ -201,9 +217,9 @@ class AuthService extends ChangeNotifier {
             .maybeSingle();
         debugPrint('[AuthService] Alternative query response: $altResponse');
       }
-      
+
       debugPrint('════════════════════════════════════════════════════════');
-      
+
       if (response != null) {
         final roleFromDb = response['role'];
         debugPrint('');
@@ -221,8 +237,12 @@ class AuthService extends ChangeNotifier {
         debugPrint('[AuthService] ⚠️ USER NOT FOUND IN USERS TABLE');
         debugPrint('[AuthService] Setting default role: user');
         debugPrint('[AuthService] ⚠️ ACTION REQUIRED:');
-        debugPrint('[AuthService] 1. Check if UID exists in Supabase users table');
-        debugPrint('[AuthService] 2. Run: SELECT * FROM users WHERE id = \'$uid\'::UUID');
+        debugPrint(
+          '[AuthService] 1. Check if UID exists in Supabase users table',
+        );
+        debugPrint(
+          '[AuthService] 2. Run: SELECT * FROM users WHERE id = \'$uid\'::UUID',
+        );
         debugPrint('[AuthService] 3. If no results, INSERT the user manually');
         debugPrint('════════════════════════════════════════════════════════');
         debugPrint('');
@@ -253,7 +273,7 @@ class AuthService extends ChangeNotifier {
         password: password,
       );
       _user = response.user;
-      
+
       // Insert user into users table with default 'user' role
       if (_user != null) {
         await _supabase.from('users').insert({
@@ -264,7 +284,7 @@ class AuthService extends ChangeNotifier {
         });
         _userRole = 'user';
       }
-      
+
       notifyListeners();
     } on AuthException {
       rethrow;
@@ -285,11 +305,11 @@ class AuthService extends ChangeNotifier {
       debugPrint('👤 ══════════════════════════════════════════════════════');
       debugPrint('[AuthService] GUEST LOGIN ATTEMPT');
       debugPrint('👤 ══════════════════════════════════════════════════════');
-      
+
       final response = await _supabase.auth.signInAnonymously();
       _user = response.user;
       _userRole = 'guest';
-      
+
       debugPrint('');
       debugPrint('✅ ══════════════════════════════════════════════════════');
       debugPrint('[AuthService] GUEST LOGIN SUCCESSFUL');
@@ -297,7 +317,7 @@ class AuthService extends ChangeNotifier {
       debugPrint('[AuthService] Role: $_userRole');
       debugPrint('✅ ══════════════════════════════════════════════════════');
       debugPrint('');
-      
+
       notifyListeners();
     } on AuthException catch (e) {
       debugPrint('');
@@ -314,7 +334,9 @@ class AuthService extends ChangeNotifier {
       debugPrint('[AuthService] Error: $e');
       debugPrint('❌ ══════════════════════════════════════════════════════');
       debugPrint('');
-      throw AuthException('Tidak dapat terhubung ke server. Periksa koneksi internet Anda.');
+      throw AuthException(
+        'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.',
+      );
     } catch (e) {
       debugPrint('');
       debugPrint('❌ ══════════════════════════════════════════════════════');
@@ -322,15 +344,17 @@ class AuthService extends ChangeNotifier {
       debugPrint('[AuthService] Error: $e');
       debugPrint('❌ ══════════════════════════════════════════════════════');
       debugPrint('');
-      
+
       final errorStr = e.toString().toLowerCase();
       if (errorStr.contains('socketexception') ||
           errorStr.contains('failed host lookup') ||
           errorStr.contains('network') ||
           errorStr.contains('connection')) {
-        throw AuthException('Tidak ada koneksi internet. Periksa jaringan Anda.');
+        throw AuthException(
+          'Tidak ada koneksi internet. Periksa jaringan Anda.',
+        );
       }
-      
+
       throw AuthException('Terjadi kesalahan. Silakan coba lagi.');
     }
   }
@@ -343,14 +367,14 @@ class AuthService extends ChangeNotifier {
     debugPrint('[AuthService] Previous Role: $_userRole');
     debugPrint('🚪 ══════════════════════════════════════════════════════');
     debugPrint('');
-    
+
     await _supabase.auth.signOut();
     _user = null;
     _userRole = null;
-    
+
     debugPrint('✅ Logout successful - returning to Login Screen');
     debugPrint('');
-    
+
     notifyListeners();
   }
 }
