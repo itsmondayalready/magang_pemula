@@ -735,6 +735,7 @@ class _FasilitasPie extends StatelessWidget {
     }
 
     final total = data.values.fold(0, (p, c) => p + c);
+    // Hanya tampilkan kategori yang ada di data (termasuk yang bernilai 0)
     final entries = data.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 

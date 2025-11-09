@@ -103,7 +103,6 @@ class _MetadataScreenState extends State<MetadataScreen>
                 pinned: true,
                 elevation: 0,
                 backgroundColor: Colors.transparent,
-                expandedHeight: 100,
                 toolbarHeight: 56,
                 leading: IconButton(
                   icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -134,59 +133,6 @@ class _MetadataScreenState extends State<MetadataScreen>
                         colors: [Color(0xFF16A34A), Color(0xFFA3E635)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                      ),
-                    ),
-                    child: FlexibleSpaceBar(
-                      background: SafeArea(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 60, 16, 16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.2),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: const Icon(
-                                      Icons.description_outlined,
-                                      color: Colors.white,
-                                      size: 24,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const Text(
-                                          'Informasi Metadata',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                        Text(
-                                          '${_metadataList.length} data tersedia',
-                                          style: const TextStyle(
-                                            color: Colors.white70,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
                       ),
                     ),
                   ),

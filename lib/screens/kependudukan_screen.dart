@@ -597,9 +597,9 @@ class _KependudukanScreenState extends State<KependudukanScreen>
       'Akademi/PT',
     ];
 
+    // Tampilkan semua kategori meskipun nilainya 0 (seperti chart tenaga medis)
     final sortedEntries = educationOrder
         .map((k) => MapEntry(k, aggregated[k] ?? 0))
-        .where((e) => e.value > 0)
         .toList();
 
     final total = aggregated.values.isEmpty
