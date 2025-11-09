@@ -23,6 +23,7 @@ class ProfilDesaScreen extends StatefulWidget {
 class _ProfilDesaScreenState extends State<ProfilDesaScreen> {
   final _repo = DesaRepository();
   bool _loading = true;
+  bool _hasChanges = false; // Track if any data was modified
   List<Map<String, dynamic>> _aparatur = const [];
   List<DesaPhoto> _photos = []; // Dynamic list from database
   String? _kecamatan;
@@ -106,26 +107,32 @@ class _ProfilDesaScreenState extends State<ProfilDesaScreen> {
     final authService = context.watch<AuthService>();
     final isAdmin = authService.isSignedIn && authService.isAdmin;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Profil Desa',
-          style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white),
-        ),
-        centerTitle: false,
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF9333EA), Color(0xFFEC4899)],
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
+    return WillPopScope(
+      onWillPop: () async {
+        // Return _hasChanges flag to main menu for conditional refresh
+        Navigator.of(context).pop(_hasChanges);
+        return false;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text(
+            'Profil Desa',
+            style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white),
+          ),
+          centerTitle: false,
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF9333EA), Color(0xFFEC4899)],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
             ),
           ),
+          iconTheme: const IconThemeData(color: Colors.white),
+          elevation: 0,
         ),
-        iconTheme: const IconThemeData(color: Colors.white),
-        elevation: 0,
-      ),
-      body: Stack(
+        body: Stack(
         children: [
           SingleChildScrollView(
             padding: EdgeInsets.fromLTRB(
@@ -272,7 +279,8 @@ class _ProfilDesaScreenState extends State<ProfilDesaScreen> {
               ),
             )
           : null,
-    );
+      ), // Scaffold
+    ); // WillPopScope
   }
 
   Future<void> _openEditBottomSheet() async {
@@ -303,6 +311,7 @@ class _ProfilDesaScreenState extends State<ProfilDesaScreen> {
 
       // Reload jika ada perubahan
       if (result == true && mounted) {
+        _hasChanges = true; // Mark that data was modified
         setState(() {
           _loading = true;
         });

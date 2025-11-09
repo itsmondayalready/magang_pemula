@@ -743,8 +743,8 @@ class _KependudukanScreenState extends State<KependudukanScreen>
     final tidakBekerja = _produktifTidak ?? 0;
     final totalUsiaProduktif = _totalUsiaProduktif ?? (bekerja + tidakBekerja);
 
-    // Only show notice if data is null (no data from DB)
-    final hasData = _produktifBekerja != null || _produktifTidak != null;
+    // Show empty state if both values are 0 or null
+    final hasData = bekerja > 0 || tidakBekerja > 0;
 
     final colors = [
       const Color(0xFF10B981), // Hijau untuk Bekerja

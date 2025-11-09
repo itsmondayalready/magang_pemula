@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
 import '../services/desa_repository.dart';
 import '../services/kesehatan_repository.dart';
+import '../services/pendidikan_repository.dart';
 import '../utils/responsive.dart';
 
 // Main menu screen untuk aplikasi Desa — versi yang rapi
@@ -40,6 +41,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
   int? _latestKK;
   int? _totalFasilitas;
   int? _totalTenagaMedis;
+  int? _totalPendidikanNegeri;
+  int? _totalPendidikanSwasta;
   bool _loadingSummary = true;
   final _repo = DesaRepository();
   final _kesehatanRepo = KesehatanRepository();
@@ -78,6 +81,22 @@ class _MainMenuPageState extends State<MainMenuPage> {
         final kes = await _kesehatanRepo.fetchLatest(_kodeWilayah);
         _totalFasilitas = (kes?['total_fasilitas'] ?? 0) as int?;
         _totalTenagaMedis = (kes?['total_tenaga_medis'] ?? 0) as int?;
+
+        // Pendidikan: load data dari database
+        final pendidikanRepo = PendidikanRepository();
+        final pendidikanCounts = await pendidikanRepo.getCounts(_kodeWilayah);
+        
+        // Hitung total negeri (SD, SMP, SMA, SMK)
+        final sd = pendidikanCounts['SD'] ?? 0;
+        final smp = pendidikanCounts['SMP'] ?? 0;
+        final sma = pendidikanCounts['SMA'] ?? 0;
+        final smk = pendidikanCounts['SMK'] ?? 0;
+        _totalPendidikanNegeri = sd + smp + sma + smk;
+        
+        // Hitung total swasta (PAUD, TK)
+        final paud = pendidikanCounts['PAUD'] ?? 0;
+        final tk = pendidikanCounts['TK'] ?? 0;
+        _totalPendidikanSwasta = paud + tk;
       }).timeout(const Duration(seconds: 8));
     } on TimeoutException {
       // timeout: leave values as null so UI shows placeholders
@@ -168,14 +187,30 @@ class _MainMenuPageState extends State<MainMenuPage> {
     const double bottomPad = 20; // loosen spacing below carousel
 
     // Prepare carousel items (dynamic from DB with graceful fallback)
-    final luasStr = _luasWilayahKm2 != null
+    final luasStr = _luasWilayahKm2 != null && _luasWilayahKm2! > 0
         ? '${_luasWilayahKm2!.toStringAsFixed(2)} km²'
         : '—';
     final rtRwStr = (_totalRT != null && _totalRW != null)
         ? '$_totalRT/$_totalRW'
         : '—';
-    final pendudukStr = _latestPenduduk?.toString() ?? '—';
-    final kkStr = _latestKK?.toString() ?? '—';
+    final pendudukStr = _latestPenduduk != null && _latestPenduduk! > 0
+        ? _latestPenduduk!.toString()
+        : '—';
+    final kkStr = _latestKK != null && _latestKK! > 0
+        ? _latestKK!.toString()
+        : '—';
+    final negeriStr = _totalPendidikanNegeri != null && _totalPendidikanNegeri! > 0
+        ? _totalPendidikanNegeri!.toString()
+        : '—';
+    final swastaStr = _totalPendidikanSwasta != null && _totalPendidikanSwasta! > 0
+        ? _totalPendidikanSwasta!.toString()
+        : '—';
+    final fasilitasStr = _totalFasilitas != null && _totalFasilitas! > 0
+        ? _totalFasilitas!.toString()
+        : '—';
+    final tenagaStr = _totalTenagaMedis != null && _totalTenagaMedis! > 0
+        ? _totalTenagaMedis!.toString()
+        : '—';
     final summaryItems = <_SummaryItem>[
       _SummaryItem(
         title: 'Ringkasan Desa',
@@ -207,8 +242,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
           _SummaryChip(icon: Icons.badge_rounded, label: 'KK', value: kkStr),
         ],
       ),
-      // Tetap tampilkan kartu lain (dummy) sampai integrasi lanjut
-      const _SummaryItem(
+      // Data pendidikan dari database (bukan dummy lagi!)
+      _SummaryItem(
         title: 'Pendidikan',
         gradient: _gradBluePurple,
         icon: Icons.school_rounded,
@@ -216,12 +251,12 @@ class _MainMenuPageState extends State<MainMenuPage> {
           _SummaryChip(
             icon: Icons.account_balance_rounded,
             label: 'Negeri',
-            value: '0',
+            value: negeriStr,
           ),
           _SummaryChip(
             icon: Icons.child_care_rounded,
-            label: 'PAUD Swasta',
-            value: '1',
+            label: 'Swasta',
+            value: swastaStr,
           ),
         ],
       ),
@@ -233,12 +268,12 @@ class _MainMenuPageState extends State<MainMenuPage> {
           _SummaryChip(
             icon: Icons.local_hospital_rounded,
             label: 'Fasilitas',
-            value: _totalFasilitas?.toString() ?? '—',
+            value: fasilitasStr,
           ),
           _SummaryChip(
             icon: Icons.volunteer_activism_rounded,
             label: 'Tenaga',
-            value: _totalTenagaMedis?.toString() ?? '—',
+            value: tenagaStr,
           ),
         ],
       ),
@@ -1837,95 +1872,208 @@ class _EditDesaFormSheetState extends State<_EditDesaFormSheet> {
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
-    return Padding(
-      padding: EdgeInsets.only(bottom: bottom),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Edit Desa', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(widget.kodeWilayah, style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.w600)),
+    final colorScheme = Theme.of(context).colorScheme;
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: Padding(
+        padding: EdgeInsets.only(bottom: bottom),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+            child: _loading
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(48.0),
+                      child: CircularProgressIndicator(),
                     ),
-                    const SizedBox(height: 20),
-                    if (_error != null) ...[
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.red.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.red.shade200),
-                        ),
-                        child: Row(
+                  )
+                : Form(
+                    key: _formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header
+                        Row(
                           children: [
-                            const Icon(Icons.error, color: Colors.red),
-                            const SizedBox(width: 8),
-                            Expanded(child: Text(_error!, style: const TextStyle(color: Colors.red))),
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(Icons.edit_location_alt_rounded, color: Colors.white, size: 24),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Edit Desa', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                                  Text(
+                                    'Kode: ${widget.kodeWilayah}',
+                                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                    TextFormField(
-                      controller: _namaCtrl,
-                      decoration: const InputDecoration(labelText: 'Nama Desa', border: OutlineInputBorder()),
-                      validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _kecamatanCtrl,
-                      decoration: const InputDecoration(labelText: 'Kecamatan', border: OutlineInputBorder()),
-                      validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _kabupatenCtrl,
-                      decoration: const InputDecoration(labelText: 'Kabupaten', border: OutlineInputBorder()),
-                      validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _provinsiCtrl,
-                      decoration: const InputDecoration(labelText: 'Provinsi', border: OutlineInputBorder()),
-                      validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: _saving ? null : () => Navigator.pop(context),
-                            child: const Text('Batal'),
+                        const SizedBox(height: 24),
+                        
+                        // Error message
+                        if (_error != null) ...[
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: colorScheme.errorContainer,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: colorScheme.error.withOpacity(0.3)),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.error_outline_rounded, color: colorScheme.error),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    _error!,
+                                    style: TextStyle(color: colorScheme.onErrorContainer, fontWeight: FontWeight.w500),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
+                          const SizedBox(height: 20),
+                        ],
+                        
+                        // Form fields
+                        _buildTextField(
+                          controller: _namaCtrl,
+                          label: 'Nama Desa',
+                          hint: 'Contoh: Sungai Kupang',
+                          icon: Icons.location_city_rounded,
+                          validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          flex: 2,
-                          child: FilledButton(
-                            onPressed: _saving ? null : _submit,
-                            child: _saving
-                                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                                : const Text('Simpan'),
-                          ),
+                        const SizedBox(height: 16),
+                        _buildTextField(
+                          controller: _kecamatanCtrl,
+                          label: 'Kecamatan',
+                          hint: 'Contoh: Kuripan',
+                          icon: Icons.map_rounded,
+                          validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
+                        ),
+                        const SizedBox(height: 16),
+                        _buildTextField(
+                          controller: _kabupatenCtrl,
+                          label: 'Kabupaten/Kota',
+                          hint: 'Contoh: Barito Kuala',
+                          icon: Icons.account_balance_rounded,
+                          validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
+                        ),
+                        const SizedBox(height: 16),
+                        _buildTextField(
+                          controller: _provinsiCtrl,
+                          label: 'Provinsi',
+                          hint: 'Contoh: Kalimantan Selatan',
+                          icon: Icons.public_rounded,
+                          validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: (_) => _submit(),
+                        ),
+                        const SizedBox(height: 28),
+                        
+                        // Action buttons
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: _saving ? null : () => Navigator.pop(context, null),
+                                icon: const Icon(Icons.close_rounded),
+                                label: const Text('Batal'),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  side: BorderSide(color: Colors.grey.shade300),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              flex: 2,
+                              child: FilledButton.icon(
+                                onPressed: _saving ? null : _submit,
+                                icon: _saving
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                      )
+                                    : const Icon(Icons.save_rounded),
+                                label: Text(_saving ? 'Menyimpan...' : 'Simpan'),
+                                style: FilledButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  backgroundColor: const Color(0xFF6366F1),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
-                ),
-              ),
+                  ),
+          ),
+        ),
       ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    TextInputType? keyboardType,
+    TextInputAction? textInputAction,
+    String? Function(String?)? validator,
+    void Function(String)? onFieldSubmitted,
+  }) {
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        prefixIcon: Icon(icon, size: 20),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red),
+        ),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      ),
+      keyboardType: keyboardType,
+      textInputAction: textInputAction ?? TextInputAction.next,
+      validator: validator,
+      onFieldSubmitted: onFieldSubmitted,
     );
   }
 }

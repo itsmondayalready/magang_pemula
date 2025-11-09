@@ -21,6 +21,7 @@ class _PendidikanScreenState extends State<PendidikanScreen>
   final _notesRepo = NotesRepository();
 
   bool _loading = true;
+  bool _hasChanges = false; // Track if any data was modified
   String? _error;
   String? _kodeWilayah;
   String? _desaId;
@@ -153,15 +154,21 @@ class _PendidikanScreenState extends State<PendidikanScreen>
     final totalNegeri = negeri.values.fold<int>(0, (p, c) => p + c);
     final totalSwasta = swasta.fold<int>(0, (p, e) => p + (e['count'] as int));
 
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
-      floatingActionButton: isAdmin
-          ? FloatingActionButton(
-              onPressed: _openEditBottomSheet,
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              child: Container(
-                width: 56,
+    return WillPopScope(
+      onWillPop: () async {
+        // Return _hasChanges flag to main menu for conditional refresh
+        Navigator.of(context).pop(_hasChanges);
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: Colors.grey[50],
+        floatingActionButton: isAdmin
+            ? FloatingActionButton(
+                onPressed: _openEditBottomSheet,
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                child: Container(
+                  width: 56,
                 height: 56,
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
@@ -310,8 +317,9 @@ class _PendidikanScreenState extends State<PendidikanScreen>
             ],
           ),
         ),
-      ),
-    );
+      ), // bottomNavigationBar (Material)
+    ), // Scaffold
+    ); // WillPopScope
   }
 
   // ------- Section builders -------
@@ -757,6 +765,10 @@ class _PendidikanScreenState extends State<PendidikanScreen>
   // ------------- Bottom Sheet Editor -------------
   Future<void> _openEditBottomSheet() async {
     if (_kodeWilayah == null || _desaId == null) return;
+    
+    // Capture parent state reference for use in callbacks
+    final parentState = this;
+    
     final kode = _kodeWilayah!;
     final desaId = _desaId!;
     final year = DateTime.now().year;
@@ -1046,20 +1058,72 @@ class _PendidikanScreenState extends State<PendidikanScreen>
                                 );
                               }
                               await _loadFromRepo(kode);
-                              await _loadNotes(
-                                kode,
-                              ); // refresh catatan agar langsung muncul
-                              if (mounted) setState(() {});
-                              if (mounted) Navigator.pop(ctx);
-                              if (mounted) {
+                              await _loadNotes(kode); // refresh catatan agar langsung muncul
+                              
+                              // Set _hasChanges flag for conditional refresh (using parent state)
+                              if (parentState.mounted) {
+                                parentState._hasChanges = true;
+                                parentState.setState(() {});
+                              }
+                              
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              
+                              if (parentState.mounted) {
+                                ScaffoldMessenger.of(context).hideCurrentSnackBar();
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Data pendidikan tersimpan'),
+                                  SnackBar(
+                                    content: Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withOpacity(0.2),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: const Icon(
+                                            Icons.check_circle_rounded,
+                                            color: Colors.white,
+                                            size: 24,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Text(
+                                                'Berhasil!',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                'Data pendidikan berhasil disimpan',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.white.withOpacity(0.9),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    backgroundColor: const Color(0xFF10B981),
+                                    behavior: SnackBarBehavior.floating,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    margin: const EdgeInsets.all(16),
+                                    duration: const Duration(seconds: 3),
                                   ),
                                 );
                               }
                             } catch (e) {
-                              if (mounted) {
+                              if (parentState.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text('Gagal menyimpan: $e'),
@@ -1067,7 +1131,7 @@ class _PendidikanScreenState extends State<PendidikanScreen>
                                 );
                               }
                             } finally {
-                              if (mounted) setLocal(() => saving = false);
+                              if (ctx.mounted) setLocal(() => saving = false);
                             }
                           },
                       child: saving
@@ -1280,7 +1344,6 @@ class _PendidikanScreenState extends State<PendidikanScreen>
       ),
     ],
   );
-  }
 }
 
 /*
@@ -1831,10 +1894,11 @@ class _PendidikanScreenState extends State<PendidikanScreen>
       );
 
   int _sum(Map<String, int> map) => map.values.fold(0, (p, c) => p + c);
-  // (Removed legacy duplicate _openEditBottomSheet implementation.)
+*/
 }
 
-*/
+// ============== UI Helper Widgets ==============
+
 class _Card extends StatelessWidget {
   const _Card({
     required this.icon,
