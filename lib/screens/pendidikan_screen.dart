@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
+import '../services/auth_service.dart';
 import '../services/infrastruktur_repository_single.dart';
 import '../services/notes_repository.dart';
 import '../utils/responsive.dart';
+import '../utils/pendidikan_constants.dart';
 
 class PendidikanScreen extends StatefulWidget {
   const PendidikanScreen({super.key});
@@ -20,8 +22,8 @@ class _PendidikanScreenState extends State<PendidikanScreen>
 
   bool _loading = true;
   String? _error;
-
-  // State data yang diisi dari repository (tanpa hardcode)
+  String? _kodeWilayah;
+  String? _desaId;
   final Map<String, dynamic> _data = {
     'negeri': <String, int>{},
     'swasta': <Map<String, dynamic>>[],
@@ -30,7 +32,6 @@ class _PendidikanScreenState extends State<PendidikanScreen>
     'keterampilan': <String, int>{},
   };
 
-  // Catatan dari DB, keyed by section code: 'negeri' | 'swasta' | 'lb_keagamaan_keterampilan'
   final Map<String, Map<String, dynamic>> _notesBySection = {};
 
   @override
@@ -47,128 +48,71 @@ class _PendidikanScreenState extends State<PendidikanScreen>
   }
 
   Future<void> _initAndLoad() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
-      // Ambil kode wilayah dari route args atau SharedPreferences
-      final args = ModalRoute.of(context)?.settings.arguments;
       String? kode;
-      if (args is Map) {
-        kode = (args['kodeWilayah'] as String?)?.trim();
-      }
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is Map) kode = (args['kodeWilayah'] as String?)?.trim();
       if (kode == null || kode.isEmpty) {
         final prefs = await SharedPreferences.getInstance();
         kode = prefs.getString('last_desa_kode');
       }
       kode ??= '6303052009';
-
-      // Muat data utama terlebih dahulu; catatan tidak boleh menggagalkan layar
+      _kodeWilayah = kode;
+      _desaId = await _repo.getDesaIdByKode(kode);
       await _loadFromRepo(kode);
       await _loadNotes(kode);
       if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _error = null;
-      });
+      setState(() => _loading = false);
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _loading = false;
         _error = e.toString();
+        _loading = false;
       });
     }
   }
 
   Future<void> _loadFromRepo(String kode) async {
     final year = DateTime.now().year;
-
-    // Ambil data pendidikan dari tabel serbaguna (jumlah per jenis)
     final pend = await _repo.getPendidikan(kode, year: year);
 
-    // 1) Negeri: sesuai spesifikasi, semuanya 0 (tetap)
-    _data['negeri'] = {
-      'PAUD Negeri': 0,
-      'TK Negeri': 0,
-      'RA/BA Negeri': 0,
-      'SD Negeri': 0,
-      'SMP Negeri': 0,
-      'MTs Negeri': 0,
-      'SMA Negeri': 0,
-      'MA Negeri': 0,
-      'SMK Negeri': 0,
-      'Perguruan Tinggi Negeri': 0,
+    final negeri = <String, int>{
+      for (final e in pend.entries)
+        if (e.key.toLowerCase().contains('negeri') && e.value > 0)
+          e.key: e.value,
     };
 
-    // 2) Swasta: turunkan dari pend (jenis umum) -> label swasta
-    List<Map<String, dynamic>> swasta = [
-      {
-        'label': 'PAUD Swasta',
-        'count': (pend['PAUD'] ?? 0),
-        'nearest_km': null, // isi jika ada di DB (metric lain)
-        'akses': (pend['PAUD'] ?? 0) > 0 ? 'lokal' : 'mudah',
-        'keterangan': (pend['PAUD'] ?? 0) > 0 ? 'unit lokal' : '',
-      },
-      {
-        'label': 'TK Swasta',
-        'count': (pend['TK'] ?? 0),
-        'nearest_km': null,
-        'akses': (pend['TK'] ?? 0) > 0 ? 'lokal' : 'mudah',
-        'keterangan': (pend['TK'] ?? 0) > 0 ? 'unit lokal' : '',
-      },
-      {
-        'label': 'SD Swasta',
-        'count': (pend['SD'] ?? 0),
-        'nearest_km': null,
-        'akses': (pend['SD'] ?? 0) > 0 ? 'lokal' : 'mudah',
-        'keterangan': (pend['SD'] ?? 0) > 0 ? 'unit lokal' : '',
-      },
-      {
-        'label': 'SMP Swasta',
-        'count': (pend['SMP'] ?? 0),
-        'nearest_km': null,
-        'akses': (pend['SMP'] ?? 0) > 0 ? 'lokal' : 'mudah',
-        'keterangan': (pend['SMP'] ?? 0) > 0 ? 'unit lokal' : '',
-      },
-      {
-        'label': 'SMA Swasta',
-        'count': (pend['SMA'] ?? 0),
-        'nearest_km': null,
-        'akses': (pend['SMA'] ?? 0) > 0 ? 'lokal' : 'mudah',
-        'keterangan': (pend['SMA'] ?? 0) > 0 ? 'unit lokal' : '',
-      },
-      {
-        'label': 'SMK Swasta',
-        'count': (pend['SMK'] ?? 0),
-        'nearest_km': null,
-        'akses': (pend['SMK'] ?? 0) > 0 ? 'lokal' : 'mudah',
-        'keterangan': (pend['SMK'] ?? 0) > 0 ? 'unit lokal' : '',
-      },
-      {
-        'label': 'Perguruan Tinggi Swasta',
-        'count': (pend['Akademi/PT'] ?? 0),
-        'nearest_km': null,
-        'akses': (pend['Akademi/PT'] ?? 0) > 0 ? 'lokal' : 'mudah',
-        'keterangan': (pend['Akademi/PT'] ?? 0) > 0 ? 'unit lokal' : '',
-      },
-    ];
+    final swasta = PendidikanConstants.formal
+        .map(
+          (f) => {
+            'label': f,
+            'count': pend[f] ?? 0,
+            'nearest_km': null,
+            'akses': (pend[f] ?? 0) > 0 ? 'lokal' : 'mudah',
+            'keterangan': (pend[f] ?? 0) > 0 ? 'unit lokal' : '',
+          },
+        )
+        .toList();
 
-    // 3) Pendidikan Luar Biasa, Keagamaan & Keterampilan
-    final lb = {'SDLB': 0, 'SMPLB': 0, 'SMALB': 0};
-    final keagamaan = {
-      'Pondok Pesantren': (pend['Pesantren'] ?? 0),
-      'Madrasah Diniyah Swasta': (pend['Madrasah'] ?? 0),
-      // Tampilkan 'Ada' jika DB memiliki entri > 0, selain itu 'Tidak Ada'
-      'Paket A/B/C': (pend['Paket A/B/C'] ?? 0) > 0 ? 'Ada' : 'Tidak Ada',
-      'Taman Bacaan Masyarakat (TBM)': (pend['TBM'] ?? 0) > 0
-          ? 'Ada'
-          : 'Tidak Ada',
-    };
-    final keterampilan = {
-      'Bahasa': 0,
-      'Komputer': 0,
-      'Menjahit': 0,
-      'Montir': 0,
+    final lb = <String, int>{
+      for (final s in PendidikanConstants.slb) s: pend[s] ?? 0,
     };
 
-    // Mutakhirkan state data
+    final keagamaan = <String, dynamic>{
+      for (final k in PendidikanConstants.keagamaanInt) k: pend[k] ?? 0,
+      for (final k in PendidikanConstants.keagamaanBool)
+        k: ((pend[k] ?? 0) > 0) ? 'Ada' : 'Tidak Ada',
+    };
+
+    final keterampilan = <String, int>{
+      for (final k in PendidikanConstants.keterampilan) k: pend[k] ?? 0,
+    };
+
+    _data['negeri'] = negeri;
     _data['swasta'] = swasta;
     _data['lb'] = lb;
     _data['keagamaan'] = keagamaan;
@@ -187,97 +131,1044 @@ class _PendidikanScreenState extends State<PendidikanScreen>
           'paras': (n['paras'] as List<String>),
         };
       }
-    } catch (_) {
-      // Abaikan error catatan agar layar tetap tampil
-    }
+    } catch (_) {}
   }
 
+  // ---------------- UI BUILD -----------------
   @override
   Widget build(BuildContext context) {
+    final isAdmin = context.watch<AuthService>().isAdmin;
     if (_error != null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Pendidikan')),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              'Gagal memuat data pendidikan.\n$_error',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.red),
-            ),
-          ),
-        ),
+        body: Center(child: Text('Gagal memuat data pendidikan\n$_error')),
       );
     }
-    final negeri = Map<String, int>.from(_data['negeri'] ?? <String, int>{});
-    final swasta = List<Map<String, dynamic>>.from(
-      _data['swasta'] ?? <Map<String, dynamic>>[],
-    );
-    final lb = Map<String, int>.from(_data['lb'] ?? <String, int>{});
-    final keagamaan = Map<String, dynamic>.from(
-      _data['keagamaan'] ?? <String, dynamic>{},
-    );
-    final keterampilan = Map<String, int>.from(
-      _data['keterampilan'] ?? <String, int>{},
-    );
+    final negeri = Map<String, int>.from(_data['negeri']);
+    final swasta = List<Map<String, dynamic>>.from(_data['swasta']);
+    final lb = Map<String, int>.from(_data['lb']);
+    final keagamaan = Map<String, dynamic>.from(_data['keagamaan']);
+    final keterampilan = Map<String, int>.from(_data['keterampilan']);
 
-    final totalNegeri = _sum(negeri);
-    final totalSwastaLokal = swasta.fold<int>(
-      0,
-      (p, e) => p + ((e['count'] as int?) ?? 0),
-    );
+    final totalNegeri = negeri.values.fold<int>(0, (p, c) => p + c);
+    final totalSwasta = swasta.fold<int>(0, (p, e) => p + (e['count'] as int));
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
+      floatingActionButton: isAdmin
+          ? FloatingActionButton(
+              onPressed: _openEditBottomSheet,
+              backgroundColor: const Color(0xFF2563EB),
+              child: const Icon(Icons.edit, color: Colors.white),
+            )
+          : null,
       body: Stack(
         children: [
-          NestedScrollView(
-            headerSliverBuilder: (context, inner) => [
+          CustomScrollView(
+            slivers: [
               SliverAppBar(
                 pinned: true,
-                elevation: 0,
-                backgroundColor: Colors.transparent,
-                toolbarHeight: 56,
                 title: const _AppBarTitle(
                   title: 'Pendidikan',
                   subtitle: 'Sarana & akses pendidikan desa',
                 ),
-                centerTitle: false,
-                shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.only(
-                    bottomLeft: Radius.circular(20),
-                    bottomRight: Radius.circular(20),
-                  ),
-                ),
-                flexibleSpace: ClipRRect(
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(20),
-                    bottomRight: Radius.circular(20),
-                  ),
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Color(0xFF2563EB), // blue
-                          Color(0xFF7C3AED), // purple
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                  ),
-                ),
+                backgroundColor: const Color(0xFF2563EB),
               ),
               SliverToBoxAdapter(
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(
                     context.horizontalPadding,
-                    0,
+                    12,
                     context.horizontalPadding,
                     8,
                   ),
                   child: GridView.count(
                     shrinkWrap: true,
+                    crossAxisCount: context.gridCount(
+                      mobile: 2,
+                      tablet: 3,
+                      desktop: 4,
+                    ),
+                    childAspectRatio: context.summaryAspect,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    children: [
+                      _summaryCard(
+                        label: 'Lembaga Negeri',
+                        value: '$totalNegeri',
+                        icon: Icons.account_balance_rounded,
+                        color: const Color(0xFF2563EB),
+                      ),
+                      _summaryCard(
+                        label: 'Lembaga Swasta',
+                        value: '$totalSwasta',
+                        icon: Icons.apartment_rounded,
+                        color: const Color(0xFF2563EB),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SliverFillRemaining(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _section(_buildNegeri(negeri)),
+                    _section(_buildSwasta(swasta)),
+                    _section(_buildLBKeagamaan(lb, keagamaan, keterampilan)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (_loading)
+            Positioned.fill(
+              child: ColoredBox(
+                color: Colors.black.withOpacity(0.15),
+                child: const Center(child: CircularProgressIndicator()),
+              ),
+            ),
+        ],
+      ),
+      bottomNavigationBar: Material(
+        color: Colors.white,
+        elevation: 8,
+        child: SafeArea(
+          top: false,
+          child: TabBar(
+            controller: _tabController,
+            labelColor: const Color(0xFF2563EB),
+            unselectedLabelColor: Colors.grey[600],
+            indicatorColor: const Color(0xFF2563EB),
+            tabs: const [
+              Tab(
+                icon: Icon(Icons.account_balance_rounded, size: 20),
+                text: 'Negeri',
+              ),
+              Tab(
+                icon: Icon(Icons.apartment_rounded, size: 20),
+                text: 'Swasta',
+              ),
+              Tab(
+                icon: Icon(Icons.school_rounded, size: 20),
+                text: 'LB & Keag',
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ------- Section builders -------
+  Widget _buildNegeri(Map<String, int> negeri) {
+    final entries = negeri.entries.toList();
+    final total = entries.fold<int>(0, (p, c) => p + c.value);
+    return _Card(
+      icon: Icons.account_balance_rounded,
+      title: 'Lembaga Pendidikan Negeri',
+      subtitle: entries.isEmpty ? 'Belum ada' : 'Total: $total',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (entries.isEmpty)
+            _infoBanner(
+              icon: Icons.info_rounded,
+              title: 'Belum ada lembaga negeri',
+              message: 'Tambahkan melalui tombol edit.',
+              color: const Color(0xFF2563EB),
+            )
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: entries
+                  .map(
+                    (e) => _chip(
+                      icon: Icons.check_circle_rounded,
+                      label: e.key,
+                      value: e.value.toString(),
+                      color: const Color(0xFF10B981),
+                    ),
+                  )
+                  .toList(),
+            ),
+          const SizedBox(height: 16),
+          _catatan('Negeri'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSwasta(List<Map<String, dynamic>> swasta) {
+    // Tampilkan hanya entri yang memiliki data (count > 0)
+    final displayed = swasta
+        .where((e) => (e['count'] as int? ?? 0) > 0)
+        .toList(growable: false);
+    final total = displayed.fold<int>(0, (p, e) => p + (e['count'] as int));
+    return _Card(
+      icon: Icons.apartment_rounded,
+      title: 'Lembaga Pendidikan Swasta',
+      subtitle: 'Total lokal: $total',
+      child: Column(
+        children: [
+          ...displayed.map(_swastaTile),
+          const SizedBox(height: 16),
+          _catatan('Swasta'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLBKeagamaan(
+    Map<String, int> lb,
+    Map<String, dynamic> keagamaan,
+    Map<String, int> keterampilan,
+  ) {
+    final hasTBM = (keagamaan['TBM'] ?? 'Tidak Ada') == 'Ada';
+    final hasPaket = (keagamaan['Paket A/B/C'] ?? 'Tidak Ada') == 'Ada';
+
+    final lbEntries = lb.entries.where((e) => e.value > 0).toList();
+    final keagEntries = <Widget>[
+      if ((keagamaan['Pesantren'] ?? 0) > 0)
+        _chip(
+          icon: Icons.mosque_rounded,
+          label: 'Pesantren',
+          value: (keagamaan['Pesantren'] ?? 0).toString(),
+          color: const Color(0xFF2563EB),
+        ),
+      if ((keagamaan['Madrasah'] ?? 0) > 0)
+        _chip(
+          icon: Icons.menu_book_rounded,
+          label: 'Madrasah',
+          value: (keagamaan['Madrasah'] ?? 0).toString(),
+          color: const Color(0xFF2563EB),
+        ),
+      if (hasPaket)
+        _chip(
+          icon: Icons.fact_check_rounded,
+          label: 'Paket A/B/C',
+          value: 'Ada',
+          color: const Color(0xFF10B981),
+        ),
+      if (hasTBM)
+        _chip(
+          icon: Icons.local_library_rounded,
+          label: 'TBM',
+          value: 'Ada',
+          color: const Color(0xFF10B981),
+        ),
+    ];
+    final keterampilanEntries = keterampilan.entries
+        .where((e) => e.value > 0)
+        .map(
+          (e) => _chip(
+            icon: Icons.build_rounded,
+            label: e.key,
+            value: e.value.toString(),
+            color: const Color(0xFF7C3AED),
+          ),
+        )
+        .toList();
+
+    return _Card(
+      icon: Icons.school_rounded,
+      title: 'LB, Keagamaan & Keterampilan',
+      subtitle: 'Ringkasan data tersedia saja',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (lbEntries.isNotEmpty) ...[
+            Text(
+              'SLB',
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: lbEntries
+                  .map(
+                    (e) => _chip(
+                      icon: Icons.accessibility_new_rounded,
+                      label: e.key,
+                      value: e.value.toString(),
+                      color: const Color(0xFF2563EB),
+                    ),
+                  )
+                  .toList(),
+            ),
+            const SizedBox(height: 16),
+          ],
+          if (keagEntries.isNotEmpty) ...[
+            Text(
+              'Keagamaan',
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 8),
+            Wrap(spacing: 8, runSpacing: 8, children: keagEntries),
+            const SizedBox(height: 16),
+          ],
+          if (keterampilanEntries.isNotEmpty) ...[
+            Text(
+              'Keterampilan',
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 8),
+            Wrap(spacing: 8, runSpacing: 8, children: keterampilanEntries),
+            const SizedBox(height: 16),
+          ],
+          _catatan('LB/Keagamaan/Keterampilan'),
+        ],
+      ),
+    );
+  }
+
+  // ------- Reusable small widgets -------
+  Widget _swastaTile(Map<String, dynamic> e) {
+    final label = e['label'] as String;
+    final count = e['count'] as int;
+    final akses = e['akses'] as String? ?? 'mudah';
+    final ket = (e['keterangan'] as String?) ?? '';
+    final color = count > 0 ? const Color(0xFF7C3AED) : Colors.grey.shade600;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey[200]!),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              count > 0 ? Icons.check_circle_rounded : Icons.place_rounded,
+              color: color,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  count > 0
+                      ? 'Tersedia $count ${ket.isNotEmpty ? '( $ket )' : ''}'
+                      : (ket.isNotEmpty
+                            ? 'Tidak ada lokal — $ket'
+                            : 'Tidak ada lokal'),
+                  style: TextStyle(color: Colors.grey[700], fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          if (count == 0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF10B981).withOpacity(0.15),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                '$akses',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF10B981),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryCard({
+    required String label,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(context.rs(16)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: context.rs(10),
+            offset: Offset(0, context.rs(4)),
+          ),
+        ],
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(context.rs(14)),
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(context.rs(8)),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(context.rs(10)),
+              ),
+              child: Icon(icon, color: color, size: context.rs(22)),
+            ),
+            SizedBox(width: context.rs(12)),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    value,
+                    style: TextStyle(
+                      color: const Color(0xFF1A1A1A),
+                      fontSize: context.rf(22),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: context.rs(2)),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: context.rf(12),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _chip({
+    required IconData icon,
+    required String label,
+    required String value,
+    Color? color,
+  }) {
+    final c = color ?? const Color(0xFF2563EB);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: c.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: c.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: c),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[700],
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _catatan(String bagian) {
+    final sectionKey = switch (bagian) {
+      'Negeri' => 'negeri',
+      'Swasta' => 'swasta',
+      'LB/Keagamaan/Keterampilan' => 'lb_keagamaan_keterampilan',
+      _ => 'unknown',
+    };
+    final entry = _notesBySection[sectionKey];
+    final title = entry != null ? entry['title'] as String : 'Catatan';
+    final paras = entry != null
+        ? List<String>.from(entry['paras'] as List)
+        : const ['Ringkasan belum tersedia.'];
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.amber.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.amber.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 6),
+          ...paras.map(
+            (t) => Padding(
+              padding: const EdgeInsets.only(bottom: 6.0),
+              child: Text(t, style: const TextStyle(fontSize: 12)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoBanner({
+    required IconData icon,
+    required String title,
+    required String message,
+    required Color color,
+  }) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.25)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  message,
+                  style: TextStyle(color: Colors.grey[800], fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _section(Widget child) => SingleChildScrollView(
+    physics: const ClampingScrollPhysics(),
+    padding: const EdgeInsets.all(16),
+    child: AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      child: child,
+    ),
+  );
+
+  // ------------- Bottom Sheet Editor -------------
+  Future<void> _openEditBottomSheet() async {
+    if (_kodeWilayah == null || _desaId == null) return;
+    final kode = _kodeWilayah!;
+    final desaId = _desaId!;
+    final year = DateTime.now().year;
+    final pend = await _repo.getPendidikan(kode, year: year);
+
+    final items = pend.entries
+        .map(
+          (e) => _MetricEditItemInt(
+            originalLabel: e.key,
+            labelCtl: TextEditingController(text: e.key),
+            valueCtl: TextEditingController(text: e.value.toString()),
+          ),
+        )
+        .toList();
+    // Notes: map each tab to a section key, with controllers for title/body
+    String _sectionKeyForTab(int tab) => switch (tab) {
+      0 => 'negeri',
+      1 => 'swasta',
+      _ => 'lb_keagamaan_keterampilan',
+    };
+    final Map<int, TextEditingController> _noteTitleCtl = {
+      0: TextEditingController(),
+      1: TextEditingController(),
+      2: TextEditingController(),
+    };
+    final Map<int, TextEditingController> _noteBodyCtl = {
+      0: TextEditingController(),
+      1: TextEditingController(),
+      2: TextEditingController(),
+    };
+    // Prefill from loaded notes map
+    for (final t in [0, 1, 2]) {
+      final key = _sectionKeyForTab(t);
+      final entry = _notesBySection[key];
+      if (entry != null) {
+        _noteTitleCtl[t]!.text = (entry['title'] as String?) ?? '';
+        final paras =
+            (entry['paras'] as List?)?.cast<String>() ?? const <String>[];
+        _noteBodyCtl[t]!.text = paras.join('\n');
+      }
+    }
+
+    List<String> negeriSuggestions() {
+      final existing = pend.keys.map((e) => e.toLowerCase()).toSet();
+      return PendidikanConstants.formal
+          .map((e) => '$e Negeri')
+          .where((e) => !existing.contains(e.toLowerCase()))
+          .toList()
+        ..sort();
+    }
+
+    List<String> swastaSuggestions() {
+      final existing = pend.keys.map((e) => e.toLowerCase()).toSet();
+      return PendidikanConstants.formal
+          .where((e) => !existing.contains(e.toLowerCase()))
+          .toList()
+        ..sort();
+    }
+
+    List<String> lbKeagSuggestions() {
+      final existing = pend.keys.map((e) => e.toLowerCase()).toSet();
+      final base = <String>{
+        ...PendidikanConstants.slb,
+        ...PendidikanConstants.keagamaanInt,
+        ...PendidikanConstants.keagamaanBool,
+        'Paket A/B/C',
+        'TBM',
+      };
+      return base.where((e) => !existing.contains(e.toLowerCase())).toList()
+        ..sort();
+    }
+
+    bool isNegeri(String l) => l.toLowerCase().contains('negeri');
+    bool isLbKeag(String l) =>
+        PendidikanConstants.slb.contains(l) ||
+        PendidikanConstants.keagamaanInt.contains(l) ||
+        PendidikanConstants.keagamaanBool.contains(l) ||
+        l == 'Paket A/B/C' ||
+        l == 'TBM';
+
+    final formKey = GlobalKey<FormState>();
+    final tabNotifier = ValueNotifier<int>(0);
+    final scrollCtl = ScrollController();
+    final Map<int, FocusNode> _noteTitleNode = {
+      0: FocusNode(),
+      1: FocusNode(),
+      2: FocusNode(),
+    };
+    final Map<int, FocusNode> _noteBodyNode = {
+      0: FocusNode(),
+      1: FocusNode(),
+      2: FocusNode(),
+    };
+    bool saving = false;
+    InputDecoration deco(String label) => InputDecoration(
+      labelText: label,
+      border: const OutlineInputBorder(),
+      isDense: true,
+    );
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => SizedBox(
+          height: MediaQuery.of(ctx).size.height * 0.85,
+          child: Column(
+            children: [
+              const SizedBox(height: 8),
+              const Text(
+                'Edit Data Pendidikan',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              ValueListenableBuilder<int>(
+                valueListenable: tabNotifier,
+                builder: (context, tab, _) {
+                  Widget seg(String txt, int idx) => Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: TextButton(
+                        style: TextButton.styleFrom(
+                          backgroundColor: tab == idx
+                              ? const Color(0xFF2563EB)
+                              : Colors.grey.shade200,
+                          foregroundColor: tab == idx
+                              ? Colors.white
+                              : Colors.black87,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
+                        onPressed: () => tabNotifier.value = idx,
+                        child: Text(
+                          txt,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(
+                      children: [
+                        seg('Negeri', 0),
+                        seg('Swasta', 1),
+                        seg('LB & Keagamaan', 2),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: Form(
+                  key: formKey,
+                  child: ValueListenableBuilder<int>(
+                    valueListenable: tabNotifier,
+                    builder: (context, tab, _) {
+                      final filtered = items.where((i) => !i.removed).where((
+                        i,
+                      ) {
+                        final l = i.labelCtl.text.trim();
+                        if (tab == 0) return isNegeri(l);
+                        if (tab == 2) return isLbKeag(l);
+                        return !isNegeri(l) && !isLbKeag(l);
+                      }).toList();
+                      List<String> suggestions = switch (tab) {
+                        0 => negeriSuggestions(),
+                        2 => lbKeagSuggestions(),
+                        _ => swastaSuggestions(),
+                      };
+                      return ListView(
+                        controller: scrollCtl,
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                        children: [
+                          ...filtered.map(
+                            (item) => Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      children: [
+                                        TextFormField(
+                                          controller: item.labelCtl,
+                                          decoration: deco('Jenis'),
+                                          validator: (v) =>
+                                              (v == null || v.trim().isEmpty)
+                                              ? 'Wajib diisi'
+                                              : null,
+                                        ),
+                                        const SizedBox(height: 8),
+                                        TextFormField(
+                                          controller: item.valueCtl,
+                                          decoration: deco('Jumlah'),
+                                          keyboardType: TextInputType.number,
+                                          validator: (v) {
+                                            if (v == null || v.trim().isEmpty)
+                                              return null;
+                                            return int.tryParse(v) == null
+                                                ? 'Angka tidak valid'
+                                                : null;
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  IconButton(
+                                    tooltip: 'Hapus',
+                                    onPressed: () =>
+                                        setLocal(() => item.removed = true),
+                                    icon: const Icon(Icons.delete_outline),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          if (suggestions.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: suggestions
+                                    .map(
+                                      (s) => ActionChip(
+                                        label: Text(
+                                          s,
+                                          style: const TextStyle(fontSize: 11),
+                                        ),
+                                        avatar: const Icon(Icons.add, size: 16),
+                                        onPressed: () => setLocal(() {
+                                          items.add(
+                                            _MetricEditItemInt(
+                                              originalLabel: s,
+                                              labelCtl: TextEditingController(
+                                                text: s,
+                                              ),
+                                              valueCtl: TextEditingController(
+                                                text: '0',
+                                              ),
+                                            ),
+                                          );
+                                        }),
+                                      ),
+                                    )
+                                    .toList(),
+                              ),
+                            ),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: () => setLocal(() {
+                                    final defaultLabel = switch (tab) {
+                                      0 => 'Negeri Baru',
+                                      2 => 'Keagamaan/SLB Baru',
+                                      _ => 'Jenis Pendidikan',
+                                    };
+                                    items.add(
+                                      _MetricEditItemInt(
+                                        originalLabel: '_new_${items.length}',
+                                        labelCtl: TextEditingController(
+                                          text: defaultLabel,
+                                        ),
+                                        valueCtl: TextEditingController(),
+                                      ),
+                                    );
+                                  }),
+                                  icon: const Icon(Icons.add),
+                                  label: const Text('Tambah Jenis Pendidikan'),
+                                ),
+                              ),
+                              // Removed secondary button: 'Tambah Catatan'
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          const Divider(),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Judul Catatan (${_sectionKeyForTab(tab)})',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          TextFormField(
+                            controller: _noteTitleCtl[tab],
+                            focusNode: _noteTitleNode[tab],
+                            decoration: deco('Judul Catatan'),
+                          ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Catatan',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          TextFormField(
+                            controller: _noteBodyCtl[tab],
+                            focusNode: _noteBodyNode[tab],
+                            decoration: deco(
+                              'Tulis catatan, pisahkan per baris',
+                            ),
+                            minLines: 3,
+                            maxLines: 6,
+                            keyboardType: TextInputType.multiline,
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: saving
+                        ? null
+                        : () async {
+                            if (!formKey.currentState!.validate()) return;
+                            final labels = items
+                                .where(
+                                  (e) =>
+                                      !e.removed &&
+                                      e.labelCtl.text.trim().isNotEmpty,
+                                )
+                                .map((e) => e.labelCtl.text.trim())
+                                .toList();
+                            final dup = <String, int>{};
+                            for (final l in labels) {
+                              dup[l] = (dup[l] ?? 0) + 1;
+                            }
+                            final dups = dup.entries
+                                .where((e) => e.value > 1)
+                                .map((e) => e.key)
+                                .toList();
+                            if (dups.isNotEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Label duplikat: ${dups.join(', ')}',
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
+                            setLocal(() => saving = true);
+                            try {
+                              for (final item in items) {
+                                if (item.removed) {
+                                  await _repo.deleteMetric(
+                                    kodeWilayah: kode,
+                                    year: year,
+                                    domain: 'pendidikan',
+                                    jenis: item.originalLabel,
+                                    metricName: 'jumlah',
+                                  );
+                                  continue;
+                                }
+                                final label = item.labelCtl.text.trim();
+                                if (label.isEmpty) continue;
+                                final v =
+                                    int.tryParse(item.valueCtl.text.trim()) ??
+                                    0;
+                                await _repo.upsertMetric(
+                                  kodeWilayah: kode,
+                                  desaId: desaId,
+                                  year: year,
+                                  domain: 'pendidikan',
+                                  jenis: label,
+                                  metricName: 'jumlah',
+                                  valueInt: v,
+                                  unit: 'unit',
+                                );
+                                if (label != item.originalLabel) {
+                                  await _repo.deleteMetric(
+                                    kodeWilayah: kode,
+                                    year: year,
+                                    domain: 'pendidikan',
+                                    jenis: item.originalLabel,
+                                    metricName: 'jumlah',
+                                  );
+                                }
+                              }
+                              // Persist notes after metrics
+                              for (final t in [0, 1, 2]) {
+                                final section = _sectionKeyForTab(t);
+                                final title = _noteTitleCtl[t]!.text.trim();
+                                final body = _noteBodyCtl[t]!.text;
+                                final paras = body
+                                    .split(RegExp(r'\r?\n'))
+                                    .map((e) => e.trim())
+                                    .where((e) => e.isNotEmpty)
+                                    .toList();
+                                await _notesRepo.upsertPendidikanNote(
+                                  kodeWilayah: kode,
+                                  desaId: desaId,
+                                  year: year,
+                                  section: section,
+                                  title: title.isEmpty ? 'Catatan' : title,
+                                  paras: paras,
+                                );
+                              }
+                              await _loadFromRepo(kode);
+                              await _loadNotes(
+                                kode,
+                              ); // refresh catatan agar langsung muncul
+                              if (mounted) setState(() {});
+                              if (mounted) Navigator.pop(ctx);
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Data pendidikan tersimpan'),
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Gagal menyimpan: $e'),
+                                  ),
+                                );
+                              }
+                            } finally {
+                              if (mounted) setLocal(() => saving = false);
+                            }
+                          },
+                    icon: saving
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.save),
+                    label: const Text('Simpan'),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/*
                     crossAxisCount: context.gridCount(
                       mobile: 2,
                       tablet: 3,
@@ -371,106 +1262,41 @@ class _PendidikanScreenState extends State<PendidikanScreen>
   // --- sections ---
   Widget _buildNegeri(Map<String, int> negeri) {
     final entries = negeri.entries.toList();
-    final total = _sum(negeri);
+    final total = entries.isEmpty ? 0 : _sum(negeri);
 
     return _Card(
       icon: Icons.account_balance_rounded,
       title: 'Lembaga Pendidikan Negeri',
-      subtitle:
-          'Tidak ada lembaga pendidikan negeri di seluruh jenjang — Total: $total',
+      subtitle: entries.isEmpty
+          ? 'Belum ada lembaga pendidikan negeri'
+          : 'Total entri negeri: $total',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (total == 0)
+          if (entries.isEmpty)
             _infoBanner(
               icon: Icons.info_rounded,
               title: 'Belum ada lembaga negeri',
               message:
-                  'Saat ini tidak terdapat PAUD/TK/SD/SMP/SMA/SMK/Perguruan Tinggi Negeri di desa. Arahkan siswa ke fasilitas terdekat di desa sekitar.',
+                  'Tambahkan melalui tombol Edit bila terdapat PAUD/TK/SD/SMP/SMA/SMK/PT Negeri.',
               color: const Color(0xFF2563EB),
             )
-          else
-            SizedBox(
-              height: 240,
-              child: BarChart(
-                BarChartData(
-                  alignment: BarChartAlignment.spaceAround,
-                  maxY: 1,
-                  titlesData: FlTitlesData(
-                    show: true,
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 42,
-                        getTitlesWidget: (value, meta) {
-                          if (value.toInt() >= 0 &&
-                              value.toInt() < entries.length) {
-                            final label = entries[value.toInt()].key
-                                .split(' ')
-                                .first;
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 8.0),
-                              child: Text(
-                                label,
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.grey[700],
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            );
-                          }
-                          return const SizedBox();
-                        },
-                      ),
+          else ...[
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: entries
+                  .map(
+                    (e) => _chip(
+                      icon: Icons.check_circle_rounded,
+                      label: e.key,
+                      value: e.value.toString(),
+                      color: const Color(0xFF10B981),
                     ),
-                    leftTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                  ),
-                  gridData: const FlGridData(show: false),
-                  borderData: FlBorderData(show: false),
-                  barGroups: List.generate(entries.length, (i) {
-                    return BarChartGroupData(
-                      x: i,
-                      barRods: [
-                        BarChartRodData(
-                          toY: 0,
-                          width: 14,
-                          borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(6),
-                          ),
-                          color: const Color(
-                            0xFF2563EB,
-                          ).withValues(alpha: 0.25),
-                        ),
-                      ],
-                    );
-                  }),
-                ),
-              ),
+                  )
+                  .toList(),
             ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: entries
-                .map(
-                  (e) => _chip(
-                    icon: Icons.close_rounded,
-                    label: e.key,
-                    value: '0',
-                    color: Colors.red.shade400,
-                  ),
-                )
-                .toList(),
-          ),
+          ],
           const SizedBox(height: 16),
           _catatan('Negeri'),
         ],
@@ -656,7 +1482,7 @@ class _PendidikanScreenState extends State<PendidikanScreen>
                 const SizedBox(height: 2),
                 Text(
                   count > 0
-                      ? 'Tersedia $count ${ket.isNotEmpty ? '($ket)' : ''}'
+                      ? 'Tersedia $count ${ket.isNotEmpty ? '( $ket )' : ''}'
                       : (ket.isNotEmpty
                             ? 'Tidak ada lokal — $ket'
                             : 'Tidak ada lokal'),
@@ -881,17 +1707,19 @@ class _PendidikanScreenState extends State<PendidikanScreen>
 
   // --- containers ---
   Widget _section(Widget child) => SingleChildScrollView(
-    physics: const ClampingScrollPhysics(),
-    padding: const EdgeInsets.all(16),
-    child: AnimatedSwitcher(
-      duration: const Duration(milliseconds: 300),
-      child: child,
-    ),
-  );
+        physics: const ClampingScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          child: child,
+        ),
+      );
 
   int _sum(Map<String, int> map) => map.values.fold(0, (p, c) => p + c);
+  // (Removed legacy duplicate _openEditBottomSheet implementation.)
 }
 
+*/
 class _Card extends StatelessWidget {
   const _Card({
     required this.icon,
@@ -994,4 +1822,17 @@ class _AppBarTitle extends StatelessWidget {
       ],
     );
   }
+}
+
+// Helper item for dynamic pendidikan editing
+class _MetricEditItemInt {
+  _MetricEditItemInt({
+    required this.originalLabel,
+    required this.labelCtl,
+    required this.valueCtl,
+  });
+  final String originalLabel;
+  final TextEditingController labelCtl;
+  final TextEditingController valueCtl;
+  bool removed = false;
 }
