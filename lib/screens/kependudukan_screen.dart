@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:provider/provider.dart';
 import '../utils/responsive.dart';
 import '../services/kependudukan_repository.dart';
+import '../services/auth_service.dart';
 
 class KependudukanScreen extends StatefulWidget {
   const KependudukanScreen({
@@ -49,8 +51,18 @@ class _KependudukanScreenState extends State<KependudukanScreen>
 
   @override
   Widget build(BuildContext context) {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final isAdmin = authService.isAdmin;
+    
     return Scaffold(
       backgroundColor: Colors.grey[50],
+      floatingActionButton: isAdmin
+          ? FloatingActionButton(
+              onPressed: _openEditBottomSheet,
+              backgroundColor: const Color(0xFF0B7A75),
+              child: const Icon(Icons.edit, color: Colors.white),
+            )
+          : null,
       body: Stack(
         children: [
           NestedScrollView(
@@ -1045,17 +1057,60 @@ class _KependudukanScreenState extends State<KependudukanScreen>
                       ),
                     ),
                     SizedBox(height: isSmallScreen ? 24 : 32),
-                    // Legend
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: sortedEntries.map((entry) {
-                        return _buildLegendItem(
-                          color: _getPekerjaanColor(entry.key),
-                          label: entry.key,
-                          value: entry.value,
-                        );
-                      }).toList(),
+                    // Legend - 2 kolom responsive
+                    LayoutBuilder(
+                      builder: (context, legendConstraints) {
+                        // Two columns untuk semua ukuran layar
+                        final leftColumn = <Widget>[];
+                        final rightColumn = <Widget>[];
+                        
+                        for (int i = 0; i < sortedEntries.length; i++) {
+                          final entry = sortedEntries[i];
+                          final item = _buildLegendItem(
+                            color: _getPekerjaanColor(entry.key),
+                            label: entry.key,
+                            value: entry.value,
+                          );
+                          
+                          if (i % 2 == 0) {
+                            leftColumn.add(item);
+                          } else {
+                            rightColumn.add(item);
+                          }
+                        }
+                        
+                        // Pastikan kedua kolom punya jumlah item yang sama
+                        // dengan menambah placeholder jika perlu
+                        while (leftColumn.length > rightColumn.length) {
+                          rightColumn.add(const SizedBox.shrink());
+                        }
+                        
+                        // Build rows dengan IntrinsicHeight untuk tinggi sama
+                        final rows = <Widget>[];
+                        for (int i = 0; i < leftColumn.length; i++) {
+                          rows.add(
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: IntrinsicHeight(
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    Expanded(child: leftColumn[i]),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: i < rightColumn.length
+                                          ? rightColumn[i]
+                                          : const SizedBox.shrink(),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+                        
+                        return Column(children: rows);
+                      },
                     ),
                   ],
                 );
@@ -1079,7 +1134,6 @@ class _KependudukanScreenState extends State<KependudukanScreen>
         border: Border.all(color: color.withValues(alpha: 0.3), width: 1.5),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             width: 10,
@@ -1265,4 +1319,887 @@ class _KependudukanScreenState extends State<KependudukanScreen>
         return Colors.grey;
     }
   }
+
+  Future<void> _openEditBottomSheet() async {
+    // Controllers untuk data header
+    final totalPendudukCtl = TextEditingController(
+      text: _totalPenduduk?.toString() ?? '0',
+    );
+    final totalKKCtl = TextEditingController(
+      text: _totalKK?.toString() ?? '0',
+    );
+    final lakiLakiCtl = TextEditingController(
+      text: _lakiLaki?.toString() ?? '0',
+    );
+    final perempuanCtl = TextEditingController(
+      text: _perempuan?.toString() ?? '0',
+    );
+    final produktifBekerjaCtl = TextEditingController(
+      text: _produktifBekerja?.toString() ?? '0',
+    );
+    final produktifTidakCtl = TextEditingController(
+      text: _produktifTidak?.toString() ?? '0',
+    );
+
+    // Controllers untuk pendidikan
+    final pendidikanControllers = <String, TextEditingController>{};
+    final pendidikanCategories = [
+      'Tidak Tamat SD',
+      'Tamat SD',
+      'Tamat SMP',
+      'Tamat SMA',
+      'Akademi/PT',
+    ];
+    for (final cat in pendidikanCategories) {
+      pendidikanControllers[cat] = TextEditingController(
+        text: (_pendidikan[cat] ?? 0).toString(),
+      );
+    }
+
+    // Controllers untuk pekerjaan - buat list editable
+    final pekerjaanItems = _pekerjaan.entries.map((e) {
+      return _EditableItem(
+        label: e.key,
+        labelCtl: TextEditingController(text: e.key),
+        valueCtl: TextEditingController(text: e.value.toString()),
+      );
+    }).toList();
+
+    // Bisa tambah item baru
+    if (pekerjaanItems.isEmpty) {
+      pekerjaanItems.add(_EditableItem(
+        label: 'Pekerjaan 1',
+        labelCtl: TextEditingController(text: 'Pekerjaan 1'),
+        valueCtl: TextEditingController(text: '0'),
+      ));
+    }
+
+    if (!mounted) return;
+
+    try {
+      await showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (ctx) => _EditBottomSheet(
+          totalPendudukCtl: totalPendudukCtl,
+          totalKKCtl: totalKKCtl,
+          lakiLakiCtl: lakiLakiCtl,
+          perempuanCtl: perempuanCtl,
+          produktifBekerjaCtl: produktifBekerjaCtl,
+          produktifTidakCtl: produktifTidakCtl,
+          pendidikanCategories: pendidikanCategories,
+          pendidikanControllers: pendidikanControllers,
+          pekerjaanItems: pekerjaanItems,
+          onSave: () async {
+          try {
+            // Validasi dan parse data utama
+            final totalPenduduk = int.tryParse(totalPendudukCtl.text.trim());
+            final totalKK = int.tryParse(totalKKCtl.text.trim());
+            final lakiLaki = int.tryParse(lakiLakiCtl.text.trim());
+            final perempuan = int.tryParse(perempuanCtl.text.trim());
+            final produktifBekerja =
+                int.tryParse(produktifBekerjaCtl.text.trim());
+            final produktifTidak = int.tryParse(produktifTidakCtl.text.trim());
+
+            if (totalPenduduk == null ||
+                totalKK == null ||
+                lakiLaki == null ||
+                perempuan == null ||
+                produktifBekerja == null ||
+                produktifTidak == null) {
+              if (!mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.error_outline,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Validasi Gagal',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Semua field data utama harus diisi dengan angka valid',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  backgroundColor: const Color(0xFFEF4444),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  margin: const EdgeInsets.all(16),
+                  duration: const Duration(seconds: 4),
+                ),
+              );
+              return;
+            }
+
+            if (totalPenduduk < 0 ||
+                totalKK < 0 ||
+                lakiLaki < 0 ||
+                perempuan < 0 ||
+                produktifBekerja < 0 ||
+                produktifTidak < 0) {
+              if (!mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.warning_amber_rounded,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Input Tidak Valid',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Angka tidak boleh negatif',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  backgroundColor: const Color(0xFFF59E0B),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  margin: const EdgeInsets.all(16),
+                  duration: const Duration(seconds: 3),
+                ),
+              );
+              return;
+            }
+
+            // Parse pendidikan
+            final pendidikanData = <String, int>{};
+            for (final entry in pendidikanControllers.entries) {
+              final value = int.tryParse(entry.value.text.trim()) ?? 0;
+              if (value >= 0) {
+                pendidikanData[entry.key] = value;
+              }
+            }
+
+            // Parse pekerjaan
+            final pekerjaanData = <String, int>{};
+            for (final item in pekerjaanItems) {
+              final label = item.labelCtl.text.trim();
+              final value = int.tryParse(item.valueCtl.text.trim()) ?? 0;
+              if (label.isNotEmpty && value > 0) {
+                pekerjaanData[label] = value;
+              }
+            }
+
+            // Close bottom sheet dulu dengan root navigator
+            if (!mounted) return;
+            Navigator.of(context, rootNavigator: true).pop();
+
+            // Show loading
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'Menyimpan Data',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Mohon tunggu sebentar...',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.white.withOpacity(0.9),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: const Color(0xFF0B7A75),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                margin: const EdgeInsets.all(16),
+                duration: const Duration(seconds: 30),
+              ),
+            );
+
+            // Save to database
+            final kode = widget.kodeWilayah;
+            await _repo.upsertHeader(
+              kodeWilayah: kode,
+              totalPenduduk: totalPenduduk,
+              totalKK: totalKK,
+              lakiLaki: lakiLaki,
+              perempuan: perempuan,
+              produktifBekerja: produktifBekerja,
+              produktifTidak: produktifTidak,
+            );
+
+            await _repo.updatePendidikan(
+              kodeWilayah: kode,
+              pendidikanData: pendidikanData,
+            );
+
+            await _repo.updatePekerjaan(
+              kodeWilayah: kode,
+              pekerjaanData: pekerjaanData,
+            );
+
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.check_circle_rounded,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'Berhasil!',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Data berhasil disimpan, memuat ulang...',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.white.withOpacity(0.9),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: const Color(0xFF10B981),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                margin: const EdgeInsets.all(16),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+
+            // Delay sebentar agar snackbar terlihat, lalu reload data
+            await Future.delayed(const Duration(milliseconds: 500));
+            
+            if (!mounted) return;
+            // Refresh data di parent screen
+            setState(() => _loading = true);
+            await _load();
+            setState(() => _loading = false);
+            
+          } catch (e) {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.error_rounded,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'Gagal Menyimpan',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '$e',
+                            style: const TextStyle(fontSize: 12),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: const Color(0xFFDC2626),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                margin: const EdgeInsets.all(16),
+                duration: const Duration(seconds: 5),
+              ),
+            );
+          }
+        },
+      ),
+    ).then((_) {
+      // Dispose controllers SETELAH bottom sheet ditutup
+      // Gunakan addPostFrameCallback untuk memastikan semua frame selesai
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        try {
+          totalPendudukCtl.dispose();
+          totalKKCtl.dispose();
+          lakiLakiCtl.dispose();
+          perempuanCtl.dispose();
+          produktifBekerjaCtl.dispose();
+          produktifTidakCtl.dispose();
+          for (final ctl in pendidikanControllers.values) {
+            ctl.dispose();
+          }
+          for (final item in pekerjaanItems) {
+            item.labelCtl.dispose();
+            item.valueCtl.dispose();
+          }
+        } catch (e) {
+          // Ignore disposal errors
+          print('Controller disposal error (can be ignored): $e');
+        }
+      });
+    });
+    } catch (e) {
+      // Catch any Flutter framework assertions
+      print('ModalBottomSheet error (can be ignored if save works): $e');
+    }
+  }
 }
+
+// Helper class untuk editable items
+class _EditableItem {
+  final String label;
+  final TextEditingController labelCtl;
+  final TextEditingController valueCtl;
+
+  _EditableItem({
+    required this.label,
+    required this.labelCtl,
+    required this.valueCtl,
+  });
+}
+
+// Bottom Sheet dengan TabBar untuk Edit
+class _EditBottomSheet extends StatefulWidget {
+  final TextEditingController totalPendudukCtl;
+  final TextEditingController totalKKCtl;
+  final TextEditingController lakiLakiCtl;
+  final TextEditingController perempuanCtl;
+  final TextEditingController produktifBekerjaCtl;
+  final TextEditingController produktifTidakCtl;
+  final List<String> pendidikanCategories;
+  final Map<String, TextEditingController> pendidikanControllers;
+  final List<_EditableItem> pekerjaanItems;
+  final VoidCallback onSave;
+
+  const _EditBottomSheet({
+    required this.totalPendudukCtl,
+    required this.totalKKCtl,
+    required this.lakiLakiCtl,
+    required this.perempuanCtl,
+    required this.produktifBekerjaCtl,
+    required this.produktifTidakCtl,
+    required this.pendidikanCategories,
+    required this.pendidikanControllers,
+    required this.pekerjaanItems,
+    required this.onSave,
+  });
+
+  @override
+  State<_EditBottomSheet> createState() => _EditBottomSheetState();
+}
+
+class _EditBottomSheetState extends State<_EditBottomSheet>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 4, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.9,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      builder: (_, scrollController) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF0B7A75), Color(0xFFB08900)],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.edit_rounded,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Edit Data Kependudukan',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              'Perbarui informasi kependudukan desa',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // TabBar
+            Container(
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey[200]!, width: 1),
+                ),
+              ),
+              child: TabBar(
+                controller: _tabController,
+                labelColor: const Color(0xFF0B7A75),
+                unselectedLabelColor: Colors.grey[600],
+                indicatorColor: const Color(0xFF0B7A75),
+                indicatorWeight: 3,
+                labelStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+                unselectedLabelStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.normal,
+                ),
+                tabs: const [
+                  Tab(
+                    icon: Icon(Icons.people_rounded, size: 20),
+                    text: 'Data Utama',
+                  ),
+                  Tab(
+                    icon: Icon(Icons.school_rounded, size: 20),
+                    text: 'Pendidikan',
+                  ),
+                  Tab(
+                    icon: Icon(Icons.trending_up_rounded, size: 20),
+                    text: 'Produktivitas',
+                  ),
+                  Tab(
+                    icon: Icon(Icons.work_rounded, size: 20),
+                    text: 'Pekerjaan',
+                  ),
+                ],
+              ),
+            ),
+
+            // TabBarView
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  // Tab 1: Data Utama
+                  _buildDataUtamaTab(scrollController),
+
+                  // Tab 2: Pendidikan
+                  _buildPendidikanTab(scrollController),
+
+                  // Tab 3: Produktivitas
+                  _buildProduktivitasTab(scrollController),
+
+                  // Tab 4: Pekerjaan
+                  _buildPekerjaanTab(scrollController),
+                ],
+              ),
+            ),
+
+            // Tombol Simpan
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: widget.onSave,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0B7A75),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Simpan Perubahan',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDataUtamaTab(ScrollController controller) {
+    return ListView(
+      controller: controller,
+      padding: const EdgeInsets.all(20),
+      children: [
+        _buildTextField('Total Penduduk', widget.totalPendudukCtl),
+        _buildTextField('Total KK', widget.totalKKCtl),
+        _buildTextField('Laki-laki', widget.lakiLakiCtl),
+        _buildTextField('Perempuan', widget.perempuanCtl),
+      ],
+    );
+  }
+
+  Widget _buildPendidikanTab(ScrollController controller) {
+    return ListView(
+      controller: controller,
+      padding: const EdgeInsets.all(20),
+      children: widget.pendidikanCategories
+          .map((cat) =>
+              _buildTextField(cat, widget.pendidikanControllers[cat]!))
+          .toList(),
+    );
+  }
+
+  Widget _buildProduktivitasTab(ScrollController controller) {
+    return ListView(
+      controller: controller,
+      padding: const EdgeInsets.all(20),
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF0FDF4),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFF0B7A75).withOpacity(0.3)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0B7A75).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.info_outline,
+                  color: Color(0xFF0B7A75),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Data usia produktif (15-64 tahun)',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF065F46),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        _buildTextField('Produktif Bekerja', widget.produktifBekerjaCtl),
+        _buildTextField('Produktif Tidak Bekerja', widget.produktifTidakCtl),
+      ],
+    );
+  }
+
+  Widget _buildPekerjaanTab(ScrollController controller) {
+    return ListView(
+      controller: controller,
+      padding: const EdgeInsets.all(20),
+      children: [
+        // List pekerjaan dengan row (label dan value berdampingan)
+        ...widget.pekerjaanItems.asMap().entries.map((entry) {
+          final index = entry.key;
+          final item = entry.value;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    children: [
+                      TextField(
+                        controller: item.labelCtl,
+                        decoration: InputDecoration(
+                          labelText: 'Jenis Pekerjaan',
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.grey[300]!),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.grey[300]!),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(
+                                color: Color(0xFF0B7A75), width: 2),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 14),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: item.valueCtl,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: 'Jumlah',
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.grey[300]!),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.grey[300]!),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(
+                                color: Color(0xFF0B7A75), width: 2),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 14),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  tooltip: 'Hapus',
+                  onPressed: () {
+                    setState(() {
+                      // Jangan dispose di sini, biarkan .then() yang handle
+                      widget.pekerjaanItems.removeAt(index);
+                    });
+                  },
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    color: Colors.red,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+        
+        // Tombol tambah pekerjaan
+        Align(
+          alignment: Alignment.centerLeft,
+          child: OutlinedButton.icon(
+            onPressed: () {
+              setState(() {
+                widget.pekerjaanItems.add(_EditableItem(
+                  label: '',
+                  labelCtl: TextEditingController(),
+                  valueCtl: TextEditingController(),
+                ));
+              });
+            },
+            icon: const Icon(Icons.add),
+            label: const Text('Tambah Pekerjaan'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF0B7A75),
+              side: const BorderSide(color: Color(0xFF0B7A75)),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTextField(String label, TextEditingController controller) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: TextField(
+        controller: controller,
+        keyboardType: TextInputType.number,
+        decoration: InputDecoration(
+          labelText: label,
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: Colors.grey[300]!),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: Colors.grey[300]!),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: Color(0xFF0B7A75), width: 2),
+          ),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        ),
+      ),
+    );
+  }
+}
+
