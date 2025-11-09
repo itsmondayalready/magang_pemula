@@ -5,7 +5,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
 import '../services/desa_repository.dart';
 import '../services/kesehatan_repository.dart';
-import '../services/pendidikan_repository.dart';
 import '../utils/responsive.dart';
 
 // Main menu screen untuk aplikasi Desa — versi yang rapi
@@ -41,12 +40,9 @@ class _MainMenuPageState extends State<MainMenuPage> {
   int? _latestKK;
   int? _totalFasilitas;
   int? _totalTenagaMedis;
-  int? _totalPendidikanNegeri;
-  int? _totalSwasta;
   bool _loadingSummary = true;
   final _repo = DesaRepository();
   final _kesehatanRepo = KesehatanRepository();
-  final _pendidikanRepo = PendidikanRepository();
 
   @override
   void initState() {
@@ -57,99 +53,41 @@ class _MainMenuPageState extends State<MainMenuPage> {
   }
 
   Future<void> _loadSummary() async {
-    if (mounted) setState(() => _loadingSummary = true);
+    // load summary from DB
+    if (mounted)
+      setState(() {
+        _loadingSummary = true;
+      }); // show loader
     try {
       await Future(() async {
-        // Profil desa (luas, RT/RW)
+        // Detail desa + profile (luas, RT/RW)
         final detail = await _repo.fetchDesaDetailByKode(_kodeWilayah);
         if (detail != null) {
           final p = detail['desa_profile'] as Map<String, dynamic>?;
           _luasWilayahKm2 = (p?['luas_wilayah'] as num?)?.toDouble();
           _totalRT = p?['total_rt'] as int?;
           _totalRW = p?['total_rw'] as int?;
-        } else {
-          // Jika kode desa tidak ditemukan, coba ambil desa default/lain
-          try {
-            final fallback = await _repo.fetchDefaultDesa();
-            if (fallback != null && mounted) {
-              final newKode = (fallback['kode_wilayah'] ?? '') as String;
-              final newNama = (fallback['nama'] ?? 'Desa') as String;
-              
-              // Update state dengan desa baru
-              setState(() {
-                _kodeWilayah = newKode;
-                _desaName = newNama;
-              });
-              
-              // Simpan ke SharedPreferences
-              try {
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.setString('last_desa_kode', newKode);
-                await prefs.setString('last_desa_name', newNama);
-              } catch (_) {}
-              
-              // Panggil ulang loadSummary dengan kode baru
-              if (mounted) {
-                _loadSummary();
-              }
-              return;
-            }
-          } catch (_) {
-            // Jika gagal ambil default, set null
-          }
-          _luasWilayahKm2 = null;
-          _totalRT = null;
-          _totalRW = null;
         }
 
         // Kependudukan terbaru (total penduduk & KK)
         final kep = await _repo.fetchLatestKependudukanByKode(_kodeWilayah);
-        if (kep != null) {
-          _latestPenduduk = kep['total_penduduk'] as int?;
-          _latestKK = kep['total_kk'] as int?;
-        } else {
-          _latestPenduduk = null;
-          _latestKK = null;
-        }
+        _latestPenduduk = kep?['total_penduduk'] as int?;
+        _latestKK = kep?['total_kk'] as int?;
 
         // Kesehatan terbaru (fasilitas & tenaga medis)
         final kes = await _kesehatanRepo.fetchLatest(_kodeWilayah);
-        if (kes != null) {
-          _totalFasilitas = kes['total_fasilitas'] as int?;
-          _totalTenagaMedis = kes['total_tenaga_medis'] as int?;
-        } else {
-          _totalFasilitas = null;
-          _totalTenagaMedis = null;
-        }
-
-        // Pendidikan (hitung total dari berbagai jenjang)
-        try {
-          final counts = await _pendidikanRepo.getCounts(_kodeWilayah);
-          if (counts.isNotEmpty) {
-            _totalPendidikanNegeri = 0; // fokus swasta untuk saat ini
-            final paud = counts['PAUD'] ?? 0;
-            final tk = counts['TK'] ?? 0;
-            final sd = counts['SD'] ?? 0;
-            final smp = counts['SMP'] ?? 0;
-            final sma = counts['SMA'] ?? 0;
-            final smk = counts['SMK'] ?? 0;
-            final pt = counts['Akademi/PT'] ?? 0;
-            _totalSwasta = paud + tk + sd + smp + sma + smk + pt;
-          } else {
-            _totalPendidikanNegeri = null;
-            _totalSwasta = null;
-          }
-        } catch (_) {
-          _totalPendidikanNegeri = null;
-          _totalSwasta = null;
-        }
+        _totalFasilitas = (kes?['total_fasilitas'] ?? 0) as int?;
+        _totalTenagaMedis = (kes?['total_tenaga_medis'] ?? 0) as int?;
       }).timeout(const Duration(seconds: 8));
     } on TimeoutException {
-      // ignore
+      // timeout: leave values as null so UI shows placeholders
     } catch (_) {
-      // ignore
+      // ignore errors, keep nulls
     } finally {
-      if (mounted) setState(() => _loadingSummary = false);
+      if (mounted)
+        setState(() {
+          _loadingSummary = false;
+        });
     }
   }
 
@@ -162,13 +100,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
       ),
       builder: (context) => const _DesaPickerSheet(),
     );
-    
-    print('DEBUG _changeWilayah: selected = $selected');
-    
     if (selected != null) {
-      print('DEBUG: nama=${selected.nama}, kode=${selected.kode}');
-      // Switch ke desa yang dipilih (termasuk dari hasil add/edit/delete)
-      print('DEBUG: Switching to desa ${selected.nama}');
       setState(() {
         _desaName = selected.nama;
         _kodeWilayah = selected.kode;
@@ -180,8 +112,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
         await prefs.setString('last_desa_name', selected.nama);
       } catch (_) {}
       await _loadSummary();
-    } else {
-      print('DEBUG: selected is null');
     }
   }
 
@@ -191,49 +121,42 @@ class _MainMenuPageState extends State<MainMenuPage> {
     final dataCategories = <_Feature>[
       _Feature(
         title: 'Profil Desa',
-        subtitle: 'Informasi Lengkap',
         icon: Icons.account_balance_rounded,
         gradient: _gradPurplePink,
         route: '/profil-desa',
       ),
       _Feature(
         title: 'Kependudukan',
-        subtitle: 'Program & Kegiatan',
         icon: Icons.people_alt_rounded,
         gradient: _gradEmeraldGold,
         route: '/kependudukan',
       ),
       _Feature(
         title: 'Kesehatan',
-        subtitle: 'Program & Kegiatan',
         icon: Icons.local_hospital_rounded,
         gradient: _gradCyanBlue,
         route: '/kesehatan',
       ),
       _Feature(
         title: 'Infrastruktur',
-        subtitle: 'Program & Kegiatan',
         icon: Icons.maps_home_work_rounded,
         gradient: _gradOrangePink,
         route: '/infrastruktur',
       ),
       _Feature(
         title: 'Pendidikan',
-        subtitle: 'Program & Kegiatan',
         icon: Icons.school_rounded,
         gradient: _gradBluePurple,
         route: '/pendidikan',
       ),
       _Feature(
         title: 'Kebencanaan',
-        subtitle: 'Program & Kegiatan',
         icon: Icons.cloud_rounded,
         gradient: _gradRedOrange,
         route: '/kebencanaan',
       ),
       _Feature(
         title: 'Metadata',
-        subtitle: 'Program & Kegiatan',
         icon: Icons.storage_rounded,
         gradient: _gradGreenLime,
         route: '/metadata',
@@ -253,11 +176,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
         : '—';
     final pendudukStr = _latestPenduduk?.toString() ?? '—';
     final kkStr = _latestKK?.toString() ?? '—';
-    final fasilitasStr = _totalFasilitas?.toString() ?? '—';
-    final tenagaStr = _totalTenagaMedis?.toString() ?? '—';
-    final negeriStr = _totalPendidikanNegeri?.toString() ?? '—';
-    final swastaStr = _totalSwasta?.toString() ?? '—';
-
     final summaryItems = <_SummaryItem>[
       _SummaryItem(
         title: 'Ringkasan Desa',
@@ -289,7 +207,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
           _SummaryChip(icon: Icons.badge_rounded, label: 'KK', value: kkStr),
         ],
       ),
-      _SummaryItem(
+      // Tetap tampilkan kartu lain (dummy) sampai integrasi lanjut
+      const _SummaryItem(
         title: 'Pendidikan',
         gradient: _gradBluePurple,
         icon: Icons.school_rounded,
@@ -297,12 +216,12 @@ class _MainMenuPageState extends State<MainMenuPage> {
           _SummaryChip(
             icon: Icons.account_balance_rounded,
             label: 'Negeri',
-            value: negeriStr,
+            value: '0',
           ),
           _SummaryChip(
-            icon: Icons.apartment_rounded,
-            label: 'Swasta',
-            value: swastaStr,
+            icon: Icons.child_care_rounded,
+            label: 'PAUD Swasta',
+            value: '1',
           ),
         ],
       ),
@@ -314,12 +233,12 @@ class _MainMenuPageState extends State<MainMenuPage> {
           _SummaryChip(
             icon: Icons.local_hospital_rounded,
             label: 'Fasilitas',
-            value: fasilitasStr,
+            value: _totalFasilitas?.toString() ?? '—',
           ),
           _SummaryChip(
             icon: Icons.volunteer_activism_rounded,
             label: 'Tenaga',
-            value: tenagaStr,
+            value: _totalTenagaMedis?.toString() ?? '—',
           ),
         ],
       ),
@@ -342,7 +261,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
                 ),
                 child: _HeaderContent(
                   desaName: _desaName,
-                  kodeWilayah: _kodeWilayah,
+                  kodeWilayah: widget.kodeWilayah,
                   isAdmin: widget.isAdmin,
                   onChangeWilayah: _changeWilayah,
                   onLogout: () async {
@@ -387,9 +306,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
                 child: ScrollConfiguration(
                   behavior: _NoGlowBehavior(),
                   child: CustomScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(
-                      parent: ClampingScrollPhysics(),
-                    ),
+                    physics: const ClampingScrollPhysics(),
                     slivers: [
                       SliverPadding(
                         padding: EdgeInsets.fromLTRB(
@@ -648,14 +565,19 @@ class _FeatureCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       borderRadius: BorderRadius.circular(20),
-      onTap: () {
+      onTap: () async {
         // Navigate via named route, passing current desa context as arguments
         final parent = context.findAncestorStateOfType<_MainMenuPageState>();
         final args = {
           'kodeWilayah': parent?._kodeWilayah,
           'desaName': parent?._desaName,
         };
-        Navigator.of(context).pushNamed(feature.route, arguments: args);
+        final result = await Navigator.of(context).pushNamed(feature.route, arguments: args);
+        
+        // Reload summary data only if there were changes (conditional refresh)
+        if (parent != null && parent.mounted && result == true) {
+          parent._loadSummary();
+        }
       },
       child: Ink(
         decoration: BoxDecoration(
@@ -700,11 +622,6 @@ class _FeatureCard extends StatelessWidget {
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                feature.subtitle,
-                style: const TextStyle(color: Colors.white, fontSize: 12),
-              ),
             ],
           ),
         ),
@@ -715,13 +632,11 @@ class _FeatureCard extends StatelessWidget {
 
 class _Feature {
   final String title;
-  final String subtitle;
   final IconData icon;
   final Gradient gradient;
   final String route;
   const _Feature({
     required this.title,
-    required this.subtitle,
     required this.icon,
     required this.gradient,
     required this.route,
@@ -880,50 +795,11 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
     }
   }
 
-  Future<void> _showAddDesaForm() async {
-    print('DEBUG _showAddDesaForm: Starting');
-    final result = await showModalBottomSheet<Map<String, String>?>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) => const _AddDesaFormSheet(),
-    );
-    print('DEBUG _showAddDesaForm: result = $result');
-    if (result != null) {
-      // Refresh list after successful addition
-      if (!mounted) return;
-      await _load(
-        search: _searchController.text.trim().isEmpty
-            ? null
-            : _searchController.text.trim(),
-      );
-      
-      // Tampilkan notifikasi sukses yang cantik
-      _showSuccessNotification(
-        context,
-        message: 'Desa berhasil ditambahkan',
-        icon: Icons.check_circle_rounded,
-      );
-      
-      print('DEBUG _showAddDesaForm: Popping with new desa data');
-      // Close bottom sheet dengan data desa yang baru ditambahkan
-      final kode = result['kode'] ?? '';
-      final nama = result['nama'] ?? '';
-      Navigator.pop(context, _DesaData(nama: nama, kode: kode, kecamatan: '', penduduk: 0));
-    } else {
-      print('DEBUG _showAddDesaForm: Not created, not popping with marker');
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthService>(context);
-    final bool isAdmin = !auth.isGuest;
-    final double listBottomPad = isAdmin ? 90 : 20;
-
+    final isAdmin = !auth.isGuest;
+    
     return DraggableScrollableSheet(
       initialChildSize: 0.75,
       minChildSize: 0.5,
@@ -933,657 +809,170 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
         return Stack(
           children: [
             Column(
-              children: [
-                // Handle bar
-                Container(
-                  margin: const EdgeInsets.only(top: 12, bottom: 8),
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                // Header
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Pilih Wilayah Desa',
-                        style: Theme.of(context).textTheme.headlineSmall
-                            ?.copyWith(fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${_filteredList.length} desa tersedia',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Search field
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: _filterDesa,
-                    decoration: InputDecoration(
-                      hintText: 'Cari nama desa, kecamatan, atau kode...',
-                      prefixIcon: const Icon(Icons.search_rounded),
-                      suffixIcon: _searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear_rounded),
-                              onPressed: () {
-                                _searchController.clear();
-                                _filterDesa('');
-                              },
-                            )
-                          : null,
-                      filled: true,
-                      fillColor: Colors.grey.shade100,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        vertical: 12,
-                        horizontal: 16,
-                      ),
+          children: [
+            // Handle bar
+            Container(
+              margin: const EdgeInsets.only(top: 12, bottom: 8),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Pilih Wilayah Desa',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                // Desa list
-                Expanded(
-                  child: _loading
-                      ? const Center(child: CircularProgressIndicator())
-                      : _filteredList.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.search_off_rounded,
-                                size: 64,
-                                color: Colors.grey.shade400,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'Tidak ada desa ditemukan',
-                                style: TextStyle(
-                                  color: Colors.grey.shade600,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      : ListView.separated(
-                          controller: scrollController,
-                          padding: EdgeInsets.fromLTRB(
-                            20,
-                            0,
-                            20,
-                            listBottomPad,
-                          ),
-                          itemCount: _filteredList.length,
-                          separatorBuilder: (_, index) =>
-                              const Divider(height: 1),
-                          itemBuilder: (context, index) {
-                            final desa = _filteredList[index];
-                            return ListTile(
-                              contentPadding: const EdgeInsets.symmetric(
-                                vertical: 8,
-                                horizontal: 12,
-                              ),
-                              leading: Container(
-                                width: 48,
-                                height: 48,
-                                decoration: BoxDecoration(
-                                  gradient: _gradLogin,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(
-                                  Icons.location_city_rounded,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              title: Text(
-                                desa.nama,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const SizedBox(height: 4),
-                                  Text('Kec. ${desa.kecamatan} • ${desa.kode}'),
-                                  if (desa.penduduk > 0) ...[
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      '${desa.penduduk} penduduk',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey.shade600,
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                              trailing: const Icon(Icons.chevron_right_rounded),
-                              onTap: () => Navigator.pop(context, desa),
-                            );
-                          },
-                        ),
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Text(
+                    '${_filteredList.length} desa tersedia',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
             ),
-
-            if (isAdmin)
-              Positioned(
-                right: 20,
-                bottom: 20,
-                child: FloatingActionButton(
-                  onPressed: _openAdminActionsSheet,
-                  backgroundColor: const Color(0xFF2563EB),
-                  child: const Icon(Icons.add_rounded, color: Colors.white),
+            // Search field
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: TextField(
+                controller: _searchController,
+                onChanged: _filterDesa,
+                decoration: InputDecoration(
+                  hintText: 'Cari nama desa, kecamatan, atau kode...',
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear_rounded),
+                          onPressed: () {
+                            _searchController.clear();
+                            _filterDesa('');
+                          },
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: Colors.grey.shade100,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 16,
+                  ),
                 ),
               ),
+            ),
+            const SizedBox(height: 16),
+            // Desa list
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _filteredList.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.search_off_rounded,
+                            size: 64,
+                            color: Colors.grey.shade400,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Tidak ada desa ditemukan',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.separated(
+                      controller: scrollController,
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                      itemCount: _filteredList.length,
+                      separatorBuilder: (_, index) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final desa = _filteredList[index];
+                        return ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 8,
+                            horizontal: 12,
+                          ),
+                          leading: Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              gradient: _gradLogin,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.location_city_rounded,
+                              color: Colors.white,
+                            ),
+                          ),
+                          title: Text(
+                            desa.nama,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 4),
+                              Text('Kec. ${desa.kecamatan} • ${desa.kode}'),
+                              if (desa.penduduk > 0) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${desa.penduduk} penduduk',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          trailing: const Icon(Icons.chevron_right_rounded),
+                          onTap: () => Navigator.pop(context, desa),
+                        );
+                      },
+                    ),
+            ),
           ],
-        );
+        ), // End Column
+        
+        // FAB for admin actions
+        if (isAdmin)
+          Positioned(
+            right: 20,
+            bottom: 20,
+            child: FloatingActionButton(
+              onPressed: _openAdminActionsSheet,
+              backgroundColor: const Color(0xFF2563EB),
+              child: const Icon(Icons.add_rounded, color: Colors.white),
+            ),
+          ),
+        ],
+      );
       },
     );
   }
-}
 
-// =========================
-// Add Desa Form (Bottom Sheet)
-// =========================
-class _AddDesaFormSheet extends StatefulWidget {
-  const _AddDesaFormSheet();
-
-  @override
-  State<_AddDesaFormSheet> createState() => _AddDesaFormSheetState();
-}
-
-class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
-  final _formKey = GlobalKey<FormState>();
-  final _kodeCtrl = TextEditingController();
-  final _namaCtrl = TextEditingController();
-  final _kecamatanCtrl = TextEditingController();
-  final _kabupatenCtrl = TextEditingController();
-  final _provinsiCtrl = TextEditingController();
-  bool _submitting = false;
-  String? _error;
-
-  @override
-  void dispose() {
-    _kodeCtrl.dispose();
-    _namaCtrl.dispose();
-    _kecamatanCtrl.dispose();
-    _kabupatenCtrl.dispose();
-    _provinsiCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    final valid = _formKey.currentState?.validate() ?? false;
-    if (!valid) return;
-    setState(() {
-      _submitting = true;
-      _error = null;
-    });
-    try {
-      final repo = DesaRepository();
-      final kode = _kodeCtrl.text.trim();
-      final nama = _namaCtrl.text.trim();
-      await repo.createDesa(
-        kodeWilayah: kode,
-        nama: nama,
-        kecamatan: _kecamatanCtrl.text.trim(),
-        kabupaten: _kabupatenCtrl.text.trim(),
-        provinsi: _provinsiCtrl.text.trim(),
-      );
-      if (!mounted) return;
-      // Return kode dan nama desa yang baru ditambahkan
-      Navigator.pop(context, {'kode': kode, 'nama': nama});
-    } catch (e) {
-      setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '');
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _submitting = false;
-        });
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bottom = MediaQuery.of(context).viewInsets.bottom;
-    final colorScheme = Theme.of(context).colorScheme;
-    
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      child: Padding(
-        padding: EdgeInsets.only(bottom: bottom),
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Header
-                Text(
-                  'Tambah Desa Baru',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Isi data desa dengan lengkap',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                
-                if (_error != null) ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: colorScheme.errorContainer,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: colorScheme.error.withValues(alpha: 0.3),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.error_rounded,
-                          color: colorScheme.error,
-                          size: 24,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            _error!,
-                            style: TextStyle(
-                              color: colorScheme.onErrorContainer,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                ],
-                
-                Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      // Kode Wilayah Field
-                      TextFormField(
-                        controller: _kodeCtrl,
-                        textInputAction: TextInputAction.next,
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          labelText: 'Kode Wilayah',
-                          filled: true,
-                          fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: colorScheme.outline.withValues(alpha: 0.2),
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: colorScheme.primary,
-                              width: 2,
-                            ),
-                          ),
-                          errorBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: colorScheme.error,
-                            ),
-                          ),
-                        ),
-                        validator: (v) {
-                          if (v == null || v.trim().isEmpty) {
-                            return 'Kode wilayah wajib diisi';
-                          }
-                          if (v.trim().length > 10) {
-                            return 'Maksimal 10 karakter';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // Nama Desa Field
-                      TextFormField(
-                        controller: _namaCtrl,
-                        textInputAction: TextInputAction.next,
-                        decoration: InputDecoration(
-                          labelText: 'Nama Desa',
-                          filled: true,
-                          fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: colorScheme.outline.withValues(alpha: 0.2),
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: colorScheme.primary,
-                              width: 2,
-                            ),
-                          ),
-                        ),
-                        validator: (v) => (v == null || v.trim().isEmpty)
-                            ? 'Nama desa wajib diisi'
-                            : null,
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // Kecamatan Field
-                      TextFormField(
-                        controller: _kecamatanCtrl,
-                        textInputAction: TextInputAction.next,
-                        decoration: InputDecoration(
-                          labelText: 'Kecamatan',
-                          filled: true,
-                          fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: colorScheme.outline.withValues(alpha: 0.2),
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: colorScheme.primary,
-                              width: 2,
-                            ),
-                          ),
-                        ),
-                        validator: (v) => (v == null || v.trim().isEmpty)
-                            ? 'Kecamatan wajib diisi'
-                            : null,
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // Kabupaten Field
-                      TextFormField(
-                        controller: _kabupatenCtrl,
-                        textInputAction: TextInputAction.next,
-                        decoration: InputDecoration(
-                          labelText: 'Kabupaten/Kota',
-                          filled: true,
-                          fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: colorScheme.outline.withValues(alpha: 0.2),
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: colorScheme.primary,
-                              width: 2,
-                            ),
-                          ),
-                        ),
-                        validator: (v) => (v == null || v.trim().isEmpty)
-                            ? 'Kabupaten wajib diisi'
-                            : null,
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // Provinsi Field
-                      TextFormField(
-                        controller: _provinsiCtrl,
-                        textInputAction: TextInputAction.done,
-                        decoration: InputDecoration(
-                          labelText: 'Provinsi',
-                          filled: true,
-                          fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: colorScheme.outline.withValues(alpha: 0.2),
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: colorScheme.primary,
-                              width: 2,
-                            ),
-                          ),
-                        ),
-                        validator: (v) => (v == null || v.trim().isEmpty)
-                            ? 'Provinsi wajib diisi'
-                            : null,
-                        onFieldSubmitted: (_) => _submit(),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 28),
-                
-                // Action Buttons
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: _submitting
-                            ? null
-                            : () => Navigator.pop(context, false),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: const Text('Batal'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 2,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: ElevatedButton(
-                          onPressed: _submitting ? null : _submit,
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            backgroundColor: Colors.transparent,
-                            shadowColor: Colors.transparent,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: _submitting
-                              ? const SizedBox(
-                                  height: 18,
-                                  width: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white,
-                                    ),
-                                  ),
-                                )
-                              : const Text(
-                                  'Simpan',
-                                  style: TextStyle(color: Colors.white),
-                                ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// =========================
-// Helper untuk Notifikasi Cantik
-// =========================
-void _showSuccessNotification(BuildContext context, {
-  required String message,
-  required IconData icon,
-}) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              icon,
-              color: Colors.white,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-      backgroundColor: const Color(0xFF10B981), // Green-500
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      duration: const Duration(seconds: 3),
-      elevation: 6,
-    ),
-  );
-}
-
-void _showErrorNotification(BuildContext context, {
-  required String message,
-}) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(
-              Icons.error_rounded,
-              color: Colors.white,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-      backgroundColor: const Color(0xFFEF4444), // Red-500
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      duration: const Duration(seconds: 4),
-      elevation: 6,
-    ),
-  );
-}
-
-// =========================
-// Admin Action Menu (Tambah, Edit, Hapus)
-// =========================
-extension on _DesaPickerSheetState {
   Future<void> _openAdminActionsSheet() async {
     await showModalBottomSheet<void>(
       context: context,
@@ -1598,7 +987,7 @@ extension on _DesaPickerSheetState {
             children: [
               ListTile(
                 leading: const Icon(Icons.add_rounded),
-                title: const Text('Tambah'),
+                title: const Text('Tambah Desa'),
                 onTap: () async {
                   Navigator.pop(ctx);
                   await _showAddDesaForm();
@@ -1606,7 +995,7 @@ extension on _DesaPickerSheetState {
               ),
               ListTile(
                 leading: const Icon(Icons.edit_rounded),
-                title: const Text('Edit'),
+                title: const Text('Edit Desa'),
                 onTap: () async {
                   Navigator.pop(ctx);
                   await _showEditFlow();
@@ -1614,7 +1003,7 @@ extension on _DesaPickerSheetState {
               ),
               ListTile(
                 leading: const Icon(Icons.delete_rounded),
-                title: const Text('Hapus'),
+                title: const Text('Hapus Desa'),
                 textColor: Colors.red,
                 iconColor: Colors.red,
                 onTap: () async {
@@ -1630,25 +1019,39 @@ extension on _DesaPickerSheetState {
     );
   }
 
-  Future<_DesaData?> _pickDesa({required String title}) async {
-    return showModalBottomSheet<_DesaData>(
+  Future<void> _showAddDesaForm() async {
+    final result = await showModalBottomSheet<Map<String, String>?>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (_) => _SelectDesaSheet(title: title),
+      builder: (ctx) => const _AddDesaFormSheet(),
     );
+    
+    if (result != null && mounted) {
+      // Refresh list
+      await _load(search: _searchController.text.trim().isEmpty ? null : _searchController.text.trim());
+      
+      // Show success
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('✅ Desa berhasil ditambahkan')),
+        );
+        
+        // Close picker and return new desa
+        final kode = result['kode'] ?? '';
+        final nama = result['nama'] ?? '';
+        Navigator.pop(context, _DesaData(nama: nama, kode: kode, kecamatan: '', penduduk: 0));
+      }
+    }
   }
 
   Future<void> _showEditFlow() async {
-    print('DEBUG _showEditFlow: Starting');
     final chosen = await _pickDesa(title: 'Pilih Desa untuk Diedit');
-    if (chosen == null) {
-      print('DEBUG _showEditFlow: No desa chosen');
-      return;
-    }
+    if (chosen == null) return;
+    
     final result = await showModalBottomSheet<Map<String, String>?>(
       context: context,
       isScrollControlled: true,
@@ -1662,45 +1065,33 @@ extension on _DesaPickerSheetState {
         initialKecamatan: chosen.kecamatan,
       ),
     );
-    print('DEBUG _showEditFlow: result = $result');
-    if (result != null) {
-      await _load(
-        search: _searchController.text.trim().isEmpty
-            ? null
-            : _searchController.text.trim(),
-      );
-      if (!mounted) return;
+    
+    if (result != null && mounted) {
+      await _load(search: _searchController.text.trim().isEmpty ? null : _searchController.text.trim());
       
-      // Tampilkan notifikasi sukses yang cantik
-      _showSuccessNotification(
-        context,
-        message: 'Desa berhasil diperbarui',
-        icon: Icons.edit_rounded,
-      );
-      
-      print('DEBUG _showEditFlow: Popping with edited desa data');
-      // Close bottom sheet dengan data desa yang baru diedit
-      final kode = result['kode'] ?? '';
-      final nama = result['nama'] ?? '';
-      Navigator.pop(context, _DesaData(nama: nama, kode: kode, kecamatan: '', penduduk: 0));
-    } else {
-      print('DEBUG _showEditFlow: Not saved, not popping with marker');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('✅ Desa berhasil diperbarui')),
+        );
+        
+        // Close picker and return edited desa
+        final kode = result['kode'] ?? '';
+        final nama = result['nama'] ?? '';
+        Navigator.pop(context, _DesaData(nama: nama, kode: kode, kecamatan: '', penduduk: 0));
+      }
     }
   }
 
   Future<void> _showDeleteFlow() async {
-    print('DEBUG _showDeleteFlow: Starting');
     final chosen = await _pickDesa(title: 'Pilih Desa untuk Dihapus');
-    if (chosen == null) {
-      print('DEBUG _showDeleteFlow: No desa chosen');
-      return;
-    }
+    if (chosen == null) return;
+    
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dctx) => AlertDialog(
         title: const Text('Hapus Desa'),
         content: Text(
-          'Yakin ingin menghapus desa "${chosen.nama}" (Kode ${chosen.kode})?\nTindakan ini akan menghapus data desa dari database.',
+          'Yakin ingin menghapus desa "${chosen.nama}" (${chosen.kode})?\nSemua data terkait akan terhapus.',
         ),
         actions: [
           TextButton(
@@ -1715,600 +1106,56 @@ extension on _DesaPickerSheetState {
         ],
       ),
     );
-    print('DEBUG _showDeleteFlow: confirmed = $confirmed');
+    
     if (confirmed != true) return;
 
     try {
-      await DesaRepository().deleteDesaByKode(chosen.kode);
-      await _load(
-        search: _searchController.text.trim().isEmpty
-            ? null
-            : _searchController.text.trim(),
-      );
-      if (!mounted) return;
+      await _repo.deleteDesaByKode(chosen.kode);
+      await _load(search: _searchController.text.trim().isEmpty ? null : _searchController.text.trim());
       
-      // Tampilkan notifikasi sukses yang cantik
-      _showSuccessNotification(
-        context,
-        message: 'Desa berhasil dihapus',
-        icon: Icons.delete_rounded,
-      );
-      
-      // Cek apakah desa yang dihapus adalah desa aktif
-      final parent = context.findAncestorStateOfType<_MainMenuPageState>();
-      final needSwitch = parent != null && parent._kodeWilayah == chosen.kode;
-      
-      print('DEBUG _showDeleteFlow: needSwitch = $needSwitch');
-      
-      // Close bottom sheet dengan marker untuk reload
-      if (needSwitch) {
-        // Jika desa aktif dihapus, ambil desa default dulu
-        try {
-          final fallback = await DesaRepository().fetchDefaultDesa();
-          if (fallback != null) {
-            final newKode = (fallback['kode_wilayah'] ?? '') as String;
-            final newNama = (fallback['nama'] ?? 'Desa') as String;
-            print('DEBUG _showDeleteFlow: Popping with new desa $newNama');
-            // Return desa baru untuk di-switch
-            Navigator.pop(context, _DesaData(nama: newNama, kode: newKode, kecamatan: '', penduduk: 0));
-            return;
-          }
-        } catch (_) {}
-      }
-      
-      print('DEBUG _showDeleteFlow: Popping with __RELOAD__ marker');
-      // Jika bukan desa aktif atau gagal ambil fallback, return marker reload
-      Navigator.pop(context, const _DesaData(nama: '__RELOAD__', kode: '__RELOAD__', kecamatan: '', penduduk: 0));
-    } catch (e) {
-      print('DEBUG _showDeleteFlow: Error = $e');
-      if (!mounted) return;
-      _showErrorNotification(
-        context,
-        message: 'Gagal menghapus desa: ${e.toString().replaceFirst('Exception: ', '')}',
-      );
-    }
-  }
-}
-
-// =========================
-// Select Desa Sheet (for Edit/Delete)
-// =========================
-class _SelectDesaSheet extends StatefulWidget {
-  const _SelectDesaSheet({required this.title});
-  final String title;
-
-  @override
-  State<_SelectDesaSheet> createState() => _SelectDesaSheetState();
-}
-
-class _SelectDesaSheetState extends State<_SelectDesaSheet> {
-  final _searchController = TextEditingController();
-  final _repo = DesaRepository();
-  List<_DesaData> _items = const [];
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _load({String? search}) async {
-    setState(() => _loading = true);
-    try {
-      final rows = await _repo.fetchDesaList(search: search, limit: 200);
-      _items = rows
-          .map<_DesaData>(
-            (r) => _DesaData(
-              nama: (r['nama'] ?? '') as String,
-              kode: (r['kode_wilayah'] ?? '') as String,
-              kecamatan: (r['kecamatan'] ?? '') as String,
-              penduduk: (r['total_penduduk'] as int?) ?? 0,
-            ),
-          )
-          .toList();
-    } catch (_) {
-      _items = const [];
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  void _onSearch(String q) => _load(search: q.isEmpty ? null : q);
-
-  @override
-  Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-      initialChildSize: 0.85,
-      minChildSize: 0.5,
-      maxChildSize: 0.95,
-      expand: false,
-      builder: (context, scrollController) {
-        return Column(
-          children: [
-            Container(
-              margin: const EdgeInsets.only(top: 12, bottom: 8),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.title,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${_items.length} desa ditemukan',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: TextField(
-                controller: _searchController,
-                onChanged: _onSearch,
-                decoration: InputDecoration(
-                  hintText: 'Cari nama desa, kecamatan, atau kode...',
-                  prefixIcon: const Icon(Icons.search_rounded),
-                  filled: true,
-                  fillColor: Colors.grey.shade100,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    vertical: 12,
-                    horizontal: 16,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : ListView.separated(
-                      controller: scrollController,
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                      itemCount: _items.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
-                      itemBuilder: (context, index) {
-                        final desa = _items[index];
-                        return ListTile(
-                          leading: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              gradient: _gradLogin,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(
-                              Icons.home_rounded,
-                              color: Colors.white,
-                            ),
-                          ),
-                          title: Text(
-                            desa.nama,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          subtitle: Text(
-                            'Kec. ${desa.kecamatan} • ${desa.kode}',
-                          ),
-                          trailing: const Icon(Icons.chevron_right_rounded),
-                          onTap: () => Navigator.pop(context, desa),
-                        );
-                      },
-                    ),
-            ),
-          ],
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('✅ Desa berhasil dihapus')),
         );
-      },
-    );
-  }
-}
-
-// =========================
-// Edit Desa Form (Bottom Sheet)
-// =========================
-class _EditDesaFormSheet extends StatefulWidget {
-  const _EditDesaFormSheet({
-    required this.kodeWilayah,
-    this.initialNama,
-    this.initialKecamatan,
-  });
-  final String kodeWilayah;
-  final String? initialNama;
-  final String? initialKecamatan;
-
-  @override
-  State<_EditDesaFormSheet> createState() => _EditDesaFormSheetState();
-}
-
-class _EditDesaFormSheetState extends State<_EditDesaFormSheet> {
-  final _formKey = GlobalKey<FormState>();
-  final _namaCtrl = TextEditingController();
-  final _kecamatanCtrl = TextEditingController();
-  final _kabupatenCtrl = TextEditingController();
-  final _provinsiCtrl = TextEditingController();
-  bool _loading = true;
-  bool _saving = false;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    _init();
-  }
-
-  @override
-  void dispose() {
-    _namaCtrl.dispose();
-    _kecamatanCtrl.dispose();
-    _kabupatenCtrl.dispose();
-    _provinsiCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _init() async {
-    try {
-      // Prefill quickly with known values to reduce flicker
-      if (widget.initialNama != null) _namaCtrl.text = widget.initialNama!;
-      if (widget.initialKecamatan != null)
-        _kecamatanCtrl.text = widget.initialKecamatan!;
-
-      final detail = await DesaRepository().fetchDesaDetailByKode(
-        widget.kodeWilayah,
-      );
-      if (detail != null) {
-        _namaCtrl.text = (detail['nama'] ?? _namaCtrl.text) as String;
-        _kecamatanCtrl.text =
-            (detail['kecamatan'] ?? _kecamatanCtrl.text) as String;
-        _kabupatenCtrl.text = (detail['kabupaten'] ?? '') as String;
-        _provinsiCtrl.text = (detail['provinsi'] ?? '') as String;
+        
+        // Check if deleted desa is currently active
+        final parent = context.findAncestorStateOfType<_MainMenuPageState>();
+        final needSwitch = parent != null && parent._kodeWilayah == chosen.kode;
+        
+        if (needSwitch) {
+          // Switch to default desa
+          try {
+            final fallback = await _repo.fetchDefaultDesa();
+            if (fallback != null) {
+              final newKode = (fallback['kode_wilayah'] ?? '') as String;
+              final newNama = (fallback['nama'] ?? 'Desa') as String;
+              Navigator.pop(context, _DesaData(nama: newNama, kode: newKode, kecamatan: '', penduduk: 0));
+              return;
+            }
+          } catch (_) {}
+        }
+        
+        // Just refresh without switching
+        Navigator.pop(context, const _DesaData(nama: '__RELOAD__', kode: '__RELOAD__', kecamatan: '', penduduk: 0));
       }
-    } catch (_) {
-      // ignore
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  Future<void> _submit() async {
-    final valid = _formKey.currentState?.validate() ?? false;
-    if (!valid) return;
-    setState(() {
-      _saving = true;
-      _error = null;
-    });
-    try {
-      final nama = _namaCtrl.text.trim();
-      await DesaRepository().updateDesaByKode(
-        kodeWilayah: widget.kodeWilayah,
-        nama: nama,
-        kecamatan: _kecamatanCtrl.text.trim(),
-        kabupaten: _kabupatenCtrl.text.trim(),
-        provinsi: _provinsiCtrl.text.trim(),
-      );
-      if (!mounted) return;
-      // Return kode dan nama desa yang baru diedit
-      Navigator.pop(context, {'kode': widget.kodeWilayah, 'nama': nama});
     } catch (e) {
-      setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '');
-      });
-    } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('❌ Gagal menghapus: $e')),
+        );
+      }
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final bottom = MediaQuery.of(context).viewInsets.bottom;
-    final colorScheme = Theme.of(context).colorScheme;
-    
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+  Future<_DesaData?> _pickDesa({required String title}) async {
+    return showModalBottomSheet<_DesaData>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      child: Padding(
-        padding: EdgeInsets.only(bottom: bottom),
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Header
-                Text(
-                  'Edit Desa',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: colorScheme.secondaryContainer.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    widget.kodeWilayah,
-                    style: TextStyle(
-                      color: colorScheme.onSecondaryContainer,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                
-                if (_error != null) ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: colorScheme.errorContainer,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: colorScheme.error.withValues(alpha: 0.3),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.error_rounded,
-                          color: colorScheme.error,
-                          size: 24,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            _error!,
-                            style: TextStyle(
-                              color: colorScheme.onErrorContainer,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                ],
-                
-                if (_loading)
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 48.0),
-                      child: CircularProgressIndicator(),
-                    ),
-                  )
-                else
-                  Form(
-                    key: _formKey,
-                    child: Column(
-                      children: [
-                        // Nama Desa Field
-                        TextFormField(
-                          controller: _namaCtrl,
-                          textInputAction: TextInputAction.next,
-                          decoration: InputDecoration(
-                            labelText: 'Nama Desa',
-                            filled: true,
-                            fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: colorScheme.outline.withValues(alpha: 0.2),
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: colorScheme.primary,
-                                width: 2,
-                              ),
-                            ),
-                          ),
-                          validator: (v) => (v == null || v.trim().isEmpty)
-                              ? 'Nama desa wajib diisi'
-                              : null,
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        // Kecamatan Field
-                        TextFormField(
-                          controller: _kecamatanCtrl,
-                          textInputAction: TextInputAction.next,
-                          decoration: InputDecoration(
-                            labelText: 'Kecamatan',
-                            filled: true,
-                            fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: colorScheme.outline.withValues(alpha: 0.2),
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: colorScheme.primary,
-                                width: 2,
-                              ),
-                            ),
-                          ),
-                          validator: (v) => (v == null || v.trim().isEmpty)
-                              ? 'Kecamatan wajib diisi'
-                              : null,
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        // Kabupaten Field
-                        TextFormField(
-                          controller: _kabupatenCtrl,
-                          textInputAction: TextInputAction.next,
-                          decoration: InputDecoration(
-                            labelText: 'Kabupaten/Kota',
-                            filled: true,
-                            fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: colorScheme.outline.withValues(alpha: 0.2),
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: colorScheme.primary,
-                                width: 2,
-                              ),
-                            ),
-                          ),
-                          validator: (v) => (v == null || v.trim().isEmpty)
-                              ? 'Kabupaten wajib diisi'
-                              : null,
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        // Provinsi Field
-                        TextFormField(
-                          controller: _provinsiCtrl,
-                          textInputAction: TextInputAction.done,
-                          decoration: InputDecoration(
-                            labelText: 'Provinsi',
-                            filled: true,
-                            fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: colorScheme.outline.withValues(alpha: 0.2),
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: colorScheme.primary,
-                                width: 2,
-                              ),
-                            ),
-                          ),
-                          validator: (v) => (v == null || v.trim().isEmpty)
-                              ? 'Provinsi wajib diisi'
-                              : null,
-                          onFieldSubmitted: (_) => _submit(),
-                        ),
-                      ],
-                    ),
-                  ),
-                const SizedBox(height: 28),
-                
-                // Action Buttons
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: _saving
-                            ? null
-                            : () => Navigator.pop(context, false),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: const Text('Batal'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 2,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFFF59E0B), Color(0xFFF97316)],
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: ElevatedButton(
-                          onPressed: _saving ? null : _submit,
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            backgroundColor: Colors.transparent,
-                            shadowColor: Colors.transparent,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: _saving
-                              ? const SizedBox(
-                                  height: 18,
-                                  width: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white,
-                                    ),
-                                  ),
-                                )
-                              : const Text(
-                                  'Simpan',
-                                  style: TextStyle(color: Colors.white),
-                                ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+      builder: (_) => _SelectDesaSheet(title: title, items: _filteredList),
     );
   }
 }
@@ -2634,6 +1481,515 @@ class _SummaryPill extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// =========================
+// Form Add Desa
+// =========================
+class _AddDesaFormSheet extends StatefulWidget {
+  const _AddDesaFormSheet();
+
+  @override
+  State<_AddDesaFormSheet> createState() => _AddDesaFormSheetState();
+}
+
+class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _kodeCtrl = TextEditingController();
+  final _namaCtrl = TextEditingController();
+  final _kecamatanCtrl = TextEditingController();
+  final _kabupatenCtrl = TextEditingController();
+  final _provinsiCtrl = TextEditingController();
+  bool _submitting = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _kodeCtrl.dispose();
+    _namaCtrl.dispose();
+    _kecamatanCtrl.dispose();
+    _kabupatenCtrl.dispose();
+    _provinsiCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+    try {
+      final repo = DesaRepository();
+      await repo.createDesa(
+        kodeWilayah: _kodeCtrl.text.trim(),
+        nama: _namaCtrl.text.trim(),
+        kecamatan: _kecamatanCtrl.text.trim(),
+        kabupaten: _kabupatenCtrl.text.trim(),
+        provinsi: _provinsiCtrl.text.trim(),
+      );
+      if (!mounted) return;
+      Navigator.pop(context, {
+        'kode': _kodeCtrl.text.trim(),
+        'nama': _namaCtrl.text.trim(),
+      });
+    } catch (e) {
+      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    final colorScheme = Theme.of(context).colorScheme;
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: Padding(
+        padding: EdgeInsets.only(bottom: bottom),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.add_location_alt_rounded, color: Colors.white, size: 24),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Tambah Desa Baru', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                            Text('Isi data desa dengan lengkap', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  // Error message
+                  if (_error != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: colorScheme.errorContainer,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: colorScheme.error.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.error_outline_rounded, color: colorScheme.error),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              _error!,
+                              style: TextStyle(color: colorScheme.onErrorContainer, fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                  
+                  // Form fields
+                  _buildTextField(
+                    controller: _kodeCtrl,
+                    label: 'Kode Wilayah',
+                    hint: 'Contoh: 6303052009',
+                    icon: Icons.numbers_rounded,
+                    keyboardType: TextInputType.number,
+                    validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildTextField(
+                    controller: _namaCtrl,
+                    label: 'Nama Desa',
+                    hint: 'Contoh: Sungai Kupang',
+                    icon: Icons.location_city_rounded,
+                    validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildTextField(
+                    controller: _kecamatanCtrl,
+                    label: 'Kecamatan',
+                    hint: 'Contoh: Kuripan',
+                    icon: Icons.map_rounded,
+                    validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildTextField(
+                    controller: _kabupatenCtrl,
+                    label: 'Kabupaten/Kota',
+                    hint: 'Contoh: Barito Kuala',
+                    icon: Icons.account_balance_rounded,
+                    validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildTextField(
+                    controller: _provinsiCtrl,
+                    label: 'Provinsi',
+                    hint: 'Contoh: Kalimantan Selatan',
+                    icon: Icons.public_rounded,
+                    validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
+                    textInputAction: TextInputAction.done,
+                    onFieldSubmitted: (_) => _submit(),
+                  ),
+                  const SizedBox(height: 28),
+                  
+                  // Action buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _submitting ? null : () => Navigator.pop(context, null),
+                          icon: const Icon(Icons.close_rounded),
+                          label: const Text('Batal'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            side: BorderSide(color: Colors.grey.shade300),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: FilledButton.icon(
+                          onPressed: _submitting ? null : _submit,
+                          icon: _submitting
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                )
+                              : const Icon(Icons.save_rounded),
+                          label: Text(_submitting ? 'Menyimpan...' : 'Simpan'),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            backgroundColor: const Color(0xFF6366F1),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    TextInputType? keyboardType,
+    TextInputAction? textInputAction,
+    String? Function(String?)? validator,
+    void Function(String)? onFieldSubmitted,
+  }) {
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        prefixIcon: Icon(icon, size: 20),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red),
+        ),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      ),
+      keyboardType: keyboardType,
+      textInputAction: textInputAction ?? TextInputAction.next,
+      validator: validator,
+      onFieldSubmitted: onFieldSubmitted,
+    );
+  }
+}
+
+// =========================
+// Form Edit Desa
+// =========================
+class _EditDesaFormSheet extends StatefulWidget {
+  const _EditDesaFormSheet({
+    required this.kodeWilayah,
+    this.initialNama,
+    this.initialKecamatan,
+  });
+  final String kodeWilayah;
+  final String? initialNama;
+  final String? initialKecamatan;
+
+  @override
+  State<_EditDesaFormSheet> createState() => _EditDesaFormSheetState();
+}
+
+class _EditDesaFormSheetState extends State<_EditDesaFormSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _namaCtrl = TextEditingController();
+  final _kecamatanCtrl = TextEditingController();
+  final _kabupatenCtrl = TextEditingController();
+  final _provinsiCtrl = TextEditingController();
+  bool _loading = true;
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  @override
+  void dispose() {
+    _namaCtrl.dispose();
+    _kecamatanCtrl.dispose();
+    _kabupatenCtrl.dispose();
+    _provinsiCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _init() async {
+    if (widget.initialNama != null) _namaCtrl.text = widget.initialNama!;
+    if (widget.initialKecamatan != null) _kecamatanCtrl.text = widget.initialKecamatan!;
+
+    try {
+      final detail = await DesaRepository().fetchDesaDetailByKode(widget.kodeWilayah);
+      if (detail != null && mounted) {
+        _namaCtrl.text = (detail['nama'] ?? _namaCtrl.text) as String;
+        _kecamatanCtrl.text = (detail['kecamatan'] ?? _kecamatanCtrl.text) as String;
+        _kabupatenCtrl.text = (detail['kabupaten'] ?? '') as String;
+        _provinsiCtrl.text = (detail['provinsi'] ?? '') as String;
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _loading = false);
+  }
+
+  Future<void> _submit() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      await DesaRepository().updateDesaByKode(
+        kodeWilayah: widget.kodeWilayah,
+        nama: _namaCtrl.text.trim(),
+        kecamatan: _kecamatanCtrl.text.trim(),
+        kabupaten: _kabupatenCtrl.text.trim(),
+        provinsi: _provinsiCtrl.text.trim(),
+      );
+      if (!mounted) return;
+      Navigator.pop(context, {
+        'kode': widget.kodeWilayah,
+        'nama': _namaCtrl.text.trim(),
+      });
+    } catch (e) {
+      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottom),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Edit Desa', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(widget.kodeWilayah, style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.w600)),
+                    ),
+                    const SizedBox(height: 20),
+                    if (_error != null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.red.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.error, color: Colors.red),
+                            const SizedBox(width: 8),
+                            Expanded(child: Text(_error!, style: const TextStyle(color: Colors.red))),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    TextFormField(
+                      controller: _namaCtrl,
+                      decoration: const InputDecoration(labelText: 'Nama Desa', border: OutlineInputBorder()),
+                      validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _kecamatanCtrl,
+                      decoration: const InputDecoration(labelText: 'Kecamatan', border: OutlineInputBorder()),
+                      validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _kabupatenCtrl,
+                      decoration: const InputDecoration(labelText: 'Kabupaten', border: OutlineInputBorder()),
+                      validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _provinsiCtrl,
+                      decoration: const InputDecoration(labelText: 'Provinsi', border: OutlineInputBorder()),
+                      validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: _saving ? null : () => Navigator.pop(context),
+                            child: const Text('Batal'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: FilledButton(
+                            onPressed: _saving ? null : _submit,
+                            child: _saving
+                                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                                : const Text('Simpan'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+      ),
+    );
+  }
+}
+
+// =========================
+// Select Desa Sheet
+// =========================
+class _SelectDesaSheet extends StatelessWidget {
+  const _SelectDesaSheet({required this.title, required this.items});
+  final String title;
+  final List<_DesaData> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.75,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (context, scrollController) {
+        return Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 12, bottom: 8),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+              child: Text(title, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
+            ),
+            Expanded(
+              child: ListView.separated(
+                controller: scrollController,
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                itemCount: items.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  final desa = items[index];
+                  return ListTile(
+                    leading: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        gradient: _gradLogin,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.home_rounded, color: Colors.white),
+                    ),
+                    title: Text(desa.nama, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: Text('Kec. ${desa.kecamatan} • ${desa.kode}'),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => Navigator.pop(context, desa),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

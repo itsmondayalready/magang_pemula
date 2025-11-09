@@ -40,6 +40,9 @@ dependencies:
   # Supabase (menggantikan Firebase)
   supabase_flutter: ^2.5.0
   
+  # Image picker untuk upload foto
+  image_picker: ^1.0.7
+  
   # Chart library untuk visualisasi data
   fl_chart: ^1.1.1
 

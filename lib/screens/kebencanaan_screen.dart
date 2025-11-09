@@ -1,6 +1,8 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
+import '../services/auth_service.dart';
 import '../services/kebencanaan_repository.dart';
 import '../utils/responsive.dart';
 
@@ -17,6 +19,8 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
   // Null berarti: belum ada data (atau belum selesai dimuat)
   Map<String, dynamic>? _dataBanjir;
   bool _loading = false;
+  String? _kodeWilayah; // simpan kode untuk kebutuhan edit
+  bool _hasChanges = false; // Track if data has been modified
 
   late TabController _tabController;
 
@@ -36,8 +40,15 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
+    final isAdmin = context.watch<AuthService>().isAdmin;
+    return WillPopScope(
+      onWillPop: () async {
+        // Return the hasChanges flag when popping
+        Navigator.of(context).pop(_hasChanges);
+        return false; // Prevent default pop since we handle it manually
+      },
+      child: Scaffold(
+        backgroundColor: Colors.grey[50],
       body: Stack(
         children: [
           NestedScrollView(
@@ -156,6 +167,13 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
             ),
         ],
       ),
+      floatingActionButton: isAdmin
+          ? FloatingActionButton(
+              onPressed: _openEditKebencanaanSheet,
+              backgroundColor: const Color(0xFFDC2626),
+              child: const Icon(Icons.edit, color: Colors.white),
+            )
+          : null,
       bottomNavigationBar: Material(
         color: Colors.white,
         elevation: 8,
@@ -195,11 +213,35 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
             ],
           ),
         ),
+      ), // End bottomNavigationBar
+    ), // End Scaffold
+    ); // End WillPopScope
+  }
+
+  void _openEditKebencanaanSheet() {
+    if (_kodeWilayah == null) return;
+    final snapshotId = _dataBanjir?['snapshot_id'] as String?; // bisa null (insert baru)
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _KebencanaanEditSheet(
+        kodeWilayah: _kodeWilayah!,
+        snapshotId: snapshotId,
+        initialData: _dataBanjir,
+        onSaved: (String savedSnapshotId) async {
+          if (!mounted) return;
+          _hasChanges = true; // Mark that data has been modified
+          setState(() => _loading = true);
+          await _load(forceSnapshotId: savedSnapshotId);
+          if (mounted) setState(() => _loading = false);
+        },
       ),
     );
   }
 
-  Future<void> _load() async {
+  // class continues with other methods below
+  Future<void> _load({String? forceSnapshotId}) async {
     try {
       if (mounted) setState(() => _loading = true);
       // Ambil kode wilayah dari route args atau SharedPreferences
@@ -215,7 +257,14 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
       kode ??= '6303052009';
       debugPrint('[Kebencanaan] Memuat data untuk kode_wilayah: ' + kode);
 
-      final row = await _repo.fetchLatest(kode, jenis: 'banjir');
+      Map<String, dynamic>? row;
+      if (forceSnapshotId != null) {
+        row = await _repo.fetchBySnapshotId(forceSnapshotId);
+        // Jika fetch by id gagal (hapus atau id tidak ditemukan), fallback ke latest
+        row ??= await _repo.fetchLatest(kode, jenis: 'banjir');
+      } else {
+        row = await _repo.fetchLatest(kode, jenis: 'banjir');
+      }
       if (!mounted) return;
       if (row != null) {
         final mapped = _repo.toScreenData(row);
@@ -254,10 +303,12 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
 
         setState(() {
           _dataBanjir = {...mapped, 'bantuan': bantuanList};
+          _kodeWilayah = kode; // simpan untuk edit
         });
       } else {
         setState(() {
           _dataBanjir = null; // tidak ada data
+          _kodeWilayah = kode;
         });
       }
     } catch (e) {
@@ -399,14 +450,10 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
                       child: BarChart(
                         BarChartData(
                           alignment: BarChartAlignment.spaceAround,
-                          maxY:
-                              top
-                                  .map(
-                                    (e) => ((e.value['jiwa'] ?? 0) as num)
-                                        .toDouble(),
-                                  )
-                                  .fold<double>(0, (p, c) => c > p ? c : p) +
-                              10,
+              maxY: top
+                .map((e) => ((e.value['jiwa'] ?? 0) as num).toDouble())
+                .fold<double>(0, (p, c) => c > p ? c : p) +
+              20,
                           barTouchData: BarTouchData(
                             enabled: true,
                             touchTooltipData: BarTouchTooltipData(
@@ -428,17 +475,21 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
                             bottomTitles: AxisTitles(
                               sideTitles: SideTitles(
                                 showTitles: true,
+                                reservedSize: 48,
                                 getTitlesWidget: (value, meta) {
                                   final idx = value.toInt();
                                   if (idx < 0 || idx >= top.length) {
                                     return const SizedBox.shrink();
                                   }
                                   return Padding(
-                                    padding: const EdgeInsets.only(top: 8),
+                                    padding: const EdgeInsets.only(top: 6),
                                     child: Text(
                                       'RT ${top[idx].key}',
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
                                         fontWeight: FontWeight.w600,
+                                        fontSize: 13,
                                       ),
                                     ),
                                   );
@@ -496,7 +547,7 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
                                               Colors.deepOrange.shade700,
                                             ],
                                     ),
-                                    width: 36,
+                                    width: 28,
                                     borderRadius: const BorderRadius.vertical(
                                       top: Radius.circular(8),
                                     ),
@@ -1332,4 +1383,664 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
     }
     return v.toString();
   }
+}
+
+// ================= Bottom sheet edit widget (refactored) =================
+class _KebencanaanEditSheet extends StatefulWidget {
+  final String kodeWilayah;
+  final String? snapshotId; // null kalau insert baru
+  final Map<String, dynamic>? initialData;
+  final Future<void> Function(String snapshotId) onSaved;
+  const _KebencanaanEditSheet({
+    Key? key,
+    required this.kodeWilayah,
+    required this.snapshotId,
+    required this.initialData,
+    required this.onSaved,
+  }) : super(key: key);
+
+  @override
+  State<_KebencanaanEditSheet> createState() => _KebencanaanEditSheetState();
+}
+
+class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
+  final formKey = GlobalKey<FormState>();
+  bool saving = false;
+  late final KebencanaanRepository _repo;
+
+  // Statistik controllers
+  late final TextEditingController totalRumahCtl;
+  late final TextEditingController totalKkCtl;
+  late final TextEditingController totalJiwaCtl;
+  late final TextEditingController lansiaCtl;
+  late final TextEditingController bumilCtl;
+  late final TextEditingController balitaCtl;
+  late final TextEditingController periodeLabelCtl;
+
+  final List<_RtEditItem> rtItems = [];
+  final List<_BantuanEditItem> bantuanItems = [];
+  final List<_PenangananEditItem> penItems = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _repo = KebencanaanRepository();
+    final d = widget.initialData;
+    totalRumahCtl = TextEditingController(text: (d?['total_rumah'] ?? 0).toString());
+    totalKkCtl = TextEditingController(text: (d?['total_kk'] ?? 0).toString());
+    totalJiwaCtl = TextEditingController(text: (d?['total_jiwa'] ?? 0).toString());
+    lansiaCtl = TextEditingController(text: (d?['lansia'] ?? 0).toString());
+    bumilCtl = TextEditingController(text: (d?['bumil'] ?? 0).toString());
+    balitaCtl = TextEditingController(text: (d?['balita'] ?? 0).toString());
+    periodeLabelCtl = TextEditingController(text: (d?['periode'] ?? '').toString());
+
+    final rtMap = (d?['rt'] as Map<String, dynamic>?) ?? const {};
+    for (final e in rtMap.entries) {
+      final m = Map<String, dynamic>.from(e.value as Map);
+      rtItems.add(
+        _RtEditItem(
+          rtCodeCtl: TextEditingController(text: e.key),
+          rumahCtl: TextEditingController(text: (m['rumah'] ?? 0).toString()),
+          kkCtl: TextEditingController(text: (m['kk'] ?? 0).toString()),
+          jiwaCtl: TextEditingController(text: (m['jiwa'] ?? 0).toString()),
+          lansiaCtl: TextEditingController(text: (m['lansia'] ?? 0).toString()),
+          bumilCtl: TextEditingController(text: (m['bumil'] ?? 0).toString()),
+          balitaCtl: TextEditingController(text: (m['balita'] ?? 0).toString()),
+          bayiCtl: TextEditingController(text: (m['bayi'] ?? 0).toString()),
+        ),
+      );
+    }
+    if (rtItems.isEmpty) {
+      rtItems.add(
+        _RtEditItem(
+          rtCodeCtl: TextEditingController(text: '001'),
+          rumahCtl: TextEditingController(text: '0'),
+          kkCtl: TextEditingController(text: '0'),
+          jiwaCtl: TextEditingController(text: '0'),
+          lansiaCtl: TextEditingController(text: '0'),
+          bumilCtl: TextEditingController(text: '0'),
+          balitaCtl: TextEditingController(text: '0'),
+          bayiCtl: TextEditingController(text: '0'),
+        ),
+      );
+    }
+
+    final bantuanRaw = List<Map<String, dynamic>>.from((d?['bantuan_raw'] ?? const []) as List);
+    final List<Map<String, dynamic>> bantuanSource = bantuanRaw.isNotEmpty
+        ? bantuanRaw
+        : (d != null
+            ? Map<String, dynamic>.from(d['bantuan'] ?? const {})
+                .entries
+                .map((e) => {'nama': e.key, 'jenis': '-', 'jumlah': e.value})
+                .toList()
+            : const []);
+    for (final b in bantuanSource) {
+      bantuanItems.add(
+        _BantuanEditItem(
+          namaCtl: TextEditingController(text: b['nama']?.toString() ?? ''),
+          jenisCtl: TextEditingController(text: b['jenis']?.toString() ?? ''),
+          jumlahCtl: TextEditingController(text: (b['jumlah'] ?? 0).toString()),
+        ),
+      );
+    }
+    if (bantuanItems.isEmpty) {
+      bantuanItems.add(
+        _BantuanEditItem(
+          namaCtl: TextEditingController(),
+          jenisCtl: TextEditingController(),
+          jumlahCtl: TextEditingController(text: '0'),
+        ),
+      );
+    }
+
+    final penList = List<String>.from((d?['penanganan'] ?? const []) as List);
+    for (final e in penList.asMap().entries) {
+      penItems.add(
+        _PenangananEditItem(
+          urutan: e.key + 1,
+          deskripsiCtl: TextEditingController(text: e.value),
+        ),
+      );
+    }
+    if (penItems.isEmpty) {
+      penItems.add(
+        _PenangananEditItem(urutan: 1, deskripsiCtl: TextEditingController()),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    totalRumahCtl.dispose();
+    totalKkCtl.dispose();
+    totalJiwaCtl.dispose();
+    lansiaCtl.dispose();
+    bumilCtl.dispose();
+    balitaCtl.dispose();
+    periodeLabelCtl.dispose();
+    for (final it in rtItems) {
+      it.rtCodeCtl.dispose();
+      it.rumahCtl.dispose();
+      it.kkCtl.dispose();
+      it.jiwaCtl.dispose();
+      it.lansiaCtl.dispose();
+      it.bumilCtl.dispose();
+      it.balitaCtl.dispose();
+      it.bayiCtl.dispose();
+    }
+    for (final b in bantuanItems) {
+      b.namaCtl.dispose();
+      b.jenisCtl.dispose();
+      b.jumlahCtl.dispose();
+    }
+    for (final p in penItems) {
+      p.deskripsiCtl.dispose();
+    }
+    super.dispose();
+  }
+
+  InputDecoration _dec(String label) => InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+        isDense: true,
+      );
+  Widget _numField(String label, TextEditingController ctl) => TextFormField(
+        controller: ctl,
+        decoration: _dec(label),
+        keyboardType: TextInputType.number,
+        validator: (v) {
+          if (v == null || v.trim().isEmpty) return null;
+          return int.tryParse(v.trim()) == null ? 'Angka?' : null;
+        },
+      );
+
+  Future<void> _save() async {
+    if (!formKey.currentState!.validate()) return;
+    setState(() => saving = true);
+    try {
+      final totalRumah = int.tryParse(totalRumahCtl.text.trim()) ?? 0;
+      final totalKk = int.tryParse(totalKkCtl.text.trim()) ?? 0;
+      final totalJiwa = int.tryParse(totalJiwaCtl.text.trim()) ?? 0;
+      final lansia = int.tryParse(lansiaCtl.text.trim()) ?? 0;
+      final bumil = int.tryParse(bumilCtl.text.trim()) ?? 0;
+      final balita = int.tryParse(balitaCtl.text.trim()) ?? 0;
+      final snapId = await _repo.upsertRekap(
+        snapshotId: widget.snapshotId,
+        kodeWilayah: widget.kodeWilayah,
+        jenis: 'banjir',
+        periodeLabel: periodeLabelCtl.text.trim(),
+        totalRumah: totalRumah,
+        totalKk: totalKk,
+        totalJiwa: totalJiwa,
+        lansia: lansia,
+        bumil: bumil,
+        balita: balita,
+      );
+      if (snapId == null) throw Exception('Gagal menyimpan rekap');
+      final isNormalized = await _repo.supportsNormalized();
+      if (isNormalized) {
+        // Replace mode: clear all detail rows for this snapshot, then insert current items
+        await _repo.clearRtDetails(snapId);
+        for (final it in rtItems.where((e) => !e.removed)) {
+          final code = it.rtCodeCtl.text.trim();
+          if (code.isEmpty) continue;
+          await _repo.upsertRtDetail(
+            snapshotId: snapId,
+            rtCode: code,
+            rumah: int.tryParse(it.rumahCtl.text.trim()) ?? 0,
+            kk: int.tryParse(it.kkCtl.text.trim()) ?? 0,
+            jiwa: int.tryParse(it.jiwaCtl.text.trim()) ?? 0,
+            lansia: int.tryParse(it.lansiaCtl.text.trim()) ?? 0,
+            bumil: int.tryParse(it.bumilCtl.text.trim()) ?? 0,
+            balita: int.tryParse(it.balitaCtl.text.trim()) ?? 0,
+            bayi: int.tryParse(it.bayiCtl.text.trim()) ?? 0,
+          );
+        }
+
+        await _repo.clearBantuan(snapId);
+        for (final b in bantuanItems.where((e) => !e.removed)) {
+          final nama = b.namaCtl.text.trim();
+          if (nama.isEmpty) continue;
+          await _repo.upsertBantuan(
+            snapshotId: snapId,
+            nama: nama,
+            jenis: b.jenisCtl.text.trim(),
+            jumlah: int.tryParse(b.jumlahCtl.text.trim()) ?? 0,
+          );
+        }
+
+        await _repo.clearPenanganan(snapId);
+        for (final p in penItems.where((e) => !e.removed)) {
+          final desc = p.deskripsiCtl.text.trim();
+          if (desc.isEmpty) continue;
+          await _repo.upsertPenanganan(snapshotId: snapId, urutan: p.urutan, deskripsi: desc);
+        }
+      } else {
+        final Map<String, dynamic> rtDetail = {};
+        for (final it in rtItems) {
+          if (it.removed) continue;
+          final code = it.rtCodeCtl.text.trim();
+          if (code.isEmpty) continue;
+          rtDetail[code] = {
+            'rumah': int.tryParse(it.rumahCtl.text.trim()) ?? 0,
+            'kk': int.tryParse(it.kkCtl.text.trim()) ?? 0,
+            'jiwa': int.tryParse(it.jiwaCtl.text.trim()) ?? 0,
+            'lansia': int.tryParse(it.lansiaCtl.text.trim()) ?? 0,
+            'bumil': int.tryParse(it.bumilCtl.text.trim()) ?? 0,
+            'balita': int.tryParse(it.balitaCtl.text.trim()) ?? 0,
+            'bayi': int.tryParse(it.bayiCtl.text.trim()) ?? 0,
+          };
+        }
+        final Map<String, int> bantuanMap = {};
+        for (final b in bantuanItems) {
+          if (b.removed) continue;
+          final nama = b.namaCtl.text.trim();
+          if (nama.isEmpty) continue;
+          bantuanMap[nama] = int.tryParse(b.jumlahCtl.text.trim()) ?? 0;
+        }
+        final List<dynamic> penanganan = [];
+        for (final p in penItems) {
+          if (p.removed) continue;
+          final desc = p.deskripsiCtl.text.trim();
+          if (desc.isEmpty) continue;
+          penanganan.add(desc);
+        }
+        await _repo.updateLegacyDetails(
+          kebencanaanId: snapId,
+          rtDetail: rtDetail,
+          bantuan: bantuanMap,
+          penanganan: penanganan,
+        );
+      }
+  await widget.onSaved(snapId);
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Data kebencanaan berhasil disimpan')),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal menyimpan: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.9,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      builder: (_, scrollController) => Material(
+        elevation: 4,
+        clipBehavior: Clip.antiAlias,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [Color(0xFFDC2626), Color(0xFFF97316)]),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.edit_rounded, color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Edit Data Kebencanaan', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        Text('Perbarui rekap, RT, bantuan & penanganan', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      ],
+                    ),
+                  ),
+                  IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Divider(height: 1),
+            Expanded(
+              child: DefaultTabController(
+                length: 4,
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    children: [
+                      const TabBar(
+                        isScrollable: true,
+                        tabs: [
+                          Tab(text: 'Statistik'),
+                          Tab(text: 'Per RT'),
+                          Tab(text: 'Bantuan'),
+                          Tab(text: 'Penanganan'),
+                        ],
+                      ),
+                      Expanded(
+                        child: TabBarView(
+                          children: [
+                            // Statistik (improved spacing & 2-column layout)
+                            ListView(
+                              controller: scrollController,
+                              padding: const EdgeInsets.fromLTRB(20,16,20,24),
+                              children: [
+                                const Text('Statistik Rekap', style: TextStyle(fontSize:16,fontWeight: FontWeight.w600)),
+                                const SizedBox(height:12),
+                                Wrap(
+                                  spacing: 16,
+                                  runSpacing: 16,
+                                  children: [
+                                    SizedBox(
+                                      width: (MediaQuery.of(context).size.width - 20*2 - 16) / 2,
+                                      child: _numField('Total Rumah', totalRumahCtl),
+                                    ),
+                                    SizedBox(
+                                      width: (MediaQuery.of(context).size.width - 20*2 - 16) / 2,
+                                      child: _numField('Total KK', totalKkCtl),
+                                    ),
+                                    SizedBox(
+                                      width: (MediaQuery.of(context).size.width - 20*2 - 16) / 2,
+                                      child: _numField('Total Jiwa', totalJiwaCtl),
+                                    ),
+                                    SizedBox(
+                                      width: (MediaQuery.of(context).size.width - 20*2 - 16) / 2,
+                                      child: _numField('Lansia', lansiaCtl),
+                                    ),
+                                    SizedBox(
+                                      width: (MediaQuery.of(context).size.width - 20*2 - 16) / 2,
+                                      child: _numField('Ibu Hamil', bumilCtl),
+                                    ),
+                                    SizedBox(
+                                      width: (MediaQuery.of(context).size.width - 20*2 - 16) / 2,
+                                      child: _numField('Balita', balitaCtl),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height:24),
+                                TextFormField(
+                                  controller: periodeLabelCtl,
+                                  decoration: _dec('Label Periode (opsional)'),
+                                ),
+                              ],
+                            ),
+                            // Per RT
+                            ListView(
+                              controller: scrollController,
+                              padding: const EdgeInsets.all(16),
+                              children: [
+                                ...rtItems.where((it) => !it.removed).map(
+                                  (it) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 12),
+                                    child: Card(
+                                      elevation: 1,
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(12),
+                                        child: Column(
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Expanded(
+                                                  child: TextFormField(
+                                                    controller: it.rtCodeCtl,
+                                                    decoration: _dec('RT Code'),
+                                                    validator: (v) => v == null || v.trim().isEmpty ? 'Wajib' : null,
+                                                  ),
+                                                ),
+                                                IconButton(
+                                                  tooltip: 'Hapus RT',
+                                                  onPressed: () => setState(() => it.removed = true),
+                                                  icon: const Icon(Icons.delete_outline),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Wrap(
+                                              spacing: 8,
+                                              runSpacing: 8,
+                                              children: [
+                                                SizedBox(width: 100, child: _numField('Rumah', it.rumahCtl)),
+                                                SizedBox(width: 80, child: _numField('KK', it.kkCtl)),
+                                                SizedBox(width: 90, child: _numField('Jiwa', it.jiwaCtl)),
+                                                SizedBox(width: 90, child: _numField('Lansia', it.lansiaCtl)),
+                                                SizedBox(width: 90, child: _numField('Bumil', it.bumilCtl)),
+                                                SizedBox(width: 90, child: _numField('Balita', it.balitaCtl)),
+                                                SizedBox(width: 90, child: _numField('Bayi', it.bayiCtl)),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: OutlinedButton.icon(
+                                    onPressed: () => setState(() => rtItems.add(
+                                          _RtEditItem(
+                                            rtCodeCtl: TextEditingController(text: '00${rtItems.length + 1}'),
+                                            rumahCtl: TextEditingController(text: '0'),
+                                            kkCtl: TextEditingController(text: '0'),
+                                            jiwaCtl: TextEditingController(text: '0'),
+                                            lansiaCtl: TextEditingController(text: '0'),
+                                            bumilCtl: TextEditingController(text: '0'),
+                                            balitaCtl: TextEditingController(text: '0'),
+                                            bayiCtl: TextEditingController(text: '0'),
+                                          ),
+                                        )),
+                                    icon: const Icon(Icons.add),
+                                    label: const Text('Tambah RT'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            // Bantuan
+                            ListView(
+                              controller: scrollController,
+                              padding: const EdgeInsets.all(16),
+                              children: [
+                                ...bantuanItems.where((b) => !b.removed).map(
+                                  (b) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 12),
+                                    child: Card(
+                                      elevation: 1,
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(12),
+                                        child: Column(
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Expanded(
+                                                  child: TextFormField(
+                                                    controller: b.namaCtl,
+                                                    decoration: _dec('Nama Bantuan'),
+                                                    validator: (v) => v == null || v.trim().isEmpty ? 'Wajib' : null,
+                                                  ),
+                                                ),
+                                                IconButton(
+                                                  onPressed: () => setState(() => b.removed = true),
+                                                  icon: const Icon(Icons.delete_outline),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Row(
+                                              children: [
+                                                Expanded(
+                                                  child: TextFormField(
+                                                    controller: b.jenisCtl,
+                                                    decoration: _dec('Jenis (opsional)'),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                SizedBox(width: 90, child: _numField('Jumlah', b.jumlahCtl)),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: OutlinedButton.icon(
+                                    onPressed: () => setState(() => bantuanItems.add(
+                                          _BantuanEditItem(
+                                            namaCtl: TextEditingController(),
+                                            jenisCtl: TextEditingController(),
+                                            jumlahCtl: TextEditingController(text: '0'),
+                                          ),
+                                        )),
+                                    icon: const Icon(Icons.add),
+                                    label: const Text('Tambah Bantuan'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            // Penanganan
+                            ListView(
+                              controller: scrollController,
+                              padding: const EdgeInsets.all(16),
+                              children: [
+                                ...penItems.where((p) => !p.removed).map(
+                                  (p) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 12),
+                                    child: Card(
+                                      elevation: 1,
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(12),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.blue.shade50,
+                                                    borderRadius: BorderRadius.circular(20),
+                                                  ),
+                                                  child: Text('Langkah ${p.urutan}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                                                ),
+                                                const Spacer(),
+                                                IconButton(
+                                                  onPressed: () => setState(() => p.removed = true),
+                                                  icon: const Icon(Icons.delete_outline),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 8),
+                                            TextFormField(
+                                              controller: p.deskripsiCtl,
+                                              maxLines: 3,
+                                              decoration: _dec('Deskripsi Kegiatan'),
+                                              validator: (v) => v == null || v.trim().isEmpty ? 'Wajib' : null,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: OutlinedButton.icon(
+                                    onPressed: () => setState(() {
+                                      final next = penItems.where((e) => !e.removed).length + 1;
+                                      penItems.add(_PenangananEditItem(urutan: next, deskripsiCtl: TextEditingController()));
+                                    }),
+                                    icon: const Icon(Icons.add),
+                                    label: const Text('Tambah Penanganan'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: FilledButton.icon(
+                  onPressed: saving ? null : _save,
+                  icon: saving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.save),
+                  label: const Text('Simpan Perubahan'),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ================= Helper model classes for edit sheet =================
+class _RtEditItem {
+  final TextEditingController rtCodeCtl;
+  final TextEditingController rumahCtl;
+  final TextEditingController kkCtl;
+  final TextEditingController jiwaCtl;
+  final TextEditingController lansiaCtl;
+  final TextEditingController bumilCtl;
+  final TextEditingController balitaCtl;
+  final TextEditingController bayiCtl;
+  bool removed = false;
+
+  _RtEditItem({
+    required this.rtCodeCtl,
+    required this.rumahCtl,
+    required this.kkCtl,
+    required this.jiwaCtl,
+    required this.lansiaCtl,
+    required this.bumilCtl,
+    required this.balitaCtl,
+    required this.bayiCtl,
+  });
+}
+
+class _BantuanEditItem {
+  final TextEditingController namaCtl;
+  final TextEditingController jenisCtl;
+  final TextEditingController jumlahCtl;
+  bool removed = false;
+
+  _BantuanEditItem({
+    required this.namaCtl,
+    required this.jenisCtl,
+    required this.jumlahCtl,
+  });
+}
+
+class _PenangananEditItem {
+  final int urutan;
+  final TextEditingController deskripsiCtl;
+  bool removed = false;
+  _PenangananEditItem({
+    required this.urutan,
+    required this.deskripsiCtl,
+  });
 }

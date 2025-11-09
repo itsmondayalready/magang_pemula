@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 
@@ -301,6 +302,112 @@ class DesaRepository {
     } catch (e) {
       debugPrint('❌ Error fetching galeri: $e');
       return [];
+    }
+  }
+
+  // Create desa profile
+  Future<void> createDesaProfile(Map<String, dynamic> data) async {
+    try {
+      await _db.from('desa_profile').insert(data);
+    } on PostgrestException catch (e) {
+      throw Exception(e.message);
+    } catch (e) {
+      throw Exception('Gagal membuat profil desa');
+    }
+  }
+
+  // Update desa profile
+  Future<void> updateDesaProfile(String desaId, Map<String, dynamic> data) async {
+    try {
+      await _db.from('desa_profile').update(data).eq('desa_id', desaId);
+    } on PostgrestException catch (e) {
+      throw Exception(e.message);
+    } catch (e) {
+      throw Exception('Gagal memperbarui profil desa');
+    }
+  }
+
+  // Insert aparatur
+  Future<void> insertAparatur(Map<String, dynamic> data) async {
+    try {
+      await _db.from('aparatur_desa').insert(data);
+    } on PostgrestException catch (e) {
+      throw Exception(e.message);
+    } catch (e) {
+      throw Exception('Gagal menambah aparatur');
+    }
+  }
+
+  // Update aparatur
+  Future<void> updateAparatur(String id, Map<String, dynamic> data) async {
+    try {
+      await _db.from('aparatur_desa').update(data).eq('id', id);
+    } on PostgrestException catch (e) {
+      throw Exception(e.message);
+    } catch (e) {
+      throw Exception('Gagal memperbarui aparatur');
+    }
+  }
+
+  // Delete aparatur
+  Future<void> deleteAparatur(String id) async {
+    try {
+      await _db.from('aparatur_desa').delete().eq('id', id);
+    } on PostgrestException catch (e) {
+      throw Exception(e.message);
+    } catch (e) {
+      throw Exception('Error deleting aparatur: $e');
+    }
+  }
+  
+  // Helper method to get photo URL from path
+  String getPhotoUrl(String path) {
+    // Cek apakah sudah full URL
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return path;
+    }
+    // Generate public URL dari bucket foto-desa
+    return _db.storage.from('foto-desa').getPublicUrl(path);
+  }
+  
+  // Upload foto ke Supabase Storage
+  Future<String> uploadPhoto(String kodeWilayah, File file) async {
+    try {
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.path.split('/').last}';
+      final filePath = '$kodeWilayah/$fileName';
+      
+      debugPrint('📤 Uploading photo to: $filePath');
+      
+      await _db.storage.from('foto-desa').upload(
+        filePath,
+        file,
+        fileOptions: const FileOptions(
+          upsert: false,
+        ),
+      );
+      
+      debugPrint('✅ Photo uploaded successfully: $filePath');
+      return filePath;
+    } catch (e) {
+      debugPrint('❌ Error uploading photo: $e');
+      throw Exception('Error uploading photo: $e');
+    }
+  }
+  
+  // Update galeri photos di desa_profile
+  Future<void> updateGaleriPhotos(String desaId, List<String> photoPaths) async {
+    try {
+      debugPrint('📝 Updating galeri_photos for desa: $desaId');
+      debugPrint('📝 Photo paths: $photoPaths');
+      
+      await _db.from('desa_profile').update({
+        'galeri_photos': photoPaths,
+      }).eq('desa_id', desaId);
+      
+      debugPrint('✅ Galeri photos updated successfully');
+    } catch (e) {
+      debugPrint('❌ Error updating galeri photos: $e');
+      throw Exception('Error updating galeri photos: $e');
     }
   }
 }

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 // supabase is used within repository, no direct import needed here
 import '../services/metadata_repository.dart';
+import '../services/auth_service.dart';
 
 class MetadataScreen extends StatefulWidget {
   const MetadataScreen({super.key});
@@ -16,6 +18,8 @@ class _MetadataScreenState extends State<MetadataScreen>
   final _repo = MetadataRepository();
   List<Map<String, dynamic>> _metadataList = [];
   bool _loading = false;
+  String? _kodeWilayah; // disimpan agar bisa dipakai saat edit
+  bool _hasChanges = false; // Track if data has been modified
 
   late TabController _tabController;
   String _searchQuery = '';
@@ -68,6 +72,7 @@ class _MetadataScreenState extends State<MetadataScreen>
       if (mounted) {
         setState(() {
           _metadataList = items;
+          _kodeWilayah = kode;
         });
       }
     } catch (e) {
@@ -81,8 +86,15 @@ class _MetadataScreenState extends State<MetadataScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
+    final isAdmin = context.watch<AuthService>().isAdmin;
+    return WillPopScope(
+      onWillPop: () async {
+        // Return the hasChanges flag when popping
+        Navigator.of(context).pop(_hasChanges);
+        return false; // Prevent default pop since we handle it manually
+      },
+      child: Scaffold(
+        backgroundColor: Colors.grey[50],
       body: Stack(
         children: [
           NestedScrollView(
@@ -252,8 +264,16 @@ class _MetadataScreenState extends State<MetadataScreen>
               ),
             ),
         ],
-      ),
-    );
+      ), // End Stack body
+      floatingActionButton: isAdmin
+          ? FloatingActionButton(
+              onPressed: _openEditMetadataSheet,
+              backgroundColor: const Color(0xFF16A34A),
+              child: const Icon(Icons.edit, color: Colors.white),
+            )
+          : null,
+    ), // End Scaffold
+    ); // End WillPopScope
   }
 
   Widget _buildMetadataList(List<Map<String, dynamic>> items) {
@@ -269,7 +289,7 @@ class _MetadataScreenState extends State<MetadataScreen>
             ),
             const SizedBox(height: 16),
             Text(
-              'Tidak ada data periode ini',
+              'Tidak ada data ditemukan',
               style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
             ),
           ],
@@ -615,6 +635,372 @@ class _MetadataScreenState extends State<MetadataScreen>
           ),
         ),
       ],
+    );
+  }
+  void _openEditMetadataSheet() {
+    if (_kodeWilayah == null) return;
+    final initial = _metadataList.map((m) => Map<String, dynamic>.from(m)).toList();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _MetadataEditSheet(
+        initialItems: initial,
+        kodeWilayah: _kodeWilayah!,
+        onSaved: () async {
+          if (!mounted) return;
+          _hasChanges = true; // Mark that data has been modified
+          setState(() => _loading = true);
+          await _load();
+          if (mounted) setState(() => _loading = false);
+        },
+      ),
+    );
+  }
+}
+
+InputDecoration _metaDec(String label) => InputDecoration(
+      labelText: label,
+      border: const OutlineInputBorder(),
+      isDense: true,
+    );
+
+class _MetaEditItem {
+  final TextEditingController namaCtl;
+  final TextEditingController definisiCtl;
+  final TextEditingController sumberCtl;
+  final TextEditingController satuanCtl;
+  final TextEditingController tahunCtl;
+  final TextEditingController frekuensiCtl;
+  final TextEditingController pjCtl;
+  final Map<String, dynamic> raw;
+  final String? existingNama;
+  bool removed = false;
+  _MetaEditItem({
+    required this.namaCtl,
+    required this.definisiCtl,
+    required this.sumberCtl,
+    required this.satuanCtl,
+    required this.tahunCtl,
+    required this.frekuensiCtl,
+    required this.pjCtl,
+    required this.raw,
+    this.existingNama,
+  });
+}
+
+class _MetadataEditSheet extends StatefulWidget {
+  final List<Map<String, dynamic>> initialItems;
+  final String kodeWilayah;
+  final Future<void> Function() onSaved;
+  const _MetadataEditSheet({
+    Key? key,
+    required this.initialItems,
+    required this.kodeWilayah,
+    required this.onSaved,
+  }) : super(key: key);
+
+  @override
+  State<_MetadataEditSheet> createState() => _MetadataEditSheetState();
+}
+
+class _MetadataEditSheetState extends State<_MetadataEditSheet> {
+  final List<_MetaEditItem> items = [];
+  final _formKey = GlobalKey<FormState>();
+  bool saving = false;
+  late final MetadataRepository _repo;
+
+  @override
+  void initState() {
+    super.initState();
+    _repo = MetadataRepository();
+    if (widget.initialItems.isNotEmpty) {
+      for (final m in widget.initialItems) {
+        items.add(
+          _MetaEditItem(
+            namaCtl: TextEditingController(text: m['nama'] ?? ''),
+            definisiCtl: TextEditingController(text: m['definisi'] ?? ''),
+            sumberCtl: TextEditingController(text: m['sumber'] ?? ''),
+            satuanCtl: TextEditingController(text: m['satuan'] ?? ''),
+            tahunCtl: TextEditingController(text: m['tahun'] ?? ''),
+            frekuensiCtl: TextEditingController(text: m['frekuensi'] ?? ''),
+            pjCtl: TextEditingController(text: m['penanggungjawab'] ?? ''),
+            raw: const {},
+            existingNama: m['nama']?.toString(),
+          ),
+        );
+      }
+    } else {
+      items.add(
+        _MetaEditItem(
+          namaCtl: TextEditingController(),
+          definisiCtl: TextEditingController(),
+          sumberCtl: TextEditingController(),
+          satuanCtl: TextEditingController(),
+          tahunCtl: TextEditingController(),
+          frekuensiCtl: TextEditingController(),
+          pjCtl: TextEditingController(),
+          raw: const {},
+        ),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final i in items) {
+      i.namaCtl.dispose();
+      i.definisiCtl.dispose();
+      i.sumberCtl.dispose();
+      i.satuanCtl.dispose();
+      i.tahunCtl.dispose();
+      i.frekuensiCtl.dispose();
+      i.pjCtl.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _handleSave() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => saving = true);
+    try {
+      final names = <String, int>{};
+      for (final it in items.where((e) => !e.removed)) {
+        final n = it.namaCtl.text.trim();
+        if (n.isEmpty) continue;
+        names[n] = (names[n] ?? 0) + 1;
+      }
+      final dups = names.entries.where((e) => e.value > 1).map((e) => e.key).toList();
+      if (dups.isNotEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Nama duplikat: ${dups.join(', ')}')),
+          );
+        }
+        setState(() => saving = false);
+        return;
+      }
+
+      final desaId = await _repo.getDesaIdByKode(widget.kodeWilayah);
+      for (final i in items) {
+        final nama = i.namaCtl.text.trim();
+        if (nama.isEmpty) continue;
+        if (i.removed) {
+          await _repo.deleteItem(kodeWilayah: widget.kodeWilayah, nama: nama);
+          continue;
+        }
+        await _repo.upsertItem(
+          kodeWilayah: widget.kodeWilayah,
+          desaId: desaId,
+          nama: nama,
+          definisi: i.definisiCtl.text.trim(),
+          sumber: i.sumberCtl.text.trim(),
+          satuan: i.satuanCtl.text.trim(),
+          tahunText: i.tahunCtl.text.trim(),
+          frekuensi: i.frekuensiCtl.text.trim(),
+          penanggungJawab: i.pjCtl.text.trim(),
+        );
+      }
+
+      await widget.onSaved();
+      if (!mounted) return;
+      Navigator.pop(context);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Metadata berhasil disimpan')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal menyimpan: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.9,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      builder: (_, scrollController) => Material(
+        elevation: 4,
+        clipBehavior: Clip.antiAlias,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF16A34A), Color(0xFFA3E635)],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.edit, color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Edit Metadata', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        Text('Kelola definisi & atribut data desa', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      ],
+                    ),
+                  ),
+                  IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Divider(height: 1),
+            Expanded(
+              child: Form(
+                key: _formKey,
+                child: ListView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    ...items.where((e) => !e.removed).map(
+                      (e) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Card(
+                          elevation: 1,
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextFormField(
+                                        controller: e.namaCtl,
+                                        enabled: e.existingNama == null,
+                                        decoration: _metaDec('Nama Data'),
+                                        validator: (v) => v == null || v.trim().isEmpty ? 'Wajib' : null,
+                                      ),
+                                    ),
+                                    IconButton(
+                                      tooltip: 'Hapus Item',
+                                      onPressed: () => setState(() => e.removed = true),
+                                      icon: const Icon(Icons.delete_outline),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                TextFormField(
+                                  controller: e.definisiCtl,
+                                  maxLines: 3,
+                                  decoration: _metaDec('Definisi'),
+                                  validator: (v) => v == null || v.trim().isEmpty ? 'Wajib' : null,
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextFormField(
+                                        controller: e.sumberCtl,
+                                        decoration: _metaDec('Sumber'),
+                                        validator: (v) => v == null || v.trim().isEmpty ? 'Wajib' : null,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: TextFormField(
+                                        controller: e.satuanCtl,
+                                        decoration: _metaDec('Satuan'),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextFormField(
+                                        controller: e.tahunCtl,
+                                        decoration: _metaDec('Tahun (teks)'),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: TextFormField(
+                                        controller: e.frekuensiCtl,
+                                        decoration: _metaDec('Frekuensi'),
+                                        validator: (v) => v == null || v.trim().isEmpty ? 'Wajib' : null,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                TextFormField(
+                                  controller: e.pjCtl,
+                                  decoration: _metaDec('Penanggung Jawab'),
+                                  validator: (v) => v == null || v.trim().isEmpty ? 'Wajib' : null,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: OutlinedButton.icon(
+                        onPressed: () => setState(() => items.add(
+                              _MetaEditItem(
+                                namaCtl: TextEditingController(),
+                                definisiCtl: TextEditingController(),
+                                sumberCtl: TextEditingController(),
+                                satuanCtl: TextEditingController(),
+                                tahunCtl: TextEditingController(),
+                                frekuensiCtl: TextEditingController(),
+                                pjCtl: TextEditingController(),
+                                raw: const {},
+                              ),
+                            )),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Tambah Item'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: FilledButton.icon(
+                  onPressed: saving ? null : _handleSave,
+                  icon: saving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.save),
+                  label: const Text('Simpan Perubahan'),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

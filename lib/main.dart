@@ -13,7 +13,6 @@ import 'screens/pendidikan_screen.dart';
 import 'screens/kesehatan_screen.dart';
 import 'screens/kebencanaan_screen.dart';
 import 'screens/metadata_screen.dart';
-import 'screens/profil_desa_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -43,28 +42,14 @@ class MyApp extends StatelessWidget {
         ),
         home: const RootPage(),
         routes: {
-          '/profil-desa': (context) {
-            final args = ModalRoute.of(context)?.settings.arguments;
-            String kode = '';
-            String nama = 'Desa';
-            if (args is Map) {
-              // Handle both String and int for kodeWilayah
-              final kodeRaw = args['kodeWilayah'];
-              kode = kodeRaw?.toString() ?? '';
-              nama = (args['desaName'] ?? 'Desa').toString();
-            }
-            return ProfilDesaScreen(kodeWilayah: kode, desaName: nama);
-          },
           '/infrastruktur': (context) => const InfrastrukturScreen(),
           '/kependudukan': (context) {
             final args = ModalRoute.of(context)?.settings.arguments;
             String kode = '';
             String nama = 'Desa';
             if (args is Map) {
-              // Handle both String and int for kodeWilayah
-              final kodeRaw = args['kodeWilayah'];
-              kode = kodeRaw?.toString() ?? '';
-              nama = (args['desaName'] ?? 'Desa').toString();
+              kode = (args['kodeWilayah'] ?? '') as String;
+              nama = (args['desaName'] ?? 'Desa') as String;
             }
             return KependudukanScreen(kodeWilayah: kode, desaName: nama);
           },
@@ -73,10 +58,8 @@ class MyApp extends StatelessWidget {
             String kode = '';
             String nama = 'Desa';
             if (args is Map) {
-              // Handle both String and int for kodeWilayah
-              final kodeRaw = args['kodeWilayah'];
-              kode = kodeRaw?.toString() ?? '';
-              nama = (args['desaName'] ?? 'Desa').toString();
+              kode = (args['kodeWilayah'] ?? '') as String;
+              nama = (args['desaName'] ?? 'Desa') as String;
             }
             return KesehatanScreen(kodeWilayah: kode, desaName: nama);
           },

@@ -170,8 +170,31 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
       floatingActionButton: isAdmin
           ? FloatingActionButton(
               onPressed: _openEditBottomSheet,
-              backgroundColor: const Color(0xFFF97316),
-              child: const Icon(Icons.edit, color: Colors.white),
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              child: Container(
+                width: 56,
+                height: 56,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [
+                      Color(0xFFF97316), // orange
+                      Color(0xFFEC4899), // pink
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0x40F97316),
+                      blurRadius: 8,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.edit, color: Colors.white),
+              ),
             )
           : null,
       body: Stack(
@@ -914,8 +937,22 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
                 InputDecoration(
                   labelText: label,
                   hintText: hint,
-                  border: const OutlineInputBorder(),
+                  filled: true,
+                  fillColor: Colors.grey[50],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFFF97316), width: 2),
+                  ),
                   isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 );
 
             return Padding(
@@ -926,15 +963,41 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
                   length: 5,
                   child: Column(
                     children: [
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Edit Infrastruktur',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
+                      // Header dengan garis dekoratif
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 4,
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFFF97316), Color(0xFFEC4899)],
+                                ),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'Edit Data Infrastruktur',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Perbarui informasi infrastruktur desa',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const Divider(height: 1),
                       const TabBar(
                         isScrollable: true,
                         tabs: [
@@ -1777,23 +1840,55 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
                           ),
                         ),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          border: Border(
+                            top: BorderSide(color: Colors.grey[200]!),
+                          ),
+                        ),
+                        padding: const EdgeInsets.all(16),
                         child: SizedBox(
                           width: double.infinity,
-                          child: FilledButton.icon(
+                          height: 50,
+                          child: ElevatedButton(
                             onPressed: saving ? null : doSave,
-                            icon: saving
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Icon(Icons.save),
-                            label: const Text('Simpan'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: EdgeInsets.zero,
+                            ),
+                            child: Ink(
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFFF97316), Color(0xFFEC4899)],
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Container(
+                                alignment: Alignment.center,
+                                child: saving
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Text(
+                                        'Simpan Perubahan',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                              ),
+                            ),
                           ),
                         ),
                       ),

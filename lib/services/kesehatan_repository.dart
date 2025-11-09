@@ -94,4 +94,90 @@ class KesehatanRepository {
 
     return result;
   }
+
+  /// Update atau insert data kesehatan
+  Future<void> upsertKesehatan({
+    required String kodeWilayah,
+    required Map<String, int> fasilitasData,
+    required Map<String, int> tenagaMedisData,
+    DateTime? periodeDate,
+  }) async {
+    try {
+      final desa = await _db
+          .from('desa')
+          .select('id')
+          .eq('kode_wilayah', kodeWilayah)
+          .maybeSingle();
+      if (desa == null) throw Exception('Desa tidak ditemukan');
+      final desaId = desa['id'] as String;
+
+      // Gunakan periode sekarang jika tidak diberikan
+      final periode = periodeDate ?? DateTime.now();
+
+      // Cek apakah sudah ada data untuk periode ini
+      final existing = await _db
+          .from('kesehatan')
+          .select('id')
+          .eq('desa_id', desaId)
+          .order('periode_date', ascending: false)
+          .limit(1)
+          .maybeSingle();
+
+      // Map field names
+      final fasilitasFields = {
+        'Rumah Sakit': 'rumah_sakit',
+        'Puskesmas': 'puskesmas',
+        'Poliklinik': 'poliklinik',
+        'Tempat Praktik Dokter': 'tempat_praktik_dokter',
+        'Tempat Praktik Bidan': 'tempat_praktik_bidan',
+        'Poskesdes': 'poskesdes',
+        'Polindes': 'polindes',
+        'Apotek': 'apotek',
+        'Posyandu': 'posyandu',
+        'Posbindu': 'posbindu',
+      };
+
+      final tenagaMedisFields = {
+        'Kader KB/KIA': 'kader_kb_kia',
+        'Dokter Pria': 'dokter_pria',
+        'Dokter Wanita': 'dokter_wanita',
+        'Dokter Gigi': 'dokter_gigi',
+        'Bidan': 'bidan',
+        'Perawat': 'perawat',
+        'Tenaga Kesehatan Lain': 'tenaga_kesehatan_lain',
+      };
+
+      final data = <String, dynamic>{
+        'desa_id': desaId,
+        'periode_date': periode.toIso8601String(),
+      };
+
+      // Add fasilitas data
+      for (final entry in fasilitasData.entries) {
+        final fieldName = fasilitasFields[entry.key];
+        if (fieldName != null) {
+          data[fieldName] = entry.value;
+        }
+      }
+
+      // Add tenaga medis data
+      for (final entry in tenagaMedisData.entries) {
+        final fieldName = tenagaMedisFields[entry.key];
+        if (fieldName != null) {
+          data[fieldName] = entry.value;
+        }
+      }
+
+      if (existing != null) {
+        // Update existing
+        await _db.from('kesehatan').update(data).eq('id', existing['id']);
+      } else {
+        // Insert new
+        await _db.from('kesehatan').insert(data);
+      }
+    } catch (e) {
+      print('Error upsertKesehatan: $e');
+      rethrow;
+    }
+  }
 }

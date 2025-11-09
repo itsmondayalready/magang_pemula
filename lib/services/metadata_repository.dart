@@ -60,6 +60,7 @@ class MetadataRepository {
     }
 
     return {
+      'id': row['id'],
       'nama': (row['nama'] ?? '-') as String,
       'definisi': (row['definisi'] ?? '-') as String,
       'sumber': (row['sumber'] ?? '-') as String,
@@ -67,6 +68,77 @@ class MetadataRepository {
       'tahun': tahun,
       'frekuensi': (row['frekuensi'] ?? '-') as String,
       'penanggungjawab': (row['penanggungjawab'] ?? '-') as String,
+      // Simpan raw untuk kebutuhan edit (tahun_start/end/text)
+      '_raw': row,
     };
+  }
+
+  // ====================== MUTATIONS (CRUD) ======================
+  Future<String?> getDesaIdByKode(String kodeWilayah) async {
+    try {
+      final desa = await _db
+          .from('desa')
+          .select('id')
+          .eq('kode_wilayah', kodeWilayah)
+          .maybeSingle();
+      return desa?['id'] as String?;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Upsert metadata item. Menggunakan (kode_wilayah, nama) sebagai pseudo unique key.
+  Future<void> upsertItem({
+    required String kodeWilayah,
+    String? desaId,
+    required String nama,
+    required String definisi,
+    required String sumber,
+    required String satuan,
+    String? tahunText,
+    int? tahunStart,
+    int? tahunEnd,
+    required String frekuensi,
+    required String penanggungJawab,
+  }) async {
+    final payload = {
+      'kode_wilayah': kodeWilayah,
+      if (desaId != null) 'desa_id': desaId,
+      'nama': nama.trim(),
+      'definisi': definisi.trim(),
+      'sumber': sumber.trim(),
+      'satuan': satuan.trim(),
+      'tahun_text': (tahunText ?? '').trim().isEmpty ? null : tahunText!.trim(),
+      'tahun_start': tahunStart,
+      'tahun_end': tahunEnd,
+      'frekuensi': frekuensi.trim(),
+      'penanggungjawab': penanggungJawab.trim(),
+    }..removeWhere((k, v) => v == null);
+    // Cek existing
+    final existing = await _db
+        .from('metadata_item')
+        .select('id')
+        .eq('kode_wilayah', kodeWilayah)
+        .eq('nama', nama.trim())
+        .maybeSingle();
+    if (existing == null) {
+      await _db.from('metadata_item').insert(payload);
+    } else {
+      await _db
+          .from('metadata_item')
+          .update(payload)
+          .eq('id', existing['id']);
+    }
+  }
+
+  Future<void> deleteItem({
+    required String kodeWilayah,
+    required String nama,
+  }) async {
+    await _db
+        .from('metadata_item')
+        .delete()
+        .eq('kode_wilayah', kodeWilayah)
+        .eq('nama', nama.trim());
   }
 }

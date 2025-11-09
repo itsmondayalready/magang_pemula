@@ -158,8 +158,31 @@ class _PendidikanScreenState extends State<PendidikanScreen>
       floatingActionButton: isAdmin
           ? FloatingActionButton(
               onPressed: _openEditBottomSheet,
-              backgroundColor: const Color(0xFF2563EB),
-              child: const Icon(Icons.edit, color: Colors.white),
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              child: Container(
+                width: 56,
+                height: 56,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [
+                      Color(0xFF2563EB), // blue
+                      Color(0xFF1D4ED8), // darker blue
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0x402563EB),
+                      blurRadius: 8,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.edit, color: Colors.white),
+              ),
             )
           : null,
       body: Stack(
@@ -168,11 +191,41 @@ class _PendidikanScreenState extends State<PendidikanScreen>
             slivers: [
               SliverAppBar(
                 pinned: true,
-                title: const _AppBarTitle(
-                  title: 'Pendidikan',
-                  subtitle: 'Sarana & akses pendidikan desa',
+                elevation: 0,
+                backgroundColor: Colors.transparent,
+                toolbarHeight: 56,
+                title: const Text(
+                  'Pendidikan',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
-                backgroundColor: const Color(0xFF2563EB),
+                centerTitle: false,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(20),
+                    bottomRight: Radius.circular(20),
+                  ),
+                ),
+                flexibleSpace: ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(20),
+                    bottomRight: Radius.circular(20),
+                  ),
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Color(0xFF2563EB), // blue
+                          Color(0xFF1D4ED8), // darker blue
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                  ),
+                ),
               ),
               SliverToBoxAdapter(
                 child: Padding(
@@ -785,7 +838,6 @@ class _PendidikanScreenState extends State<PendidikanScreen>
         l == 'TBM';
 
     final formKey = GlobalKey<FormState>();
-    final tabNotifier = ValueNotifier<int>(0);
     final scrollCtl = ScrollController();
     final Map<int, FocusNode> _noteTitleNode = {
       0: FocusNode(),
@@ -800,244 +852,116 @@ class _PendidikanScreenState extends State<PendidikanScreen>
     bool saving = false;
     InputDecoration deco(String label) => InputDecoration(
       labelText: label,
-      border: const OutlineInputBorder(),
+      filled: true,
+      fillColor: Colors.grey[50],
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey[300]!),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey[300]!),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFF2563EB), width: 2),
+      ),
       isDense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     );
 
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setLocal) => SizedBox(
-          height: MediaQuery.of(ctx).size.height * 0.85,
-          child: Column(
-            children: [
-              const SizedBox(height: 8),
-              const Text(
-                'Edit Data Pendidikan',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 8),
-              ValueListenableBuilder<int>(
-                valueListenable: tabNotifier,
-                builder: (context, tab, _) {
-                  Widget seg(String txt, int idx) => Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: TextButton(
-                        style: TextButton.styleFrom(
-                          backgroundColor: tab == idx
-                              ? const Color(0xFF2563EB)
-                              : Colors.grey.shade200,
-                          foregroundColor: tab == idx
-                              ? Colors.white
-                              : Colors.black87,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                        ),
-                        onPressed: () => tabNotifier.value = idx,
-                        child: Text(
-                          txt,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                          ),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => DefaultTabController(
+        length: 3,
+        child: StatefulBuilder(
+          builder: (ctx, setLocal) => SizedBox(
+            height: MediaQuery.of(ctx).size.height * 0.85,
+            child: Column(
+              children: [
+                // Header dengan garis dekoratif
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2563EB),
+                          borderRadius: BorderRadius.circular(2),
                         ),
                       ),
-                    ),
-                  );
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Row(
-                      children: [
-                        seg('Negeri', 0),
-                        seg('Swasta', 1),
-                        seg('LB & Keagamaan', 2),
-                      ],
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 8),
-              Expanded(
-                child: Form(
-                  key: formKey,
-                  child: ValueListenableBuilder<int>(
-                    valueListenable: tabNotifier,
-                    builder: (context, tab, _) {
-                      final filtered = items.where((i) => !i.removed).where((
-                        i,
-                      ) {
-                        final l = i.labelCtl.text.trim();
-                        if (tab == 0) return isNegeri(l);
-                        if (tab == 2) return isLbKeag(l);
-                        return !isNegeri(l) && !isLbKeag(l);
-                      }).toList();
-                      List<String> suggestions = switch (tab) {
-                        0 => negeriSuggestions(),
-                        2 => lbKeagSuggestions(),
-                        _ => swastaSuggestions(),
-                      };
-                      return ListView(
-                        controller: scrollCtl,
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                        children: [
-                          ...filtered.map(
-                            (item) => Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      children: [
-                                        TextFormField(
-                                          controller: item.labelCtl,
-                                          decoration: deco('Jenis'),
-                                          validator: (v) =>
-                                              (v == null || v.trim().isEmpty)
-                                              ? 'Wajib diisi'
-                                              : null,
-                                        ),
-                                        const SizedBox(height: 8),
-                                        TextFormField(
-                                          controller: item.valueCtl,
-                                          decoration: deco('Jumlah'),
-                                          keyboardType: TextInputType.number,
-                                          validator: (v) {
-                                            if (v == null || v.trim().isEmpty)
-                                              return null;
-                                            return int.tryParse(v) == null
-                                                ? 'Angka tidak valid'
-                                                : null;
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  IconButton(
-                                    tooltip: 'Hapus',
-                                    onPressed: () =>
-                                        setLocal(() => item.removed = true),
-                                    icon: const Icon(Icons.delete_outline),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          if (suggestions.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: Wrap(
-                                spacing: 6,
-                                runSpacing: 6,
-                                children: suggestions
-                                    .map(
-                                      (s) => ActionChip(
-                                        label: Text(
-                                          s,
-                                          style: const TextStyle(fontSize: 11),
-                                        ),
-                                        avatar: const Icon(Icons.add, size: 16),
-                                        onPressed: () => setLocal(() {
-                                          items.add(
-                                            _MetricEditItemInt(
-                                              originalLabel: s,
-                                              labelCtl: TextEditingController(
-                                                text: s,
-                                              ),
-                                              valueCtl: TextEditingController(
-                                                text: '0',
-                                              ),
-                                            ),
-                                          );
-                                        }),
-                                      ),
-                                    )
-                                    .toList(),
-                              ),
-                            ),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  onPressed: () => setLocal(() {
-                                    final defaultLabel = switch (tab) {
-                                      0 => 'Negeri Baru',
-                                      2 => 'Keagamaan/SLB Baru',
-                                      _ => 'Jenis Pendidikan',
-                                    };
-                                    items.add(
-                                      _MetricEditItemInt(
-                                        originalLabel: '_new_${items.length}',
-                                        labelCtl: TextEditingController(
-                                          text: defaultLabel,
-                                        ),
-                                        valueCtl: TextEditingController(),
-                                      ),
-                                    );
-                                  }),
-                                  icon: const Icon(Icons.add),
-                                  label: const Text('Tambah Jenis Pendidikan'),
-                                ),
-                              ),
-                              // Removed secondary button: 'Tambah Catatan'
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          const Divider(),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Judul Catatan (${_sectionKeyForTab(tab)})',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          TextFormField(
-                            controller: _noteTitleCtl[tab],
-                            focusNode: _noteTitleNode[tab],
-                            decoration: deco('Judul Catatan'),
-                          ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Catatan',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          TextFormField(
-                            controller: _noteBodyCtl[tab],
-                            focusNode: _noteBodyNode[tab],
-                            decoration: deco(
-                              'Tulis catatan, pisahkan per baris',
-                            ),
-                            minLines: 3,
-                            maxLines: 6,
-                            keyboardType: TextInputType.multiline,
-                          ),
-                        ],
-                      );
-                    },
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Edit Data Pendidikan',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Perbarui informasi sarana pendidikan',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: saving
-                        ? null
-                        : () async {
-                            if (!formKey.currentState!.validate()) return;
+                const Divider(height: 1),
+                const TabBar(
+                  isScrollable: true,
+                  tabs: [
+                    Tab(text: 'Negeri'),
+                    Tab(text: 'Swasta'),
+                    Tab(text: 'LB & Keagamaan'),
+                  ],
+                ),
+                Expanded(
+                  child: Form(
+                    key: formKey,
+                    child: TabBarView(
+                      children: [
+                        _buildTabContent(ctx, setLocal, items, formKey, scrollCtl, deco, 0, negeriSuggestions, isNegeri, _sectionKeyForTab, _noteTitleCtl, _noteBodyCtl, _noteTitleNode, _noteBodyNode),
+                        _buildTabContent(ctx, setLocal, items, formKey, scrollCtl, deco, 1, swastaSuggestions, (l) => !isNegeri(l) && !isLbKeag(l), _sectionKeyForTab, _noteTitleCtl, _noteBodyCtl, _noteTitleNode, _noteBodyNode),
+                        _buildTabContent(ctx, setLocal, items, formKey, scrollCtl, deco, 2, lbKeagSuggestions, isLbKeag, _sectionKeyForTab, _noteTitleCtl, _noteBodyCtl, _noteTitleNode, _noteBodyNode),
+                      ],
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border(
+                      top: BorderSide(color: Colors.grey[200]!),
+                    ),
+                  ),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2563EB),
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.grey[300],
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: saving
+                          ? null
+                          : () async {
+                              if (!formKey.currentState!.validate()) return;
                             final labels = items
                                 .where(
                                   (e) =>
@@ -1146,25 +1070,216 @@ class _PendidikanScreenState extends State<PendidikanScreen>
                               if (mounted) setLocal(() => saving = false);
                             }
                           },
-                    icon: saving
+                      child: saving
                         ? const SizedBox(
-                            width: 16,
-                            height: 16,
+                            width: 20,
+                            height: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
                               color: Colors.white,
                             ),
                           )
-                        : const Icon(Icons.save),
-                    label: const Text('Simpan'),
+                        : const Text(
+                            'Simpan Perubahan',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildTabContent(
+    BuildContext ctx,
+    StateSetter setLocal,
+    List<_MetricEditItemInt> items,
+    GlobalKey<FormState> formKey,
+    ScrollController scrollCtl,
+    InputDecoration Function(String) deco,
+    int tab,
+    List<String> Function() getSuggestions,
+    bool Function(String) filterFn,
+    String Function(int) sectionKeyForTab,
+    Map<int, TextEditingController> noteTitleCtl,
+    Map<int, TextEditingController> noteBodyCtl,
+    Map<int, FocusNode> noteTitleNode,
+    Map<int, FocusNode> noteBodyNode,
+  ) {
+    final filtered = items
+        .where((i) => !i.removed)
+        .where((i) {
+          final l = i.labelCtl.text.trim();
+          return filterFn(l);
+        })
+        .toList();
+    final suggestions = getSuggestions();
+
+    return Column(
+      children: [
+        Expanded(
+          child: ListView(
+            controller: scrollCtl,
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 80), // Tambah padding bottom untuk button sticky
+            children: [
+              ...filtered.map(
+                (item) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          children: [
+                            TextFormField(
+                              controller: item.labelCtl,
+                              decoration: deco('Jenis'),
+                              validator: (v) =>
+                                  (v == null || v.trim().isEmpty)
+                                  ? 'Wajib diisi'
+                                  : null,
+                            ),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: item.valueCtl,
+                              decoration: deco('Jumlah'),
+                              keyboardType: TextInputType.number,
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) return null;
+                            return int.tryParse(v) == null
+                                ? 'Angka tidak valid'
+                                : null;
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    tooltip: 'Hapus',
+                    onPressed: () => setLocal(() => item.removed = true),
+                    icon: const Icon(Icons.delete_outline),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (suggestions.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: suggestions
+                    .map(
+                      (s) => ActionChip(
+                        label: Text(
+                          s,
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                        avatar: const Icon(Icons.add, size: 16),
+                        onPressed: () => setLocal(() {
+                          items.add(
+                            _MetricEditItemInt(
+                              originalLabel: s,
+                              labelCtl: TextEditingController(
+                                text: s,
+                              ),
+                              valueCtl: TextEditingController(
+                                text: '0',
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 8),
+            Text(
+              'Judul Catatan (${sectionKeyForTab(tab)})',
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(height: 6),
+            TextFormField(
+              controller: noteTitleCtl[tab],
+              focusNode: noteTitleNode[tab],
+              decoration: deco('Judul Catatan'),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Catatan',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(height: 6),
+            TextFormField(
+              controller: noteBodyCtl[tab],
+              focusNode: noteBodyNode[tab],
+              decoration: deco(
+                'Tulis catatan, pisahkan per baris',
+              ),
+              minLines: 3,
+              maxLines: 6,
+              keyboardType: TextInputType.multiline,
+            ),
+          ],
+        ),
+      ),
+      // Sticky button di bawah
+      Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.all(16),
+        child: OutlinedButton.icon(
+          onPressed: () => setLocal(() {
+            final defaultLabel = switch (tab) {
+              0 => 'Negeri Baru',
+              2 => 'Keagamaan/SLB Baru',
+              _ => 'Jenis Pendidikan',
+            };
+            items.add(
+              _MetricEditItemInt(
+                originalLabel: '_new_${items.length}',
+                labelCtl: TextEditingController(
+                  text: defaultLabel,
+                ),
+                valueCtl: TextEditingController(),
+              ),
+            );
+          }),
+          icon: const Icon(Icons.add),
+          label: const Text('Tambah Jenis Pendidikan'),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(double.infinity, 48),
+          ),
+        ),
+      ),
+    ],
+  );
   }
 }
 
@@ -1787,39 +1902,6 @@ class _Card extends StatelessWidget {
           child,
         ],
       ),
-    );
-  }
-}
-
-// Top-level compact two-line app bar title used by Pendidikan screen
-class _AppBarTitle extends StatelessWidget {
-  const _AppBarTitle({required this.title, required this.subtitle});
-  final String title;
-  final String subtitle;
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w800,
-            fontSize: 20,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          subtitle,
-          style: const TextStyle(
-            color: Colors.white70,
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
     );
   }
 }
