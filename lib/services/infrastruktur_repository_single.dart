@@ -17,6 +17,16 @@ class InfrastrukturRepositorySingle {
   final SupabaseClient _db = Supabase.instance.client;
   int _defaultYear() => DateTime.now().year;
 
+  // Resolve desa.id from kode_wilayah for writes using desa_id-based unique key
+  Future<String?> getDesaIdByKode(String kodeWilayah) async {
+    final row = await _db
+        .from('desa')
+        .select('id')
+        .eq('kode_wilayah', kodeWilayah)
+        .maybeSingle();
+    return row == null ? null : (row['id'] as String?);
+  }
+
   // ---------------------- Summary totals ----------------------
   Future<int> totalFasilitasPendidikan(String kodeWilayah, {int? year}) async {
     final y = year ?? _defaultYear();
@@ -275,5 +285,122 @@ class InfrastrukturRepositorySingle {
       map[(r['jenis'] as String)] = ((r['value_int'] as num?)?.toInt() ?? 0);
     }
     return map;
+  }
+
+  // ---------------------- Mutations (Upsert) ----------------------
+  Future<void> upsertMetric({
+    required String kodeWilayah,
+    required String desaId,
+    int? year,
+    required String domain,
+    required String jenis,
+    required String metricName,
+    int? valueInt,
+    double? valueNum,
+    bool? valueBool,
+    String? unit,
+    String? label,
+  }) async {
+    final y = year ?? _defaultYear();
+    final payload = <String, dynamic>{
+      'kode_wilayah': kodeWilayah,
+      'desa_id': desaId,
+      'year': y,
+      'domain': domain,
+      'jenis': jenis,
+      'metric_name': metricName,
+      'unit': unit,
+      'label': label,
+      'value_int': valueInt,
+      'value_num': valueNum,
+      'value_bool': valueBool,
+      'updated_at': DateTime.now().toIso8601String(),
+    }..removeWhere((k, v) => v == null);
+    try {
+      await _db
+          .from('infrastruktur')
+          .upsert(
+            payload,
+            onConflict: 'desa_id,year,domain,jenis,metric_name',
+          )
+          .select()
+          .maybeSingle();
+    } on PostgrestException catch (e) {
+      // 42P10: no unique/exclusion constraint matching ON CONFLICT spec
+      if (e.code == '42P10') {
+        // Fallback manual upsert: try find existing row then update or insert
+        final existing = await _db
+            .from('infrastruktur')
+            .select('id')
+            .eq('desa_id', desaId)
+            .eq('year', y)
+            .eq('domain', domain)
+            .eq('jenis', jenis)
+            .eq('metric_name', metricName)
+            .maybeSingle();
+        if (existing != null) {
+          await _db
+              .from('infrastruktur')
+              .update(payload)
+              .eq('id', existing['id']);
+        } else {
+          await _db.from('infrastruktur').insert(payload);
+        }
+      } else {
+        rethrow;
+      }
+    }
+  }
+
+  Future<void> upsertAkses({
+    required String kodeWilayah,
+    required String desaId,
+    int? year,
+    required String tujuan, // equals jenis
+    required String label,
+    required double jarakKm,
+    required int waktuMenit,
+  }) async {
+    final y = year ?? _defaultYear();
+    await upsertMetric(
+      kodeWilayah: kodeWilayah,
+      desaId: desaId,
+      year: y,
+      domain: 'akses',
+      jenis: tujuan,
+      metricName: 'jarak_km',
+      valueNum: jarakKm,
+      label: label,
+      unit: 'km',
+    );
+    await upsertMetric(
+      kodeWilayah: kodeWilayah,
+      desaId: desaId,
+      year: y,
+      domain: 'akses',
+      jenis: tujuan,
+      metricName: 'waktu_menit',
+      valueInt: waktuMenit,
+      label: label,
+      unit: 'menit',
+    );
+  }
+
+  Future<void> deleteMetric({
+    required String kodeWilayah,
+    int? year,
+    required String domain,
+    required String jenis,
+    required String metricName,
+  }) async {
+    final y = year ?? _defaultYear();
+    await _db
+        .from('infrastruktur')
+        .delete()
+        .eq('kode_wilayah', kodeWilayah)
+        .eq('year', y)
+        .eq('domain', domain)
+        .eq('jenis', jenis)
+        .eq('metric_name', metricName);
   }
 }
