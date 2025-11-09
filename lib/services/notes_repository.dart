@@ -84,4 +84,55 @@ class NotesRepository {
       rethrow; // error lain, biarkan caller menangani
     }
   }
+
+  /// Upsert catatan pendidikan untuk satu section.
+  ///
+  /// Prefer menggunakan tabel khusus `pendidikan_catatan` dengan onConflict (desa_id, year, section),
+  /// fallback ke tabel generik `catatan` (domain='pendidikan') dengan onConflict (desa_id, year, domain, section)
+  /// bila tabel khusus tidak tersedia.
+  Future<void> upsertPendidikanNote({
+    required String kodeWilayah,
+    required String desaId,
+    int? year,
+    required String
+    section, // 'negeri' | 'swasta' | 'lb_keagamaan_keterampilan'
+    required String title,
+    required List<String> paras,
+  }) async {
+    final y = year ?? _defaultYear();
+    final now = DateTime.now().toIso8601String();
+    final payload = <String, dynamic>{
+      'kode_wilayah': kodeWilayah,
+      'desa_id': desaId,
+      'year': y,
+      'section': section,
+      'title': title,
+      'paras': paras,
+      'updated_at': now,
+    };
+
+    try {
+      // Coba tabel khusus terlebih dahulu
+      await _db
+          .from('pendidikan_catatan')
+          .upsert(payload, onConflict: 'desa_id,year,section')
+          .select()
+          .maybeSingle();
+      return;
+    } on PostgrestException catch (e) {
+      // Fallback jika tabel khusus tidak ada
+      if (e.code == 'PGRST205' ||
+          (e.message.toLowerCase().contains('could not find the table') &&
+              e.message.toLowerCase().contains('pendidikan_catatan'))) {
+        final generic = {...payload, 'domain': 'pendidikan'};
+        await _db
+            .from('catatan')
+            .upsert(generic, onConflict: 'desa_id,year,domain,section')
+            .select()
+            .maybeSingle();
+        return;
+      }
+      rethrow;
+    }
+  }
 }
