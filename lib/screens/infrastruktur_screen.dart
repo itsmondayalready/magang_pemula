@@ -65,9 +65,9 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
       }
       // 3) Fallback terakhir (optional): kode default jika masih null/empty
       kode ??= '6303052009';
-  _kodeWilayah = kode;
-  _desaId = await _repo.getDesaIdByKode(kode);
-  await _loadFromRepo(kode);
+      _kodeWilayah = kode;
+      _desaId = await _repo.getDesaIdByKode(kode);
+      await _loadFromRepo(kode);
       if (!mounted) return;
       setState(() {
         _loading = false;
@@ -343,81 +343,109 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
     final tenaga = Map<String, int>.from(_data['tenaga_medis']);
     final jalan = Map<String, int>.from(_data['jalan']); // displayed as int km
     final angkutan = Map<String, int>.from(_data['angkutan']);
-    final akses = Map<String, Map<String, int>>.from(_data['akses_pemerintahan']);
+    final akses = Map<String, Map<String, int>>.from(
+      _data['akses_pemerintahan'],
+    );
     final komunikasiUi = Map<String, int>.from(_data['komunikasi']);
     final sanitasi = Map<String, int>.from(_data['sanitasi']);
     final kebencanaan = Map<String, int>.from(_data['kebencanaan']);
 
     // Controllers
-    TextEditingController intCtl(int v) => TextEditingController(text: v.toString());
-    TextEditingController dblCtlNum(num v) => TextEditingController(text: v.toString());
+    TextEditingController intCtl(int v) =>
+        TextEditingController(text: v.toString());
+    TextEditingController dblCtlNum(num v) =>
+        TextEditingController(text: v.toString());
 
-  // Convert maps to editable item lists
-  final List<_MetricEditItemInt> pendItems = pendidikan.entries
-      .map((e) => _MetricEditItemInt(
+    // Convert maps to editable item lists
+    final List<_MetricEditItemInt> pendItems = pendidikan.entries
+        .map(
+          (e) => _MetricEditItemInt(
             originalLabel: e.key,
             labelCtl: TextEditingController(text: e.key),
             valueCtl: intCtl(e.value),
-          ))
-      .toList();
-  final List<_MetricEditItemInt> kesItems = kesehatan.entries
-      .map((e) => _MetricEditItemInt(
+          ),
+        )
+        .toList();
+    final List<_MetricEditItemInt> kesItems = kesehatan.entries
+        .map(
+          (e) => _MetricEditItemInt(
             originalLabel: e.key,
             labelCtl: TextEditingController(text: e.key),
             valueCtl: intCtl(e.value),
-          ))
-      .toList();
-  final List<_MetricEditItemInt> tenagaItems = tenaga.entries
-      .map((e) => _MetricEditItemInt(
+          ),
+        )
+        .toList();
+    final List<_MetricEditItemInt> tenagaItems = tenaga.entries
+        .map(
+          (e) => _MetricEditItemInt(
             originalLabel: e.key,
             labelCtl: TextEditingController(text: e.key),
             valueCtl: intCtl(e.value),
-          ))
-      .toList();
-  final List<_MetricEditItemDouble> jalanItems = jalan.entries
-      .map((e) => _MetricEditItemDouble(
+          ),
+        )
+        .toList();
+    final List<_MetricEditItemDouble> jalanItems = jalan.entries
+        .map(
+          (e) => _MetricEditItemDouble(
             originalLabel: e.key,
             labelCtl: TextEditingController(text: e.key),
             valueCtl: dblCtlNum(e.value),
-          ))
-      .toList();
-  final List<_MetricEditItemInt> angkutanItems = angkutan.entries
-      .map((e) => _MetricEditItemInt(
+          ),
+        )
+        .toList();
+    final List<_MetricEditItemInt> angkutanItems = angkutan.entries
+        .map(
+          (e) => _MetricEditItemInt(
             originalLabel: e.key,
             labelCtl: TextEditingController(text: e.key),
             valueCtl: intCtl(e.value),
-          ))
-      .toList();
+          ),
+        )
+        .toList();
     final aksesItems = akses.entries
-        .map((e) => _AksesEditItem(
-              labelCtl: TextEditingController(text: e.key),
-              jarakCtl: TextEditingController(text: (e.value['jarak_km'] ?? 0).toString()),
-              waktuCtl: TextEditingController(text: (e.value['waktu_menit'] ?? 0).toString()),
-            ))
+        .map(
+          (e) => _AksesEditItem(
+            labelCtl: TextEditingController(text: e.key),
+            jarakCtl: TextEditingController(
+              text: (e.value['jarak_km'] ?? 0).toString(),
+            ),
+            waktuCtl: TextEditingController(
+              text: (e.value['waktu_menit'] ?? 0).toString(),
+            ),
+          ),
+        )
         .toList();
 
     // Komunikasi mapping shortcuts
     final btsCtl = intCtl(komunikasiUi['Menara BTS'] ?? 0);
     final operatorCtl = intCtl(komunikasiUi['Operator Seluler'] ?? 0);
-    final cakupanCtl = TextEditingController(text: (komunikasiUi['Sinyal 4G (%)'] ?? 0).toString());
-    final internetDesa = ValueNotifier<bool>((komunikasiUi['Internet Desa'] ?? 0) == 1);
+    final cakupanCtl = TextEditingController(
+      text: (komunikasiUi['Sinyal 4G (%)'] ?? 0).toString(),
+    );
+    final internetDesa = ValueNotifier<bool>(
+      (komunikasiUi['Internet Desa'] ?? 0) == 1,
+    );
     final komputerCtl = intCtl(komunikasiUi['Komputer (unit)'] ?? 0);
     final tvCtl = intCtl(komunikasiUi['TV/Radio (pusat)'] ?? 0);
 
-  final List<_MetricEditItemInt> sanitasiItems = sanitasi.entries
-      .map((e) => _MetricEditItemInt(
+    final List<_MetricEditItemInt> sanitasiItems = sanitasi.entries
+        .map(
+          (e) => _MetricEditItemInt(
             originalLabel: e.key,
             labelCtl: TextEditingController(text: e.key),
             valueCtl: intCtl(e.value),
-          ))
-      .toList();
-  final List<_MetricEditItemInt> bencanaItems = kebencanaan.entries
-      .map((e) => _MetricEditItemInt(
+          ),
+        )
+        .toList();
+    final List<_MetricEditItemInt> bencanaItems = kebencanaan.entries
+        .map(
+          (e) => _MetricEditItemInt(
             originalLabel: e.key,
             labelCtl: TextEditingController(text: e.key),
             valueCtl: intCtl(e.value),
-          ))
-      .toList();
+          ),
+        )
+        .toList();
 
     final formKey = GlobalKey<FormState>();
     bool saving = false;
@@ -431,876 +459,1351 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
       ),
       builder: (ctx) {
         final bottom = MediaQuery.of(ctx).viewInsets.bottom;
-        return StatefulBuilder(builder: (ctx, setLocalState) {
-          Future<void> doSave() async {
-            if (!formKey.currentState!.validate()) return;
-            setLocalState(() => saving = true);
-            try {
-              final year = DateTime.now().year;
-              // Duplicate label validation across dynamic domains
-              bool hasDuplicate = false;
-              String duplicateMessage = '';
-              Map<String, List<String>> domainLabels = {
-                'Pendidikan': pendItems.where((e) => !e.removed && e.labelCtl.text.trim().isNotEmpty).map((e) => e.labelCtl.text.trim()).toList(),
-                'Fasilitas Kesehatan': kesItems.where((e) => !e.removed && e.labelCtl.text.trim().isNotEmpty).map((e) => e.labelCtl.text.trim()).toList(),
-                'Tenaga Medis': tenagaItems.where((e) => !e.removed && e.labelCtl.text.trim().isNotEmpty).map((e) => e.labelCtl.text.trim()).toList(),
-                'Jalan': jalanItems.where((e) => !e.removed && e.labelCtl.text.trim().isNotEmpty).map((e) => e.labelCtl.text.trim()).toList(),
-                'Moda Angkutan': angkutanItems.where((e) => !e.removed && e.labelCtl.text.trim().isNotEmpty).map((e) => e.labelCtl.text.trim()).toList(),
-                'Sanitasi': sanitasiItems.where((e) => !e.removed && e.labelCtl.text.trim().isNotEmpty).map((e) => e.labelCtl.text.trim()).toList(),
-                'Kebencanaan': bencanaItems.where((e) => !e.removed && e.labelCtl.text.trim().isNotEmpty).map((e) => e.labelCtl.text.trim()).toList(),
-                'Akses Pemerintahan': aksesItems.where((e) => !e.removed && e.labelCtl.text.trim().isNotEmpty).map((e) => e.labelCtl.text.trim()).toList(),
-              };
-              for (final entry in domainLabels.entries) {
-                final counts = <String, int>{};
-                for (final l in entry.value) {
-                  counts[l] = (counts[l] ?? 0) + 1;
+        return StatefulBuilder(
+          builder: (ctx, setLocalState) {
+            Future<void> doSave() async {
+              if (!formKey.currentState!.validate()) return;
+              setLocalState(() => saving = true);
+              try {
+                final year = DateTime.now().year;
+                // Duplicate label validation across dynamic domains
+                bool hasDuplicate = false;
+                String duplicateMessage = '';
+                Map<String, List<String>> domainLabels = {
+                  'Pendidikan': pendItems
+                      .where(
+                        (e) => !e.removed && e.labelCtl.text.trim().isNotEmpty,
+                      )
+                      .map((e) => e.labelCtl.text.trim())
+                      .toList(),
+                  'Fasilitas Kesehatan': kesItems
+                      .where(
+                        (e) => !e.removed && e.labelCtl.text.trim().isNotEmpty,
+                      )
+                      .map((e) => e.labelCtl.text.trim())
+                      .toList(),
+                  'Tenaga Medis': tenagaItems
+                      .where(
+                        (e) => !e.removed && e.labelCtl.text.trim().isNotEmpty,
+                      )
+                      .map((e) => e.labelCtl.text.trim())
+                      .toList(),
+                  'Jalan': jalanItems
+                      .where(
+                        (e) => !e.removed && e.labelCtl.text.trim().isNotEmpty,
+                      )
+                      .map((e) => e.labelCtl.text.trim())
+                      .toList(),
+                  'Moda Angkutan': angkutanItems
+                      .where(
+                        (e) => !e.removed && e.labelCtl.text.trim().isNotEmpty,
+                      )
+                      .map((e) => e.labelCtl.text.trim())
+                      .toList(),
+                  'Sanitasi': sanitasiItems
+                      .where(
+                        (e) => !e.removed && e.labelCtl.text.trim().isNotEmpty,
+                      )
+                      .map((e) => e.labelCtl.text.trim())
+                      .toList(),
+                  'Kebencanaan': bencanaItems
+                      .where(
+                        (e) => !e.removed && e.labelCtl.text.trim().isNotEmpty,
+                      )
+                      .map((e) => e.labelCtl.text.trim())
+                      .toList(),
+                  'Akses Pemerintahan': aksesItems
+                      .where(
+                        (e) => !e.removed && e.labelCtl.text.trim().isNotEmpty,
+                      )
+                      .map((e) => e.labelCtl.text.trim())
+                      .toList(),
+                };
+                for (final entry in domainLabels.entries) {
+                  final counts = <String, int>{};
+                  for (final l in entry.value) {
+                    counts[l] = (counts[l] ?? 0) + 1;
+                  }
+                  final dups = counts.entries
+                      .where((e) => e.value > 1)
+                      .map((e) => e.key)
+                      .toList();
+                  if (dups.isNotEmpty) {
+                    hasDuplicate = true;
+                    duplicateMessage += '${entry.key}: ${dups.join(', ')}\n';
+                  }
                 }
-                final dups = counts.entries.where((e) => e.value > 1).map((e) => e.key).toList();
-                if (dups.isNotEmpty) {
-                  hasDuplicate = true;
-                  duplicateMessage += '${entry.key}: ${dups.join(', ')}\n';
+                if (hasDuplicate) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Label duplikat ditemukan:\n$duplicateMessage'.trim(),
+                        ),
+                      ),
+                    );
+                  }
+                  setLocalState(() => saving = false);
+                  return; // abort save
                 }
-              }
-              if (hasDuplicate) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Label duplikat ditemukan:\n$duplicateMessage'.trim())),
-                  );
-                }
-                setLocalState(() => saving = false);
-                return; // abort save
-              }
-              // Pendidikan
-              for (final item in pendItems) {
-                if (item.removed) {
-                  await _repo.deleteMetric(
+                // Pendidikan
+                for (final item in pendItems) {
+                  if (item.removed) {
+                    await _repo.deleteMetric(
+                      kodeWilayah: kode,
+                      year: year,
+                      domain: 'pendidikan',
+                      jenis: item.originalLabel,
+                      metricName: 'jumlah',
+                    );
+                    continue;
+                  }
+                  final label = item.labelCtl.text.trim();
+                  if (label.isEmpty) continue;
+                  final v = int.tryParse(item.valueCtl.text.trim()) ?? 0;
+                  await _repo.upsertMetric(
                     kodeWilayah: kode,
+                    desaId: desaId,
                     year: year,
                     domain: 'pendidikan',
-                    jenis: item.originalLabel,
+                    jenis: label,
                     metricName: 'jumlah',
+                    valueInt: v,
+                    unit: 'unit',
                   );
-                  continue;
+                  if (label != item.originalLabel) {
+                    await _repo.deleteMetric(
+                      kodeWilayah: kode,
+                      year: year,
+                      domain: 'pendidikan',
+                      jenis: item.originalLabel,
+                      metricName: 'jumlah',
+                    );
+                  }
                 }
-                final label = item.labelCtl.text.trim();
-                if (label.isEmpty) continue;
-                final v = int.tryParse(item.valueCtl.text.trim()) ?? 0;
-                await _repo.upsertMetric(
-                  kodeWilayah: kode,
-                  desaId: desaId,
-                  year: year,
-                  domain: 'pendidikan',
-                  jenis: label,
-                  metricName: 'jumlah',
-                  valueInt: v,
-                  unit: 'unit',
-                );
-                if (label != item.originalLabel) {
-                  await _repo.deleteMetric(
+                // Kesehatan fasilitas
+                for (final item in kesItems) {
+                  if (item.removed) {
+                    await _repo.deleteMetric(
+                      kodeWilayah: kode,
+                      year: year,
+                      domain: 'kesehatan_fasilitas',
+                      jenis: item.originalLabel,
+                      metricName: 'jumlah',
+                    );
+                    continue;
+                  }
+                  final label = item.labelCtl.text.trim();
+                  if (label.isEmpty) continue;
+                  final v = int.tryParse(item.valueCtl.text.trim()) ?? 0;
+                  await _repo.upsertMetric(
                     kodeWilayah: kode,
-                    year: year,
-                    domain: 'pendidikan',
-                    jenis: item.originalLabel,
-                    metricName: 'jumlah',
-                  );
-                }
-              }
-              // Kesehatan fasilitas
-              for (final item in kesItems) {
-                if (item.removed) {
-                  await _repo.deleteMetric(
-                    kodeWilayah: kode,
-                    year: year,
-                    domain: 'kesehatan_fasilitas',
-                    jenis: item.originalLabel,
-                    metricName: 'jumlah',
-                  );
-                  continue;
-                }
-                final label = item.labelCtl.text.trim();
-                if (label.isEmpty) continue;
-                final v = int.tryParse(item.valueCtl.text.trim()) ?? 0;
-                await _repo.upsertMetric(
-                  kodeWilayah: kode,
-                  desaId: desaId,
-                  year: year,
-                  domain: 'kesehatan_fasilitas',
-                  jenis: label,
-                  metricName: 'jumlah',
-                  valueInt: v,
-                  unit: 'unit',
-                );
-                if (label != item.originalLabel) {
-                  await _repo.deleteMetric(
-                    kodeWilayah: kode,
+                    desaId: desaId,
                     year: year,
                     domain: 'kesehatan_fasilitas',
-                    jenis: item.originalLabel,
+                    jenis: label,
                     metricName: 'jumlah',
+                    valueInt: v,
+                    unit: 'unit',
                   );
+                  if (label != item.originalLabel) {
+                    await _repo.deleteMetric(
+                      kodeWilayah: kode,
+                      year: year,
+                      domain: 'kesehatan_fasilitas',
+                      jenis: item.originalLabel,
+                      metricName: 'jumlah',
+                    );
+                  }
                 }
-              }
-              // Tenaga medis
-              for (final item in tenagaItems) {
-                if (item.removed) {
-                  await _repo.deleteMetric(
+                // Tenaga medis
+                for (final item in tenagaItems) {
+                  if (item.removed) {
+                    await _repo.deleteMetric(
+                      kodeWilayah: kode,
+                      year: year,
+                      domain: 'tenaga_medis',
+                      jenis: item.originalLabel,
+                      metricName: 'jumlah',
+                    );
+                    continue;
+                  }
+                  final label = item.labelCtl.text.trim();
+                  if (label.isEmpty) continue;
+                  final v = int.tryParse(item.valueCtl.text.trim()) ?? 0;
+                  await _repo.upsertMetric(
                     kodeWilayah: kode,
+                    desaId: desaId,
                     year: year,
                     domain: 'tenaga_medis',
-                    jenis: item.originalLabel,
+                    jenis: label,
                     metricName: 'jumlah',
+                    valueInt: v,
+                    unit: 'orang',
                   );
-                  continue;
+                  if (label != item.originalLabel) {
+                    await _repo.deleteMetric(
+                      kodeWilayah: kode,
+                      year: year,
+                      domain: 'tenaga_medis',
+                      jenis: item.originalLabel,
+                      metricName: 'jumlah',
+                    );
+                  }
                 }
-                final label = item.labelCtl.text.trim();
-                if (label.isEmpty) continue;
-                final v = int.tryParse(item.valueCtl.text.trim()) ?? 0;
-                await _repo.upsertMetric(
-                  kodeWilayah: kode,
-                  desaId: desaId,
-                  year: year,
-                  domain: 'tenaga_medis',
-                  jenis: label,
-                  metricName: 'jumlah',
-                  valueInt: v,
-                  unit: 'orang',
-                );
-                if (label != item.originalLabel) {
-                  await _repo.deleteMetric(
+                // Jalan km (strip suffix ' (km)')
+                for (final item in jalanItems) {
+                  if (item.removed) {
+                    final keyOld = item.originalLabel.endsWith(' (km)')
+                        ? item.originalLabel.substring(
+                            0,
+                            item.originalLabel.length - 5,
+                          )
+                        : item.originalLabel;
+                    await _repo.deleteMetric(
+                      kodeWilayah: kode,
+                      year: year,
+                      domain: 'jalan',
+                      jenis: keyOld,
+                      metricName: 'panjang_km',
+                    );
+                    continue;
+                  }
+                  final labelRaw = item.labelCtl.text.trim();
+                  if (labelRaw.isEmpty) continue;
+                  final keyNew = labelRaw.endsWith(' (km)')
+                      ? labelRaw.substring(0, labelRaw.length - 5)
+                      : labelRaw;
+                  final v =
+                      double.tryParse(
+                        item.valueCtl.text.trim().replaceAll(',', '.'),
+                      ) ??
+                      0.0;
+                  await _repo.upsertMetric(
                     kodeWilayah: kode,
+                    desaId: desaId,
                     year: year,
-                    domain: 'tenaga_medis',
-                    jenis: item.originalLabel,
-                    metricName: 'jumlah',
+                    domain: 'jalan',
+                    jenis: keyNew,
+                    metricName: 'panjang_km',
+                    valueNum: v,
+                    unit: 'km',
                   );
-                }
-              }
-              // Jalan km (strip suffix ' (km)')
-              for (final item in jalanItems) {
-                if (item.removed) {
-                  final keyOld = item.originalLabel.endsWith(' (km)')
-                      ? item.originalLabel.substring(0, item.originalLabel.length - 5)
+                  final oldKeyStripped = item.originalLabel.endsWith(' (km)')
+                      ? item.originalLabel.substring(
+                          0,
+                          item.originalLabel.length - 5,
+                        )
                       : item.originalLabel;
-                  await _repo.deleteMetric(
-                    kodeWilayah: kode,
-                    year: year,
-                    domain: 'jalan',
-                    jenis: keyOld,
-                    metricName: 'panjang_km',
-                  );
-                  continue;
+                  if (keyNew != oldKeyStripped) {
+                    await _repo.deleteMetric(
+                      kodeWilayah: kode,
+                      year: year,
+                      domain: 'jalan',
+                      jenis: oldKeyStripped,
+                      metricName: 'panjang_km',
+                    );
+                  }
                 }
-                final labelRaw = item.labelCtl.text.trim();
-                if (labelRaw.isEmpty) continue;
-                final keyNew = labelRaw.endsWith(' (km)')
-                    ? labelRaw.substring(0, labelRaw.length - 5)
-                    : labelRaw;
-                final v = double.tryParse(item.valueCtl.text.trim().replaceAll(',', '.')) ?? 0.0;
-                await _repo.upsertMetric(
-                  kodeWilayah: kode,
-                  desaId: desaId,
-                  year: year,
-                  domain: 'jalan',
-                  jenis: keyNew,
-                  metricName: 'panjang_km',
-                  valueNum: v,
-                  unit: 'km',
-                );
-                final oldKeyStripped = item.originalLabel.endsWith(' (km)')
-                    ? item.originalLabel.substring(0, item.originalLabel.length - 5)
-                    : item.originalLabel;
-                if (keyNew != oldKeyStripped) {
-                  await _repo.deleteMetric(
+                // Angkutan
+                for (final item in angkutanItems) {
+                  if (item.removed) {
+                    await _repo.deleteMetric(
+                      kodeWilayah: kode,
+                      year: year,
+                      domain: 'angkutan',
+                      jenis: item.originalLabel,
+                      metricName: 'jumlah',
+                    );
+                    continue;
+                  }
+                  final label = item.labelCtl.text.trim();
+                  if (label.isEmpty) continue;
+                  final v = int.tryParse(item.valueCtl.text.trim()) ?? 0;
+                  await _repo.upsertMetric(
                     kodeWilayah: kode,
-                    year: year,
-                    domain: 'jalan',
-                    jenis: oldKeyStripped,
-                    metricName: 'panjang_km',
-                  );
-                }
-              }
-              // Angkutan
-              for (final item in angkutanItems) {
-                if (item.removed) {
-                  await _repo.deleteMetric(
-                    kodeWilayah: kode,
+                    desaId: desaId,
                     year: year,
                     domain: 'angkutan',
-                    jenis: item.originalLabel,
+                    jenis: label,
                     metricName: 'jumlah',
+                    valueInt: v,
+                    unit: 'unit',
                   );
-                  continue;
+                  if (label != item.originalLabel) {
+                    await _repo.deleteMetric(
+                      kodeWilayah: kode,
+                      year: year,
+                      domain: 'angkutan',
+                      jenis: item.originalLabel,
+                      metricName: 'jumlah',
+                    );
+                  }
                 }
-                final label = item.labelCtl.text.trim();
-                if (label.isEmpty) continue;
-                final v = int.tryParse(item.valueCtl.text.trim()) ?? 0;
+                // Akses pemerintahan
+                for (final item in aksesItems) {
+                  if (item.removed) continue;
+                  final label = item.labelCtl.text.trim();
+                  if (label.isEmpty) continue;
+                  final jarak =
+                      double.tryParse(
+                        item.jarakCtl.text.trim().replaceAll(',', '.'),
+                      ) ??
+                      0.0;
+                  final waktu = int.tryParse(item.waktuCtl.text.trim()) ?? 0;
+                  await _repo.upsertAkses(
+                    kodeWilayah: kode,
+                    desaId: desaId,
+                    year: year,
+                    tujuan: label,
+                    label: label,
+                    jarakKm: jarak,
+                    waktuMenit: waktu,
+                  );
+                }
+                // Komunikasi
                 await _repo.upsertMetric(
                   kodeWilayah: kode,
                   desaId: desaId,
                   year: year,
-                  domain: 'angkutan',
-                  jenis: label,
-                  metricName: 'jumlah',
-                  valueInt: v,
-                  unit: 'unit',
+                  domain: 'komunikasi',
+                  jenis: '-',
+                  metricName: 'bts_count',
+                  valueInt: int.tryParse(btsCtl.text.trim()) ?? 0,
                 );
-                if (label != item.originalLabel) {
-                  await _repo.deleteMetric(
-                    kodeWilayah: kode,
-                    year: year,
-                    domain: 'angkutan',
-                    jenis: item.originalLabel,
-                    metricName: 'jumlah',
-                  );
-                }
-              }
-              // Akses pemerintahan
-              for (final item in aksesItems) {
-                if (item.removed) continue;
-                final label = item.labelCtl.text.trim();
-                if (label.isEmpty) continue;
-                final jarak = double.tryParse(item.jarakCtl.text.trim().replaceAll(',', '.')) ?? 0.0;
-                final waktu = int.tryParse(item.waktuCtl.text.trim()) ?? 0;
-                await _repo.upsertAkses(
+                await _repo.upsertMetric(
                   kodeWilayah: kode,
                   desaId: desaId,
                   year: year,
-                  tujuan: label,
-                  label: label,
-                  jarakKm: jarak,
-                  waktuMenit: waktu,
+                  domain: 'komunikasi',
+                  jenis: '-',
+                  metricName: 'operator_count',
+                  valueInt: int.tryParse(operatorCtl.text.trim()) ?? 0,
                 );
-              }
-              // Komunikasi
-              await _repo.upsertMetric(
-                kodeWilayah: kode,
-                desaId: desaId,
-                year: year,
-                domain: 'komunikasi',
-                jenis: '-',
-                metricName: 'bts_count',
-                valueInt: int.tryParse(btsCtl.text.trim()) ?? 0,
-              );
-              await _repo.upsertMetric(
-                kodeWilayah: kode,
-                desaId: desaId,
-                year: year,
-                domain: 'komunikasi',
-                jenis: '-',
-                metricName: 'operator_count',
-                valueInt: int.tryParse(operatorCtl.text.trim()) ?? 0,
-              );
-              await _repo.upsertMetric(
-                kodeWilayah: kode,
-                desaId: desaId,
-                year: year,
-                domain: 'komunikasi',
-                jenis: '-',
-                metricName: 'cakupan_4g_pct',
-                valueNum: double.tryParse(cakupanCtl.text.trim().replaceAll(',', '.')) ?? 0.0,
-                unit: '%',
-              );
-              await _repo.upsertMetric(
-                kodeWilayah: kode,
-                desaId: desaId,
-                year: year,
-                domain: 'komunikasi',
-                jenis: '-',
-                metricName: 'internet_desa',
-                valueBool: internetDesa.value,
-              );
-              await _repo.upsertMetric(
-                kodeWilayah: kode,
-                desaId: desaId,
-                year: year,
-                domain: 'komunikasi',
-                jenis: '-',
-                metricName: 'komputer_unit',
-                valueInt: int.tryParse(komputerCtl.text.trim()) ?? 0,
-              );
-              await _repo.upsertMetric(
-                kodeWilayah: kode,
-                desaId: desaId,
-                year: year,
-                domain: 'komunikasi',
-                jenis: '-',
-                metricName: 'tv_radio_pusat',
-                valueInt: int.tryParse(tvCtl.text.trim()) ?? 0,
-              );
-              // Sanitasi & Kebencanaan
-              for (final item in sanitasiItems) {
-                if (item.removed) {
-                  await _repo.deleteMetric(
+                await _repo.upsertMetric(
+                  kodeWilayah: kode,
+                  desaId: desaId,
+                  year: year,
+                  domain: 'komunikasi',
+                  jenis: '-',
+                  metricName: 'cakupan_4g_pct',
+                  valueNum:
+                      double.tryParse(
+                        cakupanCtl.text.trim().replaceAll(',', '.'),
+                      ) ??
+                      0.0,
+                  unit: '%',
+                );
+                await _repo.upsertMetric(
+                  kodeWilayah: kode,
+                  desaId: desaId,
+                  year: year,
+                  domain: 'komunikasi',
+                  jenis: '-',
+                  metricName: 'internet_desa',
+                  valueBool: internetDesa.value,
+                );
+                await _repo.upsertMetric(
+                  kodeWilayah: kode,
+                  desaId: desaId,
+                  year: year,
+                  domain: 'komunikasi',
+                  jenis: '-',
+                  metricName: 'komputer_unit',
+                  valueInt: int.tryParse(komputerCtl.text.trim()) ?? 0,
+                );
+                await _repo.upsertMetric(
+                  kodeWilayah: kode,
+                  desaId: desaId,
+                  year: year,
+                  domain: 'komunikasi',
+                  jenis: '-',
+                  metricName: 'tv_radio_pusat',
+                  valueInt: int.tryParse(tvCtl.text.trim()) ?? 0,
+                );
+                // Sanitasi & Kebencanaan
+                for (final item in sanitasiItems) {
+                  if (item.removed) {
+                    await _repo.deleteMetric(
+                      kodeWilayah: kode,
+                      year: year,
+                      domain: 'sanitasi',
+                      jenis: item.originalLabel,
+                      metricName: 'jumlah',
+                    );
+                    continue;
+                  }
+                  final label = item.labelCtl.text.trim();
+                  if (label.isEmpty) continue;
+                  final v = int.tryParse(item.valueCtl.text.trim()) ?? 0;
+                  await _repo.upsertMetric(
                     kodeWilayah: kode,
+                    desaId: desaId,
                     year: year,
                     domain: 'sanitasi',
-                    jenis: item.originalLabel,
+                    jenis: label,
                     metricName: 'jumlah',
+                    valueInt: v,
                   );
-                  continue;
+                  if (label != item.originalLabel) {
+                    await _repo.deleteMetric(
+                      kodeWilayah: kode,
+                      year: year,
+                      domain: 'sanitasi',
+                      jenis: item.originalLabel,
+                      metricName: 'jumlah',
+                    );
+                  }
                 }
-                final label = item.labelCtl.text.trim();
-                if (label.isEmpty) continue;
-                final v = int.tryParse(item.valueCtl.text.trim()) ?? 0;
-                await _repo.upsertMetric(
-                  kodeWilayah: kode,
-                  desaId: desaId,
-                  year: year,
-                  domain: 'sanitasi',
-                  jenis: label,
-                  metricName: 'jumlah',
-                  valueInt: v,
-                );
-                if (label != item.originalLabel) {
-                  await _repo.deleteMetric(
+                for (final item in bencanaItems) {
+                  if (item.removed) {
+                    await _repo.deleteMetric(
+                      kodeWilayah: kode,
+                      year: year,
+                      domain: 'kebencanaan',
+                      jenis: item.originalLabel,
+                      metricName: 'jumlah',
+                    );
+                    continue;
+                  }
+                  final label = item.labelCtl.text.trim();
+                  if (label.isEmpty) continue;
+                  final v = int.tryParse(item.valueCtl.text.trim()) ?? 0;
+                  await _repo.upsertMetric(
                     kodeWilayah: kode,
-                    year: year,
-                    domain: 'sanitasi',
-                    jenis: item.originalLabel,
-                    metricName: 'jumlah',
-                  );
-                }
-              }
-              for (final item in bencanaItems) {
-                if (item.removed) {
-                  await _repo.deleteMetric(
-                    kodeWilayah: kode,
-                    year: year,
-                    domain: 'kebencanaan',
-                    jenis: item.originalLabel,
-                    metricName: 'jumlah',
-                  );
-                  continue;
-                }
-                final label = item.labelCtl.text.trim();
-                if (label.isEmpty) continue;
-                final v = int.tryParse(item.valueCtl.text.trim()) ?? 0;
-                await _repo.upsertMetric(
-                  kodeWilayah: kode,
-                  desaId: desaId,
-                  year: year,
-                  domain: 'kebencanaan',
-                  jenis: label,
-                  metricName: 'jumlah',
-                  valueInt: v,
-                );
-                if (label != item.originalLabel) {
-                  await _repo.deleteMetric(
-                    kodeWilayah: kode,
+                    desaId: desaId,
                     year: year,
                     domain: 'kebencanaan',
-                    jenis: item.originalLabel,
+                    jenis: label,
                     metricName: 'jumlah',
+                    valueInt: v,
                   );
+                  if (label != item.originalLabel) {
+                    await _repo.deleteMetric(
+                      kodeWilayah: kode,
+                      year: year,
+                      domain: 'kebencanaan',
+                      jenis: item.originalLabel,
+                      metricName: 'jumlah',
+                    );
+                  }
                 }
-              }
 
-              if (!ctx.mounted) return;
-              Navigator.of(ctx).pop();
-              setState(() => _loading = true);
-              await _loadFromRepo(kode);
-              if (!mounted) return;
-              setState(() => _loading = false);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Data infrastruktur berhasil disimpan')),
-              );
-            } catch (e) {
-              if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Gagal menyimpan: $e')),
-              );
-            } finally {
-              if (mounted) setLocalState(() => saving = false);
+                if (!ctx.mounted) return;
+                Navigator.of(ctx).pop();
+                setState(() => _loading = true);
+                await _loadFromRepo(kode);
+                if (!mounted) return;
+                setState(() => _loading = false);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Data infrastruktur berhasil disimpan'),
+                  ),
+                );
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text('Gagal menyimpan: $e')));
+              } finally {
+                if (mounted) setLocalState(() => saving = false);
+              }
             }
-          }
 
-          InputDecoration deco(String label, {String? hint}) => InputDecoration(
-                labelText: label,
-                hintText: hint,
-                border: const OutlineInputBorder(),
-                isDense: true,
-              );
+            InputDecoration deco(String label, {String? hint}) =>
+                InputDecoration(
+                  labelText: label,
+                  hintText: hint,
+                  border: const OutlineInputBorder(),
+                  isDense: true,
+                );
 
-          return Padding(
-            padding: EdgeInsets.only(bottom: bottom),
-            child: SizedBox(
-              height: MediaQuery.of(ctx).size.height * 0.85,
-              child: DefaultTabController(
-                length: 5,
-                child: Column(
-                  children: [
-                    const SizedBox(height: 8),
-                    const Text('Edit Infrastruktur', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 8),
-                    const TabBar(
-                      isScrollable: true,
-                      tabs: [
-                        Tab(text: 'Pendidikan'),
-                        Tab(text: 'Kesehatan'),
-                        Tab(text: 'Transportasi'),
-                        Tab(text: 'Komunikasi'),
-                        Tab(text: 'Sanitasi'),
-                      ],
-                    ),
-                    Expanded(
-                      child: Form(
-                        key: formKey,
-                        child: TabBarView(
-                          children: [
-                            // Pendidikan
-                            SingleChildScrollView(
-                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                              child: Column(
-                                children: [
-                                  ...pendItems.where((item) => !item.removed).map((item) => Padding(
-                                        padding: const EdgeInsets.only(bottom: 12),
-                                        child: Row(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Expanded(
-                                              child: Column(
-                                                children: [
-                                                  TextFormField(
-                                                    controller: item.labelCtl,
-                                                    decoration: deco('Jenis'),
-                                                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Wajib diisi' : null,
-                                                  ),
-                                                  const SizedBox(height: 8),
-                                                  TextFormField(
-                                                    controller: item.valueCtl,
-                                                    decoration: deco('Jumlah'),
-                                                    keyboardType: TextInputType.number,
-                                                    validator: (v) {
-                                                      if (v == null || v.trim().isEmpty) return null;
-                                                      return int.tryParse(v) == null ? 'Angka tidak valid' : null;
-                                                    },
-                                                  ),
-                                                ],
-                                              ),
+            return Padding(
+              padding: EdgeInsets.only(bottom: bottom),
+              child: SizedBox(
+                height: MediaQuery.of(ctx).size.height * 0.85,
+                child: DefaultTabController(
+                  length: 5,
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Edit Infrastruktur',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const TabBar(
+                        isScrollable: true,
+                        tabs: [
+                          Tab(text: 'Pendidikan'),
+                          Tab(text: 'Kesehatan'),
+                          Tab(text: 'Transportasi'),
+                          Tab(text: 'Komunikasi'),
+                          Tab(text: 'Sanitasi'),
+                        ],
+                      ),
+                      Expanded(
+                        child: Form(
+                          key: formKey,
+                          child: TabBarView(
+                            children: [
+                              // Pendidikan
+                              SingleChildScrollView(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  12,
+                                  16,
+                                  16,
+                                ),
+                                child: Column(
+                                  children: [
+                                    ...pendItems
+                                        .where((item) => !item.removed)
+                                        .map(
+                                          (item) => Padding(
+                                            padding: const EdgeInsets.only(
+                                              bottom: 12,
                                             ),
-                                            const SizedBox(width: 8),
-                                            IconButton(
-                                              tooltip: 'Hapus',
-                                              onPressed: () => setLocalState(() => item.removed = true),
-                                              icon: const Icon(Icons.delete_outline),
+                                            child: Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Expanded(
+                                                  child: Column(
+                                                    children: [
+                                                      TextFormField(
+                                                        controller:
+                                                            item.labelCtl,
+                                                        decoration: deco(
+                                                          'Jenis',
+                                                        ),
+                                                        validator: (v) =>
+                                                            (v == null ||
+                                                                v
+                                                                    .trim()
+                                                                    .isEmpty)
+                                                            ? 'Wajib diisi'
+                                                            : null,
+                                                      ),
+                                                      const SizedBox(height: 8),
+                                                      TextFormField(
+                                                        controller:
+                                                            item.valueCtl,
+                                                        decoration: deco(
+                                                          'Jumlah',
+                                                        ),
+                                                        keyboardType:
+                                                            TextInputType
+                                                                .number,
+                                                        validator: (v) {
+                                                          if (v == null ||
+                                                              v.trim().isEmpty)
+                                                            return null;
+                                                          return int.tryParse(
+                                                                    v,
+                                                                  ) ==
+                                                                  null
+                                                              ? 'Angka tidak valid'
+                                                              : null;
+                                                        },
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                IconButton(
+                                                  tooltip: 'Hapus',
+                                                  onPressed: () =>
+                                                      setLocalState(
+                                                        () =>
+                                                            item.removed = true,
+                                                      ),
+                                                  icon: const Icon(
+                                                    Icons.delete_outline,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
-                                          ],
+                                          ),
                                         ),
-                                      )),
-                                  Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: OutlinedButton.icon(
-                                      onPressed: () => setLocalState(() => pendItems.add(_MetricEditItemInt(
-                                            originalLabel: '_new_${pendItems.length}',
-                                            labelCtl: TextEditingController(),
-                                            valueCtl: TextEditingController(),
-                                          ))),
-                                      icon: const Icon(Icons.add),
-                                      label: const Text('Tambah Pendidikan'),
+                                    Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: OutlinedButton.icon(
+                                        onPressed: () => setLocalState(
+                                          () => pendItems.add(
+                                            _MetricEditItemInt(
+                                              originalLabel:
+                                                  '_new_${pendItems.length}',
+                                              labelCtl: TextEditingController(),
+                                              valueCtl: TextEditingController(),
+                                            ),
+                                          ),
+                                        ),
+                                        icon: const Icon(Icons.add),
+                                        label: const Text('Tambah Pendidikan'),
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                            // Kesehatan (fasilitas + tenaga)
-                            SingleChildScrollView(
-                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text('Fasilitas', style: TextStyle(fontWeight: FontWeight.w700)),
-                                  const SizedBox(height: 8),
-                                  ...kesItems.where((item) => !item.removed).map((item) => Padding(
-                                        padding: const EdgeInsets.only(bottom: 12),
-                                        child: Row(
-                                          children: [
-                                            Expanded(
-                                              child: Column(
-                                                children: [
-                                                  TextFormField(
-                                                    controller: item.labelCtl,
-                                                    decoration: deco('Fasilitas'),
-                                                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Wajib diisi' : null,
-                                                  ),
-                                                  const SizedBox(height: 8),
-                                                  TextFormField(
-                                                    controller: item.valueCtl,
-                                                    decoration: deco('Jumlah'),
-                                                    keyboardType: TextInputType.number,
-                                                    validator: (v) {
-                                                      if (v == null || v.trim().isEmpty) return null;
-                                                      return int.tryParse(v) == null ? 'Angka tidak valid' : null;
-                                                    },
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            IconButton(
-                                              tooltip: 'Hapus',
-                                              onPressed: () => setLocalState(() => item.removed = true),
-                                              icon: const Icon(Icons.delete_outline),
-                                            ),
-                                          ],
-                                        ),
-                                      )),
-                                  Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: OutlinedButton.icon(
-                                      onPressed: () => setLocalState(() => kesItems.add(_MetricEditItemInt(
-                                            originalLabel: '_new_${kesItems.length}',
-                                            labelCtl: TextEditingController(),
-                                            valueCtl: TextEditingController(),
-                                          ))),
-                                      icon: const Icon(Icons.add),
-                                      label: const Text('Tambah Fasilitas'),
+                              // Kesehatan (fasilitas + tenaga)
+                              SingleChildScrollView(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  12,
+                                  16,
+                                  16,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Fasilitas',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  const Text('Tenaga Medis', style: TextStyle(fontWeight: FontWeight.w700)),
-                                  const SizedBox(height: 8),
-                                  ...tenagaItems.where((item) => !item.removed).map((item) => Padding(
-                                        padding: const EdgeInsets.only(bottom: 12),
-                                        child: Row(
-                                          children: [
-                                            Expanded(
-                                              child: Column(
-                                                children: [
-                                                  TextFormField(
-                                                    controller: item.labelCtl,
-                                                    decoration: deco('Jabatan'),
-                                                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Wajib diisi' : null,
-                                                  ),
-                                                  const SizedBox(height: 8),
-                                                  TextFormField(
-                                                    controller: item.valueCtl,
-                                                    decoration: deco('Jumlah'),
-                                                    keyboardType: TextInputType.number,
-                                                    validator: (v) {
-                                                      if (v == null || v.trim().isEmpty) return null;
-                                                      return int.tryParse(v) == null ? 'Angka tidak valid' : null;
-                                                    },
-                                                  ),
-                                                ],
-                                              ),
+                                    const SizedBox(height: 8),
+                                    ...kesItems
+                                        .where((item) => !item.removed)
+                                        .map(
+                                          (item) => Padding(
+                                            padding: const EdgeInsets.only(
+                                              bottom: 12,
                                             ),
-                                            const SizedBox(width: 8),
-                                            IconButton(
-                                              tooltip: 'Hapus',
-                                              onPressed: () => setLocalState(() => item.removed = true),
-                                              icon: const Icon(Icons.delete_outline),
+                                            child: Row(
+                                              children: [
+                                                Expanded(
+                                                  child: Column(
+                                                    children: [
+                                                      TextFormField(
+                                                        controller:
+                                                            item.labelCtl,
+                                                        decoration: deco(
+                                                          'Fasilitas',
+                                                        ),
+                                                        validator: (v) =>
+                                                            (v == null ||
+                                                                v
+                                                                    .trim()
+                                                                    .isEmpty)
+                                                            ? 'Wajib diisi'
+                                                            : null,
+                                                      ),
+                                                      const SizedBox(height: 8),
+                                                      TextFormField(
+                                                        controller:
+                                                            item.valueCtl,
+                                                        decoration: deco(
+                                                          'Jumlah',
+                                                        ),
+                                                        keyboardType:
+                                                            TextInputType
+                                                                .number,
+                                                        validator: (v) {
+                                                          if (v == null ||
+                                                              v.trim().isEmpty)
+                                                            return null;
+                                                          return int.tryParse(
+                                                                    v,
+                                                                  ) ==
+                                                                  null
+                                                              ? 'Angka tidak valid'
+                                                              : null;
+                                                        },
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                IconButton(
+                                                  tooltip: 'Hapus',
+                                                  onPressed: () =>
+                                                      setLocalState(
+                                                        () =>
+                                                            item.removed = true,
+                                                      ),
+                                                  icon: const Icon(
+                                                    Icons.delete_outline,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
-                                          ],
+                                          ),
                                         ),
-                                      )),
-                                  Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: OutlinedButton.icon(
-                                      onPressed: () => setLocalState(() => tenagaItems.add(_MetricEditItemInt(
-                                            originalLabel: '_new_${tenagaItems.length}',
-                                            labelCtl: TextEditingController(),
-                                            valueCtl: TextEditingController(),
-                                          ))),
-                                      icon: const Icon(Icons.add),
-                                      label: const Text('Tambah Tenaga'),
+                                    Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: OutlinedButton.icon(
+                                        onPressed: () => setLocalState(
+                                          () => kesItems.add(
+                                            _MetricEditItemInt(
+                                              originalLabel:
+                                                  '_new_${kesItems.length}',
+                                              labelCtl: TextEditingController(),
+                                              valueCtl: TextEditingController(),
+                                            ),
+                                          ),
+                                        ),
+                                        icon: const Icon(Icons.add),
+                                        label: const Text('Tambah Fasilitas'),
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(height: 12),
+                                    const Text(
+                                      'Tenaga Medis',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    ...tenagaItems
+                                        .where((item) => !item.removed)
+                                        .map(
+                                          (item) => Padding(
+                                            padding: const EdgeInsets.only(
+                                              bottom: 12,
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Expanded(
+                                                  child: Column(
+                                                    children: [
+                                                      TextFormField(
+                                                        controller:
+                                                            item.labelCtl,
+                                                        decoration: deco(
+                                                          'Jabatan',
+                                                        ),
+                                                        validator: (v) =>
+                                                            (v == null ||
+                                                                v
+                                                                    .trim()
+                                                                    .isEmpty)
+                                                            ? 'Wajib diisi'
+                                                            : null,
+                                                      ),
+                                                      const SizedBox(height: 8),
+                                                      TextFormField(
+                                                        controller:
+                                                            item.valueCtl,
+                                                        decoration: deco(
+                                                          'Jumlah',
+                                                        ),
+                                                        keyboardType:
+                                                            TextInputType
+                                                                .number,
+                                                        validator: (v) {
+                                                          if (v == null ||
+                                                              v.trim().isEmpty)
+                                                            return null;
+                                                          return int.tryParse(
+                                                                    v,
+                                                                  ) ==
+                                                                  null
+                                                              ? 'Angka tidak valid'
+                                                              : null;
+                                                        },
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                IconButton(
+                                                  tooltip: 'Hapus',
+                                                  onPressed: () =>
+                                                      setLocalState(
+                                                        () =>
+                                                            item.removed = true,
+                                                      ),
+                                                  icon: const Icon(
+                                                    Icons.delete_outline,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                    Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: OutlinedButton.icon(
+                                        onPressed: () => setLocalState(
+                                          () => tenagaItems.add(
+                                            _MetricEditItemInt(
+                                              originalLabel:
+                                                  '_new_${tenagaItems.length}',
+                                              labelCtl: TextEditingController(),
+                                              valueCtl: TextEditingController(),
+                                            ),
+                                          ),
+                                        ),
+                                        icon: const Icon(Icons.add),
+                                        label: const Text('Tambah Tenaga'),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                            // Transportasi & jalan & akses
-                            SingleChildScrollView(
-                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text('Jalan (km)', style: TextStyle(fontWeight: FontWeight.w700)),
-                                  const SizedBox(height: 8),
-                                  ...jalanItems.where((item) => !item.removed).map((item) => Padding(
-                                        padding: const EdgeInsets.only(bottom: 12),
+                              // Transportasi & jalan & akses
+                              SingleChildScrollView(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  12,
+                                  16,
+                                  16,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Jalan (km)',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    ...jalanItems
+                                        .where((item) => !item.removed)
+                                        .map(
+                                          (item) => Padding(
+                                            padding: const EdgeInsets.only(
+                                              bottom: 12,
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Expanded(
+                                                  child: Column(
+                                                    children: [
+                                                      TextFormField(
+                                                        controller:
+                                                            item.labelCtl,
+                                                        decoration: deco(
+                                                          'Jenis Jalan',
+                                                        ),
+                                                        validator: (v) =>
+                                                            (v == null ||
+                                                                v
+                                                                    .trim()
+                                                                    .isEmpty)
+                                                            ? 'Wajib diisi'
+                                                            : null,
+                                                      ),
+                                                      const SizedBox(height: 8),
+                                                      TextFormField(
+                                                        controller:
+                                                            item.valueCtl,
+                                                        decoration: deco(
+                                                          'Panjang (km)',
+                                                        ),
+                                                        keyboardType:
+                                                            const TextInputType.numberWithOptions(
+                                                              decimal: true,
+                                                            ),
+                                                        validator: (v) {
+                                                          if (v == null ||
+                                                              v.trim().isEmpty)
+                                                            return null;
+                                                          return double.tryParse(
+                                                                    v.replaceAll(
+                                                                      ',',
+                                                                      '.',
+                                                                    ),
+                                                                  ) ==
+                                                                  null
+                                                              ? 'Angka tidak valid'
+                                                              : null;
+                                                        },
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                IconButton(
+                                                  tooltip: 'Hapus',
+                                                  onPressed: () =>
+                                                      setLocalState(
+                                                        () =>
+                                                            item.removed = true,
+                                                      ),
+                                                  icon: const Icon(
+                                                    Icons.delete_outline,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                    Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: OutlinedButton.icon(
+                                        onPressed: () => setLocalState(
+                                          () => jalanItems.add(
+                                            _MetricEditItemDouble(
+                                              originalLabel:
+                                                  '_new_${jalanItems.length}',
+                                              labelCtl: TextEditingController(),
+                                              valueCtl: TextEditingController(),
+                                            ),
+                                          ),
+                                        ),
+                                        icon: const Icon(Icons.add),
+                                        label: const Text('Tambah Jenis Jalan'),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    const Text(
+                                      'Moda Angkutan',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    ...angkutanItems
+                                        .where((item) => !item.removed)
+                                        .map(
+                                          (item) => Padding(
+                                            padding: const EdgeInsets.only(
+                                              bottom: 12,
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Expanded(
+                                                  child: Column(
+                                                    children: [
+                                                      TextFormField(
+                                                        controller:
+                                                            item.labelCtl,
+                                                        decoration: deco(
+                                                          'Moda',
+                                                        ),
+                                                        validator: (v) =>
+                                                            (v == null ||
+                                                                v
+                                                                    .trim()
+                                                                    .isEmpty)
+                                                            ? 'Wajib diisi'
+                                                            : null,
+                                                      ),
+                                                      const SizedBox(height: 8),
+                                                      TextFormField(
+                                                        controller:
+                                                            item.valueCtl,
+                                                        decoration: deco(
+                                                          'Jumlah',
+                                                        ),
+                                                        keyboardType:
+                                                            TextInputType
+                                                                .number,
+                                                        validator: (v) {
+                                                          if (v == null ||
+                                                              v.trim().isEmpty)
+                                                            return null;
+                                                          return int.tryParse(
+                                                                    v,
+                                                                  ) ==
+                                                                  null
+                                                              ? 'Angka tidak valid'
+                                                              : null;
+                                                        },
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                IconButton(
+                                                  tooltip: 'Hapus',
+                                                  onPressed: () =>
+                                                      setLocalState(
+                                                        () =>
+                                                            item.removed = true,
+                                                      ),
+                                                  icon: const Icon(
+                                                    Icons.delete_outline,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                    Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: OutlinedButton.icon(
+                                        onPressed: () => setLocalState(
+                                          () => angkutanItems.add(
+                                            _MetricEditItemInt(
+                                              originalLabel:
+                                                  '_new_${angkutanItems.length}',
+                                              labelCtl: TextEditingController(),
+                                              valueCtl: TextEditingController(),
+                                            ),
+                                          ),
+                                        ),
+                                        icon: const Icon(Icons.add),
+                                        label: const Text('Tambah Moda'),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    const Text(
+                                      'Akses Pemerintahan',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    ...aksesItems.map(
+                                      (item) => Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 12,
+                                        ),
                                         child: Row(
                                           children: [
                                             Expanded(
-                                              child: Column(
-                                                children: [
-                                                  TextFormField(
-                                                    controller: item.labelCtl,
-                                                    decoration: deco('Jenis Jalan'),
-                                                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Wajib diisi' : null,
-                                                  ),
-                                                  const SizedBox(height: 8),
-                                                  TextFormField(
-                                                    controller: item.valueCtl,
-                                                    decoration: deco('Panjang (km)'),
-                                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                                    validator: (v) {
-                                                      if (v == null || v.trim().isEmpty) return null;
-                                                      return double.tryParse(v.replaceAll(',', '.')) == null ? 'Angka tidak valid' : null;
-                                                    },
-                                                  ),
-                                                ],
+                                              child: TextFormField(
+                                                controller: item.labelCtl,
+                                                decoration: deco('Tujuan'),
                                               ),
                                             ),
                                             const SizedBox(width: 8),
-                                            IconButton(
-                                              tooltip: 'Hapus',
-                                              onPressed: () => setLocalState(() => item.removed = true),
-                                              icon: const Icon(Icons.delete_outline),
-                                            ),
-                                          ],
-                                        ),
-                                      )),
-                                  Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: OutlinedButton.icon(
-                                      onPressed: () => setLocalState(() => jalanItems.add(_MetricEditItemDouble(
-                                            originalLabel: '_new_${jalanItems.length}',
-                                            labelCtl: TextEditingController(),
-                                            valueCtl: TextEditingController(),
-                                          ))),
-                                      icon: const Icon(Icons.add),
-                                      label: const Text('Tambah Jenis Jalan'),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  const Text('Moda Angkutan', style: TextStyle(fontWeight: FontWeight.w700)),
-                                  const SizedBox(height: 8),
-                                  ...angkutanItems.where((item) => !item.removed).map((item) => Padding(
-                                        padding: const EdgeInsets.only(bottom: 12),
-                                        child: Row(
-                                          children: [
-                                            Expanded(
-                                              child: Column(
-                                                children: [
-                                                  TextFormField(
-                                                    controller: item.labelCtl,
-                                                    decoration: deco('Moda'),
-                                                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Wajib diisi' : null,
-                                                  ),
-                                                  const SizedBox(height: 8),
-                                                  TextFormField(
-                                                    controller: item.valueCtl,
-                                                    decoration: deco('Jumlah'),
-                                                    keyboardType: TextInputType.number,
-                                                    validator: (v) {
-                                                      if (v == null || v.trim().isEmpty) return null;
-                                                      return int.tryParse(v) == null ? 'Angka tidak valid' : null;
-                                                    },
-                                                  ),
-                                                ],
+                                            SizedBox(
+                                              width: 100,
+                                              child: TextFormField(
+                                                controller: item.jarakCtl,
+                                                decoration: deco('Jarak (km)'),
+                                                keyboardType:
+                                                    const TextInputType.numberWithOptions(
+                                                      decimal: true,
+                                                    ),
                                               ),
                                             ),
                                             const SizedBox(width: 8),
+                                            SizedBox(
+                                              width: 110,
+                                              child: TextFormField(
+                                                controller: item.waktuCtl,
+                                                decoration: deco(
+                                                  'Waktu (menit)',
+                                                ),
+                                                keyboardType:
+                                                    TextInputType.number,
+                                              ),
+                                            ),
                                             IconButton(
                                               tooltip: 'Hapus',
-                                              onPressed: () => setLocalState(() => item.removed = true),
-                                              icon: const Icon(Icons.delete_outline),
+                                              onPressed: () => setLocalState(
+                                                () => item.removed = true,
+                                              ),
+                                              icon: const Icon(
+                                                Icons.delete_outline,
+                                              ),
                                             ),
                                           ],
                                         ),
-                                      )),
-                                  Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: OutlinedButton.icon(
-                                      onPressed: () => setLocalState(() => angkutanItems.add(_MetricEditItemInt(
-                                            originalLabel: '_new_${angkutanItems.length}',
-                                            labelCtl: TextEditingController(),
-                                            valueCtl: TextEditingController(),
-                                          ))),
-                                      icon: const Icon(Icons.add),
-                                      label: const Text('Tambah Moda'),
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  const Text('Akses Pemerintahan', style: TextStyle(fontWeight: FontWeight.w700)),
-                                  const SizedBox(height: 8),
-                                  ...aksesItems.map((item) => Padding(
-                                        padding: const EdgeInsets.only(bottom: 12),
-                                        child: Row(
-                                          children: [
-                                            Expanded(child: TextFormField(controller: item.labelCtl, decoration: deco('Tujuan'))),
-                                            const SizedBox(width: 8),
-                                            SizedBox(width: 100, child: TextFormField(controller: item.jarakCtl, decoration: deco('Jarak (km)'), keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                                            const SizedBox(width: 8),
-                                            SizedBox(width: 110, child: TextFormField(controller: item.waktuCtl, decoration: deco('Waktu (menit)'), keyboardType: TextInputType.number)),
-                                            IconButton(
-                                              tooltip: 'Hapus',
-                                              onPressed: () => setLocalState(() => item.removed = true),
-                                              icon: const Icon(Icons.delete_outline),
+                                    Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: OutlinedButton.icon(
+                                        onPressed: () => setLocalState(
+                                          () => aksesItems.add(
+                                            _AksesEditItem(
+                                              labelCtl: TextEditingController(),
+                                              jarakCtl: TextEditingController(),
+                                              waktuCtl: TextEditingController(),
                                             ),
-                                          ],
+                                          ),
                                         ),
-                                      )),
-                                  Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: OutlinedButton.icon(
-                                      onPressed: () => setLocalState(() => aksesItems.add(_AksesEditItem(
-                                            labelCtl: TextEditingController(),
-                                            jarakCtl: TextEditingController(),
-                                            waktuCtl: TextEditingController(),
-                                          ))),
-                                      icon: const Icon(Icons.add),
-                                      label: const Text('Tambah Akses'),
+                                        icon: const Icon(Icons.add),
+                                        label: const Text('Tambah Akses'),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Komunikasi
+                              SingleChildScrollView(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  12,
+                                  16,
+                                  16,
+                                ),
+                                child: Column(
+                                  children: [
+                                    TextFormField(
+                                      controller: btsCtl,
+                                      decoration: deco('Menara BTS'),
+                                      keyboardType: TextInputType.number,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    TextFormField(
+                                      controller: operatorCtl,
+                                      decoration: deco('Operator Seluler'),
+                                      keyboardType: TextInputType.number,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    TextFormField(
+                                      controller: cakupanCtl,
+                                      decoration: deco('Cakupan 4G (%)'),
+                                      keyboardType:
+                                          const TextInputType.numberWithOptions(
+                                            decimal: true,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    ValueListenableBuilder<bool>(
+                                      valueListenable: internetDesa,
+                                      builder: (ctx, val, _) => SwitchListTile(
+                                        value: val,
+                                        onChanged: (v) =>
+                                            internetDesa.value = v,
+                                        title: const Text('Internet Desa'),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    TextFormField(
+                                      controller: komputerCtl,
+                                      decoration: deco('Komputer (unit)'),
+                                      keyboardType: TextInputType.number,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    TextFormField(
+                                      controller: tvCtl,
+                                      decoration: deco('TV/Radio (pusat)'),
+                                      keyboardType: TextInputType.number,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Sanitasi & Kebencanaan
+                              SingleChildScrollView(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  12,
+                                  16,
+                                  16,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Sanitasi',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    ...sanitasiItems
+                                        .where((item) => !item.removed)
+                                        .map(
+                                          (item) => Padding(
+                                            padding: const EdgeInsets.only(
+                                              bottom: 12,
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Expanded(
+                                                  child: Column(
+                                                    children: [
+                                                      TextFormField(
+                                                        controller:
+                                                            item.labelCtl,
+                                                        decoration: deco(
+                                                          'Sarana',
+                                                        ),
+                                                        validator: (v) =>
+                                                            (v == null ||
+                                                                v
+                                                                    .trim()
+                                                                    .isEmpty)
+                                                            ? 'Wajib diisi'
+                                                            : null,
+                                                      ),
+                                                      const SizedBox(height: 8),
+                                                      TextFormField(
+                                                        controller:
+                                                            item.valueCtl,
+                                                        decoration: deco(
+                                                          'Jumlah',
+                                                        ),
+                                                        keyboardType:
+                                                            TextInputType
+                                                                .number,
+                                                        validator: (v) {
+                                                          if (v == null ||
+                                                              v.trim().isEmpty)
+                                                            return null;
+                                                          return int.tryParse(
+                                                                    v,
+                                                                  ) ==
+                                                                  null
+                                                              ? 'Angka tidak valid'
+                                                              : null;
+                                                        },
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                IconButton(
+                                                  tooltip: 'Hapus',
+                                                  onPressed: () =>
+                                                      setLocalState(
+                                                        () =>
+                                                            item.removed = true,
+                                                      ),
+                                                  icon: const Icon(
+                                                    Icons.delete_outline,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                    Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: OutlinedButton.icon(
+                                        onPressed: () => setLocalState(
+                                          () => sanitasiItems.add(
+                                            _MetricEditItemInt(
+                                              originalLabel:
+                                                  '_new_${sanitasiItems.length}',
+                                              labelCtl: TextEditingController(),
+                                              valueCtl: TextEditingController(),
+                                            ),
+                                          ),
+                                        ),
+                                        icon: const Icon(Icons.add),
+                                        label: const Text('Tambah Sanitasi'),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    const Text(
+                                      'Kebencanaan',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    ...bencanaItems
+                                        .where((item) => !item.removed)
+                                        .map(
+                                          (item) => Padding(
+                                            padding: const EdgeInsets.only(
+                                              bottom: 12,
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Expanded(
+                                                  child: Column(
+                                                    children: [
+                                                      TextFormField(
+                                                        controller:
+                                                            item.labelCtl,
+                                                        decoration: deco(
+                                                          'Kegiatan / Sarana',
+                                                        ),
+                                                        validator: (v) =>
+                                                            (v == null ||
+                                                                v
+                                                                    .trim()
+                                                                    .isEmpty)
+                                                            ? 'Wajib diisi'
+                                                            : null,
+                                                      ),
+                                                      const SizedBox(height: 8),
+                                                      TextFormField(
+                                                        controller:
+                                                            item.valueCtl,
+                                                        decoration: deco(
+                                                          'Jumlah',
+                                                        ),
+                                                        keyboardType:
+                                                            TextInputType
+                                                                .number,
+                                                        validator: (v) {
+                                                          if (v == null ||
+                                                              v.trim().isEmpty)
+                                                            return null;
+                                                          return int.tryParse(
+                                                                    v,
+                                                                  ) ==
+                                                                  null
+                                                              ? 'Angka tidak valid'
+                                                              : null;
+                                                        },
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                IconButton(
+                                                  tooltip: 'Hapus',
+                                                  onPressed: () =>
+                                                      setLocalState(
+                                                        () =>
+                                                            item.removed = true,
+                                                      ),
+                                                  icon: const Icon(
+                                                    Icons.delete_outline,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                    Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: OutlinedButton.icon(
+                                        onPressed: () => setLocalState(
+                                          () => bencanaItems.add(
+                                            _MetricEditItemInt(
+                                              originalLabel:
+                                                  '_new_${bencanaItems.length}',
+                                              labelCtl: TextEditingController(),
+                                              valueCtl: TextEditingController(),
+                                            ),
+                                          ),
+                                        ),
+                                        icon: const Icon(Icons.add),
+                                        label: const Text('Tambah Kebencanaan'),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: saving ? null : doSave,
+                            icon: saving
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
                                     ),
                                   )
-                                ],
-                              ),
-                            ),
-                            // Komunikasi
-                            SingleChildScrollView(
-                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                              child: Column(
-                                children: [
-                                  TextFormField(controller: btsCtl, decoration: deco('Menara BTS'), keyboardType: TextInputType.number),
-                                  const SizedBox(height: 12),
-                                  TextFormField(controller: operatorCtl, decoration: deco('Operator Seluler'), keyboardType: TextInputType.number),
-                                  const SizedBox(height: 12),
-                                  TextFormField(controller: cakupanCtl, decoration: deco('Cakupan 4G (%)'), keyboardType: const TextInputType.numberWithOptions(decimal: true)),
-                                  const SizedBox(height: 12),
-                                  ValueListenableBuilder<bool>(
-                                    valueListenable: internetDesa,
-                                    builder: (ctx, val, _) => SwitchListTile(
-                                      value: val,
-                                      onChanged: (v) => internetDesa.value = v,
-                                      title: const Text('Internet Desa'),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  TextFormField(controller: komputerCtl, decoration: deco('Komputer (unit)'), keyboardType: TextInputType.number),
-                                  const SizedBox(height: 12),
-                                  TextFormField(controller: tvCtl, decoration: deco('TV/Radio (pusat)'), keyboardType: TextInputType.number),
-                                ],
-                              ),
-                            ),
-                            // Sanitasi & Kebencanaan
-                            SingleChildScrollView(
-                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text('Sanitasi', style: TextStyle(fontWeight: FontWeight.w700)),
-                                  const SizedBox(height: 8),
-                                  ...sanitasiItems.where((item) => !item.removed).map((item) => Padding(
-                                        padding: const EdgeInsets.only(bottom: 12),
-                                        child: Row(
-                                          children: [
-                                            Expanded(
-                                              child: Column(
-                                                children: [
-                                                  TextFormField(
-                                                    controller: item.labelCtl,
-                                                    decoration: deco('Sarana'),
-                                                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Wajib diisi' : null,
-                                                  ),
-                                                  const SizedBox(height: 8),
-                                                  TextFormField(
-                                                    controller: item.valueCtl,
-                                                    decoration: deco('Jumlah'),
-                                                    keyboardType: TextInputType.number,
-                                                    validator: (v) {
-                                                      if (v == null || v.trim().isEmpty) return null;
-                                                      return int.tryParse(v) == null ? 'Angka tidak valid' : null;
-                                                    },
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            IconButton(
-                                              tooltip: 'Hapus',
-                                              onPressed: () => setLocalState(() => item.removed = true),
-                                              icon: const Icon(Icons.delete_outline),
-                                            ),
-                                          ],
-                                        ),
-                                      )),
-                                  Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: OutlinedButton.icon(
-                                      onPressed: () => setLocalState(() => sanitasiItems.add(_MetricEditItemInt(
-                                            originalLabel: '_new_${sanitasiItems.length}',
-                                            labelCtl: TextEditingController(),
-                                            valueCtl: TextEditingController(),
-                                          ))),
-                                      icon: const Icon(Icons.add),
-                                      label: const Text('Tambah Sanitasi'),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  const Text('Kebencanaan', style: TextStyle(fontWeight: FontWeight.w700)),
-                                  const SizedBox(height: 8),
-                                  ...bencanaItems.where((item) => !item.removed).map((item) => Padding(
-                                        padding: const EdgeInsets.only(bottom: 12),
-                                        child: Row(
-                                          children: [
-                                            Expanded(
-                                              child: Column(
-                                                children: [
-                                                  TextFormField(
-                                                    controller: item.labelCtl,
-                                                    decoration: deco('Kegiatan / Sarana'),
-                                                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Wajib diisi' : null,
-                                                  ),
-                                                  const SizedBox(height: 8),
-                                                  TextFormField(
-                                                    controller: item.valueCtl,
-                                                    decoration: deco('Jumlah'),
-                                                    keyboardType: TextInputType.number,
-                                                    validator: (v) {
-                                                      if (v == null || v.trim().isEmpty) return null;
-                                                      return int.tryParse(v) == null ? 'Angka tidak valid' : null;
-                                                    },
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            IconButton(
-                                              tooltip: 'Hapus',
-                                              onPressed: () => setLocalState(() => item.removed = true),
-                                              icon: const Icon(Icons.delete_outline),
-                                            ),
-                                          ],
-                                        ),
-                                      )),
-                                  Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: OutlinedButton.icon(
-                                      onPressed: () => setLocalState(() => bencanaItems.add(_MetricEditItemInt(
-                                            originalLabel: '_new_${bencanaItems.length}',
-                                            labelCtl: TextEditingController(),
-                                            valueCtl: TextEditingController(),
-                                          ))),
-                                      icon: const Icon(Icons.add),
-                                      label: const Text('Tambah Kebencanaan'),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                                : const Icon(Icons.save),
+                            label: const Text('Simpan'),
+                          ),
                         ),
                       ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: saving ? null : doSave,
-                          icon: saving
-                              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                              : const Icon(Icons.save),
-                          label: const Text('Simpan'),
-                        ),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-          );
-        });
+            );
+          },
+        );
       },
     );
   }

@@ -319,10 +319,7 @@ class InfrastrukturRepositorySingle {
     try {
       await _db
           .from('infrastruktur')
-          .upsert(
-            payload,
-            onConflict: 'desa_id,year,domain,jenis,metric_name',
-          )
+          .upsert(payload, onConflict: 'desa_id,year,domain,jenis,metric_name')
           .select()
           .maybeSingle();
     } on PostgrestException catch (e) {
