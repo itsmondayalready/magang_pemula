@@ -1425,285 +1425,9 @@ class _KependudukanScreenState extends State<KependudukanScreen>
           pendidikanCategories: pendidikanCategories,
           pendidikanControllers: pendidikanControllers,
           pekerjaanItems: pekerjaanItems,
-          onSave: () async {
-          try {
-            // Validasi dan parse data utama
-            final totalPenduduk = int.tryParse(totalPendudukCtl.text.trim());
-            final totalKK = int.tryParse(totalKKCtl.text.trim());
-            final lakiLaki = int.tryParse(lakiLakiCtl.text.trim());
-            final perempuan = int.tryParse(perempuanCtl.text.trim());
-            final produktifBekerja =
-                int.tryParse(produktifBekerjaCtl.text.trim());
-            final produktifTidak = int.tryParse(produktifTidakCtl.text.trim());
-
-            if (totalPenduduk == null ||
-                totalKK == null ||
-                lakiLaki == null ||
-                perempuan == null ||
-                produktifBekerja == null ||
-                produktifTidak == null) {
-              if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.error_outline,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'Validasi Gagal',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
-                            SizedBox(height: 2),
-                            Text(
-                              'Semua field data utama harus diisi dengan angka valid',
-                              style: TextStyle(fontSize: 12),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  backgroundColor: const Color(0xFFEF4444),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  margin: const EdgeInsets.all(16),
-                  duration: const Duration(seconds: 4),
-                ),
-              );
-              return;
-            }
-
-            if (totalPenduduk < 0 ||
-                totalKK < 0 ||
-                lakiLaki < 0 ||
-                perempuan < 0 ||
-                produktifBekerja < 0 ||
-                produktifTidak < 0) {
-              if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.warning_amber_rounded,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'Input Tidak Valid',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
-                            SizedBox(height: 2),
-                            Text(
-                              'Angka tidak boleh negatif',
-                              style: TextStyle(fontSize: 12),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  backgroundColor: const Color(0xFFF59E0B),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  margin: const EdgeInsets.all(16),
-                  duration: const Duration(seconds: 3),
-                ),
-              );
-              return;
-            }
-
-            // Parse pendidikan
-            final pendidikanData = <String, int>{};
-            for (final entry in pendidikanControllers.entries) {
-              final value = int.tryParse(entry.value.text.trim()) ?? 0;
-              if (value >= 0) {
-                pendidikanData[entry.key] = value;
-              }
-            }
-
-            // Parse pekerjaan
-            final pekerjaanData = <String, int>{};
-            for (final item in pekerjaanItems) {
-              final label = item.labelCtl.text.trim();
-              final value = int.tryParse(item.valueCtl.text.trim()) ?? 0;
-              if (label.isNotEmpty && value > 0) {
-                pekerjaanData[label] = value;
-              }
-            }
-
-            // Close bottom sheet dulu dengan root navigator
-            if (!mounted) return;
-            Navigator.of(context, rootNavigator: true).pop();
-
-            // Show loading
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Row(
-                  children: [
-                    const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text(
-                            'Menyimpan Data',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Mohon tunggu sebentar...',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.white.withOpacity(0.9),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                backgroundColor: const Color(0xFF0B7A75),
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                margin: const EdgeInsets.all(16),
-                duration: const Duration(seconds: 30),
-              ),
-            );
-
-            // Save to database
-            final kode = widget.kodeWilayah;
-            await _repo.upsertHeader(
-              kodeWilayah: kode,
-              totalPenduduk: totalPenduduk,
-              totalKK: totalKK,
-              lakiLaki: lakiLaki,
-              perempuan: perempuan,
-              produktifBekerja: produktifBekerja,
-              produktifTidak: produktifTidak,
-            );
-
-            await _repo.updatePendidikan(
-              kodeWilayah: kode,
-              pendidikanData: pendidikanData,
-            );
-
-            await _repo.updatePekerjaan(
-              kodeWilayah: kode,
-              pekerjaanData: pekerjaanData,
-            );
-
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.check_circle_rounded,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text(
-                            'Berhasil!',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Data berhasil disimpan, memuat ulang...',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.white.withOpacity(0.9),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                backgroundColor: const Color(0xFF10B981),
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                margin: const EdgeInsets.all(16),
-                duration: const Duration(seconds: 2),
-              ),
-            );
-
-            // Delay sebentar agar snackbar terlihat, lalu reload data
-            await Future.delayed(const Duration(milliseconds: 500));
-            
-            if (!mounted) return;
+          repo: _repo,
+          kodeWilayah: widget.kodeWilayah,
+          onDataSaved: () async {
             // Mark that data has changed
             _hasChanges = true;
             
@@ -1711,62 +1435,7 @@ class _KependudukanScreenState extends State<KependudukanScreen>
             setState(() => _loading = true);
             await _load();
             setState(() => _loading = false);
-            
-          } catch (e) {
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.error_rounded,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text(
-                            'Gagal Menyimpan',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '$e',
-                            style: const TextStyle(fontSize: 12),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                backgroundColor: const Color(0xFFDC2626),
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                margin: const EdgeInsets.all(16),
-                duration: const Duration(seconds: 5),
-              ),
-            );
-          }
-        },
+          },
       ),
     ).then((_) {
       // Dispose controllers SETELAH bottom sheet ditutup
@@ -1823,7 +1492,9 @@ class _EditBottomSheet extends StatefulWidget {
   final List<String> pendidikanCategories;
   final Map<String, TextEditingController> pendidikanControllers;
   final List<_EditableItem> pekerjaanItems;
-  final VoidCallback onSave;
+  final KependudukanRepository repo;
+  final String kodeWilayah;
+  final VoidCallback onDataSaved;
 
   const _EditBottomSheet({
     required this.totalPendudukCtl,
@@ -1835,7 +1506,9 @@ class _EditBottomSheet extends StatefulWidget {
     required this.pendidikanCategories,
     required this.pendidikanControllers,
     required this.pekerjaanItems,
-    required this.onSave,
+    required this.repo,
+    required this.kodeWilayah,
+    required this.onDataSaved,
   });
 
   @override
@@ -1845,7 +1518,10 @@ class _EditBottomSheet extends StatefulWidget {
 class _EditBottomSheetState extends State<_EditBottomSheet> {
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
+    bool saving = false;
+    
+    return StatefulBuilder(
+      builder: (context, setLocal) => DefaultTabController(
       length: 4,
       child: Container(
         height: MediaQuery.of(context).size.height * 0.85,
@@ -1921,10 +1597,290 @@ class _EditBottomSheetState extends State<_EditBottomSheet> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: widget.onSave,
+                  onPressed: saving ? null : () async {
+                    setLocal(() => saving = true);
+                    try {
+                      // Validasi dan parse data utama
+                      final totalPenduduk = int.tryParse(widget.totalPendudukCtl.text.trim());
+                      final totalKK = int.tryParse(widget.totalKKCtl.text.trim());
+                      final lakiLaki = int.tryParse(widget.lakiLakiCtl.text.trim());
+                      final perempuan = int.tryParse(widget.perempuanCtl.text.trim());
+                      final produktifBekerja =
+                          int.tryParse(widget.produktifBekerjaCtl.text.trim());
+                      final produktifTidak = int.tryParse(widget.produktifTidakCtl.text.trim());
+
+                      if (totalPenduduk == null ||
+                          totalKK == null ||
+                          lakiLaki == null ||
+                          perempuan == null ||
+                          produktifBekerja == null ||
+                          produktifTidak == null) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    Icons.error_outline,
+                                    color: Colors.white,
+                                    size: 24,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                const Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        'Validasi Gagal',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      SizedBox(height: 2),
+                                      Text(
+                                        'Semua field data utama harus diisi dengan angka valid',
+                                        style: TextStyle(fontSize: 12),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            backgroundColor: const Color(0xFFEF4444),
+                            behavior: SnackBarBehavior.fixed,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            duration: const Duration(seconds: 4),
+                          ),
+                        );
+                        return;
+                      }
+
+                      if (totalPenduduk < 0 ||
+                          totalKK < 0 ||
+                          lakiLaki < 0 ||
+                          perempuan < 0 ||
+                          produktifBekerja < 0 ||
+                          produktifTidak < 0) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    Icons.warning_amber_rounded,
+                                    color: Colors.white,
+                                    size: 24,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                const Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        'Input Tidak Valid',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      SizedBox(height: 2),
+                                      Text(
+                                        'Angka tidak boleh negatif',
+                                        style: TextStyle(fontSize: 12),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            backgroundColor: const Color(0xFFF59E0B),
+                            behavior: SnackBarBehavior.fixed,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                        return;
+                      }
+
+                      // Parse pendidikan
+                      final pendidikanData = <String, int>{};
+                      for (final entry in widget.pendidikanControllers.entries) {
+                        final value = int.tryParse(entry.value.text.trim()) ?? 0;
+                        if (value >= 0) {
+                          pendidikanData[entry.key] = value;
+                        }
+                      }
+
+                      // Parse pekerjaan
+                      final pekerjaanData = <String, int>{};
+                      for (final item in widget.pekerjaanItems) {
+                        final label = item.labelCtl.text.trim();
+                        final value = int.tryParse(item.valueCtl.text.trim()) ?? 0;
+                        if (label.isNotEmpty && value > 0) {
+                          pekerjaanData[label] = value;
+                        }
+                      }
+
+                      // Save to database
+                      await widget.repo.upsertHeader(
+                        kodeWilayah: widget.kodeWilayah,
+                        totalPenduduk: totalPenduduk,
+                        totalKK: totalKK,
+                        lakiLaki: lakiLaki,
+                        perempuan: perempuan,
+                        produktifBekerja: produktifBekerja,
+                        produktifTidak: produktifTidak,
+                      );
+
+                      await widget.repo.updatePendidikan(
+                        kodeWilayah: widget.kodeWilayah,
+                        pendidikanData: pendidikanData,
+                      );
+
+                      await widget.repo.updatePekerjaan(
+                        kodeWilayah: widget.kodeWilayah,
+                        pekerjaanData: pekerjaanData,
+                      );
+
+                      // Close bottom sheet
+                      if (context.mounted) {
+                        Navigator.of(context).pop();
+                        
+                        // Call parent callback to refresh data
+                        widget.onDataSaved();
+                        
+                        // Show success notification
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    Icons.check_circle_rounded,
+                                    color: Colors.white,
+                                    size: 24,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                const Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        'Berhasil!',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      SizedBox(height: 2),
+                                      Text(
+                                        'Data kependudukan berhasil diperbarui',
+                                        style: TextStyle(fontSize: 12),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            backgroundColor: const Color(0xFF10B981),
+                            behavior: SnackBarBehavior.fixed,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    Icons.error_outline,
+                                    color: Colors.white,
+                                    size: 24,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Text(
+                                        'Gagal Menyimpan',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '$e',
+                                        style: const TextStyle(fontSize: 12),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            backgroundColor: const Color(0xFFDC2626),
+                            behavior: SnackBarBehavior.fixed,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            duration: const Duration(seconds: 5),
+                          ),
+                        );
+                      }
+                    } finally {
+                      if (context.mounted) {
+                        setLocal(() => saving = false);
+                      }
+                    }
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.transparent,
                     foregroundColor: Colors.white,
+                    disabledBackgroundColor: Colors.grey[300],
                     elevation: 0,
                     shadowColor: Colors.transparent,
                     padding: EdgeInsets.zero,
@@ -1932,7 +1888,16 @@ class _EditBottomSheetState extends State<_EditBottomSheet> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: Ink(
+                  child: saving
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : Ink(
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         colors: [Color(0xFF0B7A75), Color(0xFFB08900)],
@@ -1958,7 +1923,8 @@ class _EditBottomSheetState extends State<_EditBottomSheet> {
           ],
         ),
       ),
-    );
+    ), // DefaultTabController
+    ); // StatefulBuilder
   }
 
   Widget _buildDataUtamaTab() {

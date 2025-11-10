@@ -12,8 +12,7 @@ class MetadataScreen extends StatefulWidget {
   State<MetadataScreen> createState() => _MetadataScreenState();
 }
 
-class _MetadataScreenState extends State<MetadataScreen>
-    with SingleTickerProviderStateMixin {
+class _MetadataScreenState extends State<MetadataScreen> {
   // Repository & state
   final _repo = MetadataRepository();
   List<Map<String, dynamic>> _metadataList = [];
@@ -21,20 +20,12 @@ class _MetadataScreenState extends State<MetadataScreen>
   String? _kodeWilayah; // disimpan agar bisa dipakai saat edit
   bool _hasChanges = false; // Track if data has been modified
 
-  late TabController _tabController;
   String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
   }
 
   List<Map<String, dynamic>> get _filteredMetadata {
@@ -165,39 +156,9 @@ class _MetadataScreenState extends State<MetadataScreen>
                 ),
               ),
             ],
-            body: Column(
-              children: [
-                TabBar(
-                  controller: _tabController,
-                  labelColor: const Color(0xFF16A34A),
-                  unselectedLabelColor: Colors.grey,
-                  indicatorColor: const Color(0xFF16A34A),
-                  indicatorWeight: 3,
-                  tabs: const [
-                    Tab(text: 'Semua'),
-                    Tab(text: 'Terbaru'),
-                  ],
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: TabBarView(
-                      controller: _tabController,
-                      children: [
-                        _buildMetadataList(_filteredMetadata),
-                        _buildMetadataList(
-                          _filteredMetadata
-                              .where(
-                                (item) =>
-                                    item['tahun'].toString().contains('2025'),
-                              )
-                              .toList(),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+            body: Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: _buildMetadataList(_filteredMetadata),
             ),
           ),
           if (_loading)
@@ -753,7 +714,51 @@ class _MetadataEditSheetState extends State<_MetadataEditSheet> {
       Navigator.pop(context);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Metadata berhasil disimpan')),
+          SnackBar(
+            content: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.check_circle_rounded,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Berhasil!',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Metadata berhasil disimpan',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withOpacity(0.9),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.fixed,
+            duration: const Duration(seconds: 3),
+          ),
         );
       }
     } catch (e) {
@@ -773,41 +778,47 @@ class _MetadataEditSheetState extends State<_MetadataEditSheet> {
       initialChildSize: 0.9,
       minChildSize: 0.5,
       maxChildSize: 0.95,
-      builder: (_, scrollController) => Material(
-        elevation: 4,
-        clipBehavior: Clip.antiAlias,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      builder: (_, scrollController) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        ),
         child: Column(
           children: [
+            // Header dengan garis dekoratif
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-              child: Row(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Column(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    width: 40,
+                    height: 4,
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         colors: [Color(0xFF16A34A), Color(0xFFA3E635)],
                       ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.edit, color: Colors.white, size: 24),
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Edit Metadata', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                        Text('Kelola definisi & atribut data desa', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                      ],
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Edit Metadata',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Kelola definisi & atribut data desa',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[600],
+                    ),
+                  ),
                 ],
               ),
             ),
-            const SizedBox(height: 8),
             const Divider(height: 1),
             Expanded(
               child: Form(

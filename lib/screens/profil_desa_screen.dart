@@ -1507,19 +1507,46 @@ class _EditBottomSheetState extends State<_EditBottomSheet>
             content: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.check_rounded, color: Colors.green, size: 16),
+                  child: const Icon(
+                    Icons.check_circle_rounded,
+                    color: Colors.white,
+                    size: 24,
+                  ),
                 ),
                 const SizedBox(width: 12),
-                const Text('Profil desa berhasil disimpan'),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Berhasil!',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Profil desa berhasil disimpan',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withOpacity(0.9),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.fixed,
+            duration: const Duration(seconds: 3),
           ),
         );
         print('🔍 [SAVE] Closing bottom sheet with result: true');

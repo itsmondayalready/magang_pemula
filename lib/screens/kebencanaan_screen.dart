@@ -1450,30 +1450,32 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
         ),
       );
     }
-    if (rtItems.isEmpty) {
-      rtItems.add(
-        _RtEditItem(
-          rtCodeCtl: TextEditingController(text: '001'),
-          rumahCtl: TextEditingController(text: '0'),
-          kkCtl: TextEditingController(text: '0'),
-          jiwaCtl: TextEditingController(text: '0'),
-          lansiaCtl: TextEditingController(text: '0'),
-          bumilCtl: TextEditingController(text: '0'),
-          balitaCtl: TextEditingController(text: '0'),
-          bayiCtl: TextEditingController(text: '0'),
-        ),
-      );
-    }
+    // Jangan tambahkan item default jika tidak ada data
+    // Biarkan user menambahkan sendiri dengan tombol "Tambah RT"
 
-    final bantuanRaw = List<Map<String, dynamic>>.from((d?['bantuan_raw'] ?? const []) as List);
-    final List<Map<String, dynamic>> bantuanSource = bantuanRaw.isNotEmpty
-        ? bantuanRaw
-        : (d != null
-            ? Map<String, dynamic>.from(d['bantuan'] ?? const {})
-                .entries
-                .map((e) => {'nama': e.key, 'jenis': '-', 'jumlah': e.value})
-                .toList()
-            : const []);
+    final bantuanRaw = d?['bantuan_raw'];
+    final List<Map<String, dynamic>> bantuanSource;
+    
+    if (bantuanRaw != null && bantuanRaw is List && bantuanRaw.isNotEmpty) {
+      // If bantuan_raw exists and is a list, use it
+      bantuanSource = List<Map<String, dynamic>>.from(
+        bantuanRaw.map((item) => Map<String, dynamic>.from(item as Map))
+      );
+    } else if (d != null && d['bantuan'] != null && d['bantuan'] is Map) {
+      // If bantuan exists as a Map, convert it
+      bantuanSource = Map<String, dynamic>.from(d['bantuan'] as Map)
+        .entries
+        .map((e) => {
+          'nama': e.key,
+          'jenis': '-',
+          'jumlah': e.value,
+        })
+        .toList();
+    } else {
+      // No data, use empty list
+      bantuanSource = [];
+    }
+    
     for (final b in bantuanSource) {
       bantuanItems.add(
         _BantuanEditItem(
@@ -1483,15 +1485,8 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
         ),
       );
     }
-    if (bantuanItems.isEmpty) {
-      bantuanItems.add(
-        _BantuanEditItem(
-          namaCtl: TextEditingController(),
-          jenisCtl: TextEditingController(),
-          jumlahCtl: TextEditingController(text: '0'),
-        ),
-      );
-    }
+    // Jangan tambahkan item default jika tidak ada data
+    // Biarkan user menambahkan sendiri dengan tombol "Tambah Bantuan"
 
     final penList = List<String>.from((d?['penanganan'] ?? const []) as List);
     for (final e in penList.asMap().entries) {
@@ -1502,11 +1497,8 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
         ),
       );
     }
-    if (penItems.isEmpty) {
-      penItems.add(
-        _PenangananEditItem(urutan: 1, deskripsiCtl: TextEditingController()),
-      );
-    }
+    // Jangan tambahkan item default jika tidak ada data
+    // Biarkan user menambahkan sendiri dengan tombol "Tambah Penanganan"
   }
 
   @override
@@ -1564,6 +1556,27 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
       final lansia = int.tryParse(lansiaCtl.text.trim()) ?? 0;
       final bumil = int.tryParse(bumilCtl.text.trim()) ?? 0;
       final balita = int.tryParse(balitaCtl.text.trim()) ?? 0;
+      
+      // Validasi: Jangan simpan jika semua nilai 0 dan tidak ada detail
+      final hasMainData = totalRumah > 0 || totalKk > 0 || totalJiwa > 0 || 
+                          lansia > 0 || bumil > 0 || balita > 0;
+      final hasRtData = rtItems.any((item) => !item.removed && item.rtCodeCtl.text.trim().isNotEmpty);
+      final hasBantuanData = bantuanItems.any((item) => !item.removed && item.namaCtl.text.trim().isNotEmpty);
+      final hasPenangananData = penItems.any((item) => !item.removed && item.deskripsiCtl.text.trim().isNotEmpty);
+      
+      if (!hasMainData && !hasRtData && !hasBantuanData && !hasPenangananData) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Tidak ada data yang perlu disimpan'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        setState(() => saving = false);
+        return;
+      }
+      
       final snapId = await _repo.upsertRekap(
         snapshotId: widget.snapshotId,
         kodeWilayah: widget.kodeWilayah,
@@ -1656,7 +1669,51 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
       if (!mounted) return;
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Data kebencanaan berhasil disimpan')),
+        SnackBar(
+          content: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.check_circle_rounded,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Berhasil!',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Data kebencanaan berhasil disimpan',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white.withOpacity(0.9),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFF10B981),
+          behavior: SnackBarBehavior.fixed,
+          duration: const Duration(seconds: 3),
+        ),
       );
     } catch (e) {
       if (mounted) {
@@ -1675,39 +1732,47 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
       initialChildSize: 0.9,
       minChildSize: 0.5,
       maxChildSize: 0.95,
-      builder: (_, scrollController) => Material(
-        elevation: 4,
-        clipBehavior: Clip.antiAlias,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      builder: (_, scrollController) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        ),
         child: Column(
           children: [
+            // Header dengan garis dekoratif
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-              child: Row(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Column(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    width: 40,
+                    height: 4,
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(colors: [Color(0xFFDC2626), Color(0xFFF97316)]),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.edit_rounded, color: Colors.white, size: 24),
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Edit Data Kebencanaan', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                        Text('Perbarui rekap, RT, bantuan & penanganan', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                      ],
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFDC2626), Color(0xFFF97316)],
+                      ),
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Edit Data Kebencanaan',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Perbarui rekap, RT, bantuan & penanganan',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[600],
+                    ),
+                  ),
                 ],
               ),
             ),
-            const SizedBox(height: 8),
             const Divider(height: 1),
             Expanded(
               child: DefaultTabController(

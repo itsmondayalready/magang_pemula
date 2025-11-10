@@ -1113,11 +1113,7 @@ class _PendidikanScreenState extends State<PendidikanScreen>
                                       ],
                                     ),
                                     backgroundColor: const Color(0xFF10B981),
-                                    behavior: SnackBarBehavior.floating,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    margin: const EdgeInsets.all(16),
+                                    behavior: SnackBarBehavior.fixed,
                                     duration: const Duration(seconds: 3),
                                   ),
                                 );

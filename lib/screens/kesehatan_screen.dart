@@ -336,206 +336,16 @@ class _KesehatanScreenState extends State<KesehatanScreen>
           fasilitasControllers: fasilitasControllers,
           tenagaMedisCategories: tenagaMedisCategories,
           tenagaMedisControllers: tenagaMedisControllers,
-          onSave: () async {
-            try {
-              // Parse fasilitas
-              final fasilitasData = <String, int>{};
-              for (final entry in fasilitasControllers.entries) {
-                final value = int.tryParse(entry.value.text.trim()) ?? 0;
-                if (value >= 0) {
-                  fasilitasData[entry.key] = value;
-                }
-              }
-
-              // Parse tenaga medis
-              final tenagaMedisData = <String, int>{};
-              for (final entry in tenagaMedisControllers.entries) {
-                final value = int.tryParse(entry.value.text.trim()) ?? 0;
-                if (value >= 0) {
-                  tenagaMedisData[entry.key] = value;
-                }
-              }
-
-              // Close bottom sheet dulu
-              if (!mounted) return;
-              Navigator.of(context, rootNavigator: true).pop();
-
-              // Show loading
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Row(
-                    children: [
-                      const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text(
-                              'Menyimpan Data',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Mohon tunggu sebentar...',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.white.withOpacity(0.9),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  backgroundColor: const Color(0xFF0B7A75),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  margin: const EdgeInsets.all(16),
-                  duration: const Duration(seconds: 30),
-                ),
-              );
-
-              // Save to database
-              final kode = widget.kodeWilayah;
-              await _repo.upsertKesehatan(
-                kodeWilayah: kode,
-                fasilitasData: fasilitasData,
-                tenagaMedisData: tenagaMedisData,
-              );
-
-              if (!mounted) return;
-              ScaffoldMessenger.of(context).hideCurrentSnackBar();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.check_circle_rounded,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text(
-                              'Berhasil!',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Data berhasil disimpan, memuat ulang...',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.white.withOpacity(0.9),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  backgroundColor: const Color(0xFF10B981),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  margin: const EdgeInsets.all(16),
-                  duration: const Duration(seconds: 2),
-                ),
-              );
-
-              // Delay sebentar agar snackbar terlihat, lalu reload data
-              await Future.delayed(const Duration(milliseconds: 500));
-
-              if (!mounted) return;
-              // Mark that data has changed
-              _hasChanges = true;
-              
-              // Refresh data di parent screen
-              setState(() => _loading = true);
-              await _load();
-              setState(() => _loading = false);
-            } catch (e) {
-              if (!mounted) return;
-              ScaffoldMessenger.of(context).hideCurrentSnackBar();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.error_rounded,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text(
-                              'Gagal Menyimpan',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '$e',
-                              style: const TextStyle(fontSize: 12),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  backgroundColor: const Color(0xFFDC2626),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  margin: const EdgeInsets.all(16),
-                  duration: const Duration(seconds: 5),
-                ),
-              );
-            }
+          repo: _repo,
+          kodeWilayah: widget.kodeWilayah,
+          onDataSaved: () async {
+            // Mark that data has changed
+            _hasChanges = true;
+            
+            // Refresh data di parent screen
+            setState(() => _loading = true);
+            await _load();
+            setState(() => _loading = false);
           },
         ),
       ).then((_) {
@@ -753,9 +563,6 @@ class _FasilitasPie extends StatelessWidget {
       const Color(0xFF8B5CF6),
     ];
 
-    // Warna abu-abu untuk kategori yang bernilai 0
-    const greyColor = Color(0xFFE5E7EB);
-
     return Column(
       children: [
         Center(
@@ -765,69 +572,66 @@ class _FasilitasPie extends StatelessWidget {
               PieChartData(
                 sectionsSpace: 2,
                 centerSpaceRadius: 60,
-                sections: List.generate(entries.length, (i) {
-                  final e = entries[i];
-                  final hasValue = e.value > 0;
+                // Hanya tampilkan section yang nilainya > 0 di pie chart
+                sections: entries
+                    .asMap()
+                    .entries
+                    .where((mapEntry) => mapEntry.value.value > 0)
+                    .map((mapEntry) {
+                  final i = mapEntry.key;
+                  final e = mapEntry.value;
                   final pct = total == 0 ? 0 : e.value / total * 100;
 
                   return PieChartSectionData(
-                    value: hasValue
-                        ? e.value.toDouble()
-                        : 0.1, // Minimal value untuk tampil di chart
-                    title: (hasValue && pct > 8)
-                        ? '${pct.toStringAsFixed(0)}%'
-                        : '',
-                    color: hasValue
-                        ? activeColors[i % activeColors.length]
-                        : greyColor,
-                    radius: hasValue
-                        ? 90
-                        : 85, // Sedikit lebih kecil untuk nilai 0
+                    value: e.value.toDouble(),
+                    title: pct > 8 ? '${pct.toStringAsFixed(0)}%' : '',
+                    color: activeColors[i % activeColors.length],
+                    radius: 90,
                     titleStyle: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
                   );
-                }),
+                }).toList(),
               ),
             ),
           ),
         ),
         const SizedBox(height: 20),
-        // Tampilkan SEMUA legenda dengan jumlahnya dalam grid 2 kolom responsif
+        // Tampilkan legenda hanya untuk kategori dengan nilai >= 1
         Column(
           children: [
             for (int i = 0; i < entries.length; i += 2)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _legendItemRow(
-                        color: entries[i].value > 0
-                            ? activeColors[i % activeColors.length]
-                            : greyColor,
-                        label: entries[i].key,
-                        value: entries[i].value,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    if (i + 1 < entries.length)
-                      Expanded(
-                        child: _legendItemRow(
-                          color: entries[i + 1].value > 0
-                              ? activeColors[(i + 1) % activeColors.length]
-                              : greyColor,
-                          label: entries[i + 1].key,
-                          value: entries[i + 1].value,
-                        ),
-                      )
-                    else
-                      const Expanded(child: SizedBox()),
-                  ],
+              if (entries[i].value >= 1 || (i + 1 < entries.length && entries[i + 1].value >= 1))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: Row(
+                    children: [
+                      if (entries[i].value >= 1)
+                        Expanded(
+                          child: _legendItemRow(
+                            color: activeColors[i % activeColors.length],
+                            label: entries[i].key,
+                            value: entries[i].value,
+                          ),
+                        )
+                      else
+                        const Expanded(child: SizedBox()),
+                      const SizedBox(width: 8),
+                      if (i + 1 < entries.length && entries[i + 1].value >= 1)
+                        Expanded(
+                          child: _legendItemRow(
+                            color: activeColors[(i + 1) % activeColors.length],
+                            label: entries[i + 1].key,
+                            value: entries[i + 1].value,
+                          ),
+                        )
+                      else
+                        const Expanded(child: SizedBox()),
+                    ],
+                  ),
                 ),
-              ),
           ],
         ),
       ],
@@ -1090,14 +894,18 @@ class _EditBottomSheet extends StatefulWidget {
   final Map<String, TextEditingController> fasilitasControllers;
   final List<String> tenagaMedisCategories;
   final Map<String, TextEditingController> tenagaMedisControllers;
-  final VoidCallback onSave;
+  final KesehatanRepository repo;
+  final String kodeWilayah;
+  final VoidCallback onDataSaved;
 
   const _EditBottomSheet({
     required this.fasilitasCategories,
     required this.fasilitasControllers,
     required this.tenagaMedisCategories,
     required this.tenagaMedisControllers,
-    required this.onSave,
+    required this.repo,
+    required this.kodeWilayah,
+    required this.onDataSaved,
   });
 
   @override
@@ -1107,9 +915,12 @@ class _EditBottomSheet extends StatefulWidget {
 class _EditBottomSheetState extends State<_EditBottomSheet> {
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Container(
+    bool saving = false;
+    
+    return StatefulBuilder(
+      builder: (context, setLocal) => DefaultTabController(
+        length: 2,
+        child: Container(
         height: MediaQuery.of(context).size.height * 0.85,
         decoration: const BoxDecoration(
           color: Colors.white,
@@ -1179,10 +990,152 @@ class _EditBottomSheetState extends State<_EditBottomSheet> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: widget.onSave,
+                  onPressed: saving ? null : () async {
+                    setLocal(() => saving = true);
+                    try {
+                      // Parse fasilitas
+                      final fasilitasData = <String, int>{};
+                      for (final entry in widget.fasilitasControllers.entries) {
+                        final value = int.tryParse(entry.value.text.trim()) ?? 0;
+                        if (value >= 0) {
+                          fasilitasData[entry.key] = value;
+                        }
+                      }
+
+                      // Parse tenaga medis
+                      final tenagaMedisData = <String, int>{};
+                      for (final entry in widget.tenagaMedisControllers.entries) {
+                        final value = int.tryParse(entry.value.text.trim()) ?? 0;
+                        if (value >= 0) {
+                          tenagaMedisData[entry.key] = value;
+                        }
+                      }
+
+                      // Save to database
+                      await widget.repo.upsertKesehatan(
+                        kodeWilayah: widget.kodeWilayah,
+                        fasilitasData: fasilitasData,
+                        tenagaMedisData: tenagaMedisData,
+                      );
+
+                      // Close bottom sheet
+                      if (context.mounted) {
+                        Navigator.of(context).pop();
+                        
+                        // Call parent callback to refresh data
+                        widget.onDataSaved();
+                        
+                        // Show success notification
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    Icons.check_circle_rounded,
+                                    color: Colors.white,
+                                    size: 24,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                const Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        'Berhasil!',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      SizedBox(height: 2),
+                                      Text(
+                                        'Data kesehatan berhasil diperbarui',
+                                        style: TextStyle(fontSize: 12),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            backgroundColor: const Color(0xFF10B981),
+                            behavior: SnackBarBehavior.fixed,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    Icons.error_outline,
+                                    color: Colors.white,
+                                    size: 24,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Text(
+                                        'Gagal Menyimpan',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '$e',
+                                        style: const TextStyle(fontSize: 12),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            backgroundColor: const Color(0xFFDC2626),
+                            behavior: SnackBarBehavior.fixed,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            duration: const Duration(seconds: 5),
+                          ),
+                        );
+                      }
+                    } finally {
+                      if (context.mounted) {
+                        setLocal(() => saving = false);
+                      }
+                    }
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.transparent,
                     foregroundColor: Colors.white,
+                    disabledBackgroundColor: Colors.grey[300],
                     elevation: 0,
                     shadowColor: Colors.transparent,
                     padding: EdgeInsets.zero,
@@ -1190,7 +1143,16 @@ class _EditBottomSheetState extends State<_EditBottomSheet> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: Ink(
+                  child: saving
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : Ink(
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         colors: [Color(0xFF06B6D4), Color(0xFF1D4ED8)],
@@ -1215,8 +1177,9 @@ class _EditBottomSheetState extends State<_EditBottomSheet> {
             ),
           ],
         ),
-      ),
-    );
+      ), // Container
+      ), // DefaultTabController
+    ); // StatefulBuilder
   }
 
   Widget _buildFasilitasTab() {
