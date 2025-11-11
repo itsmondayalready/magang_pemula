@@ -1,3 +1,4 @@
+// ...existing code...
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:provider/provider.dart';
@@ -7,6 +8,50 @@ import '../services/desa_repository.dart';
 import '../services/kesehatan_repository.dart';
 import '../services/pendidikan_repository.dart';
 import '../utils/responsive.dart';
+
+// Shared simple text field builder for Add/Edit Desa forms
+Widget _buildSimpleTextField({
+  required TextEditingController controller,
+  required String label,
+  required String hint,
+  TextInputType? keyboardType,
+  TextInputAction? textInputAction,
+  String? Function(String?)? validator,
+  void Function(String)? onFieldSubmitted,
+  bool readOnly = false,
+}) {
+  return TextFormField(
+    controller: controller,
+    decoration: InputDecoration(
+      labelText: label,
+      hintText: hint,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.red),
+      ),
+      filled: true,
+      fillColor: Colors.grey.shade50,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+    ),
+    keyboardType: keyboardType,
+    textInputAction: textInputAction ?? TextInputAction.next,
+    validator: validator,
+    onFieldSubmitted: onFieldSubmitted,
+    readOnly: readOnly,
+  );
+}
 
 // Main menu screen untuk aplikasi Desa — versi yang rapi
 class MainMenuPage extends StatefulWidget {
@@ -120,6 +165,26 @@ class _MainMenuPageState extends State<MainMenuPage> {
       builder: (context) => const _DesaPickerSheet(),
     );
     if (selected != null) {
+      // Jika sentinel __RELOAD__, ambil desa valid dari DB
+      if (selected.nama == '__RELOAD__' || selected.kode == '__RELOAD__') {
+        final repo = DesaRepository();
+        final fallback = await repo.fetchDefaultDesa();
+        if (fallback != null) {
+          final newKode = (fallback['kode_wilayah'] ?? '') as String;
+          final newNama = (fallback['nama'] ?? 'Desa') as String;
+          setState(() {
+            _desaName = newNama;
+            _kodeWilayah = newKode;
+          });
+          try {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('last_desa_kode', newKode);
+            await prefs.setString('last_desa_name', newNama);
+          } catch (_) {}
+          await _loadSummary();
+        }
+        return;
+      }
       setState(() {
         _desaName = selected.nama;
         _kodeWilayah = selected.kode;
@@ -1535,8 +1600,8 @@ class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
   final _kodeCtrl = TextEditingController();
   final _namaCtrl = TextEditingController();
   final _kecamatanCtrl = TextEditingController();
-  final _kabupatenCtrl = TextEditingController();
-  final _provinsiCtrl = TextEditingController();
+  final _kabupatenCtrl = TextEditingController(text: 'Banjar');
+  final _provinsiCtrl = TextEditingController(text: 'Kalimantan Selatan');
   bool _submitting = false;
   String? _error;
 
@@ -1651,45 +1716,40 @@ class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
                   ],
                   
                   // Form fields
-                  _buildTextField(
+                  _buildSimpleTextField(
                     controller: _kodeCtrl,
                     label: 'Kode Wilayah',
                     hint: 'Contoh: 6303052009',
-                    icon: Icons.numbers_rounded,
                     keyboardType: TextInputType.number,
                     validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
                   ),
                   const SizedBox(height: 16),
-                  _buildTextField(
+                  _buildSimpleTextField(
                     controller: _namaCtrl,
                     label: 'Nama Desa',
                     hint: 'Contoh: Sungai Kupang',
-                    icon: Icons.location_city_rounded,
                     validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
                   ),
                   const SizedBox(height: 16),
-                  _buildTextField(
+                  _buildSimpleTextField(
                     controller: _kecamatanCtrl,
                     label: 'Kecamatan',
                     hint: 'Contoh: Kuripan',
-                    icon: Icons.map_rounded,
                     validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
                   ),
                   const SizedBox(height: 16),
-                  _buildTextField(
+                  _buildSimpleTextField(
                     controller: _kabupatenCtrl,
                     label: 'Kabupaten/Kota',
-                    hint: 'Contoh: Barito Kuala',
-                    icon: Icons.account_balance_rounded,
-                    validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
+                    hint: 'Banjar',
+                    readOnly: true,
                   ),
                   const SizedBox(height: 16),
-                  _buildTextField(
+                  _buildSimpleTextField(
                     controller: _provinsiCtrl,
                     label: 'Provinsi',
-                    hint: 'Contoh: Kalimantan Selatan',
-                    icon: Icons.public_rounded,
-                    validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
+                    hint: 'Kalimantan Selatan',
+                    readOnly: true,
                     textInputAction: TextInputAction.done,
                     onFieldSubmitted: (_) => _submit(),
                   ),
@@ -1741,48 +1801,49 @@ class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
     );
   }
 
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required String hint,
-    required IconData icon,
-    TextInputType? keyboardType,
-    TextInputAction? textInputAction,
-    String? Function(String?)? validator,
-    void Function(String)? onFieldSubmitted,
-  }) {
-    return TextFormField(
-      controller: controller,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        prefixIcon: Icon(icon, size: 20),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.red),
-        ),
-        filled: true,
-        fillColor: Colors.grey.shade50,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+// Shared simple text field builder for Add/Edit Desa forms
+Widget _buildSimpleTextField({
+  required TextEditingController controller,
+  required String label,
+  required String hint,
+  TextInputType? keyboardType,
+  TextInputAction? textInputAction,
+  String? Function(String?)? validator,
+  void Function(String)? onFieldSubmitted,
+  bool readOnly = false,
+}) {
+  return TextFormField(
+    controller: controller,
+    decoration: InputDecoration(
+      labelText: label,
+      hintText: hint,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey.shade300),
       ),
-      keyboardType: keyboardType,
-      textInputAction: textInputAction ?? TextInputAction.next,
-      validator: validator,
-      onFieldSubmitted: onFieldSubmitted,
-    );
-  }
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.red),
+      ),
+      filled: true,
+      fillColor: Colors.grey.shade50,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+    ),
+    keyboardType: keyboardType,
+    textInputAction: textInputAction ?? TextInputAction.next,
+    validator: validator,
+    onFieldSubmitted: onFieldSubmitted,
+    readOnly: readOnly,
+  );
+}
 }
 
 // =========================
@@ -1953,36 +2014,32 @@ class _EditDesaFormSheetState extends State<_EditDesaFormSheet> {
                         ],
                         
                         // Form fields
-                        _buildTextField(
+                        _buildSimpleTextField(
                           controller: _namaCtrl,
                           label: 'Nama Desa',
                           hint: 'Contoh: Sungai Kupang',
-                          icon: Icons.location_city_rounded,
                           validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
                         ),
                         const SizedBox(height: 16),
-                        _buildTextField(
+                        _buildSimpleTextField(
                           controller: _kecamatanCtrl,
                           label: 'Kecamatan',
                           hint: 'Contoh: Kuripan',
-                          icon: Icons.map_rounded,
                           validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
                         ),
                         const SizedBox(height: 16),
-                        _buildTextField(
+                        _buildSimpleTextField(
                           controller: _kabupatenCtrl,
                           label: 'Kabupaten/Kota',
-                          hint: 'Contoh: Barito Kuala',
-                          icon: Icons.account_balance_rounded,
-                          validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
+                          hint: 'Banjar',
+                          readOnly: true,
                         ),
                         const SizedBox(height: 16),
-                        _buildTextField(
+                        _buildSimpleTextField(
                           controller: _provinsiCtrl,
                           label: 'Provinsi',
-                          hint: 'Contoh: Kalimantan Selatan',
-                          icon: Icons.public_rounded,
-                          validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
+                          hint: 'Kalimantan Selatan',
+                          readOnly: true,
                           textInputAction: TextInputAction.done,
                           onFieldSubmitted: (_) => _submit(),
                         ),
@@ -2034,48 +2091,7 @@ class _EditDesaFormSheetState extends State<_EditDesaFormSheet> {
     );
   }
 
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required String hint,
-    required IconData icon,
-    TextInputType? keyboardType,
-    TextInputAction? textInputAction,
-    String? Function(String?)? validator,
-    void Function(String)? onFieldSubmitted,
-  }) {
-    return TextFormField(
-      controller: controller,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        prefixIcon: Icon(icon, size: 20),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.red),
-        ),
-        filled: true,
-        fillColor: Colors.grey.shade50,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      ),
-      keyboardType: keyboardType,
-      textInputAction: textInputAction ?? TextInputAction.next,
-      validator: validator,
-      onFieldSubmitted: onFieldSubmitted,
-    );
-  }
+  // ...existing code...
 }
 
 // =========================
