@@ -1137,7 +1137,25 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
       // Show success
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ Desa berhasil ditambahkan')),
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: const Color(0xFF16A34A),
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Desa berhasil ditambahkan!',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            duration: const Duration(seconds: 3),
+          ),
         );
         
         // Close picker and return new desa
@@ -1171,7 +1189,25 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ Desa berhasil diperbarui')),
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: const Color(0xFF16A34A),
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Desa berhasil diperbarui!',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            duration: const Duration(seconds: 3),
+          ),
         );
         
         // Close picker and return edited desa
@@ -1215,7 +1251,25 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ Desa berhasil dihapus')),
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: const Color(0xFF16A34A),
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Desa berhasil dihapus!',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            duration: const Duration(seconds: 3),
+          ),
         );
         
         // Check if deleted desa is currently active
@@ -1240,8 +1294,33 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
       }
     } catch (e) {
       if (mounted) {
+        String errorMsg = e.toString();
+        String userMsg;
+        if (errorMsg.contains('violates foreign key constraint')) {
+          userMsg = 'Gagal menghapus desa. Data desa masih terhubung ke tabel lain.';
+        } else {
+          userMsg = 'Gagal menghapus desa. Silakan coba lagi.';
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ Gagal menghapus: $e')),
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: const Color(0xFFDC2626),
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline_rounded, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    userMsg,
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            duration: const Duration(seconds: 4),
+          ),
         );
       }
     }
@@ -1636,7 +1715,38 @@ class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
         'nama': _namaCtrl.text.trim(),
       });
     } catch (e) {
-      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      if (mounted) {
+        String errorMsg = e.toString();
+        String userMsg;
+        if (errorMsg.contains('violates foreign key constraint')) {
+          userMsg = 'Gagal menambah desa. Data masih terhubung ke tabel lain.';
+        } else if (errorMsg.contains('UNIQUE constraint failed')) {
+          userMsg = 'Kode wilayah sudah digunakan. Silakan gunakan kode lain.';
+        } else {
+          userMsg = 'Gagal menambah desa. Silakan coba lagi.';
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: const Color(0xFFDC2626),
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline_rounded, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    userMsg,
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -1690,30 +1800,7 @@ class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
                   ),
                   const SizedBox(height: 24),
                   
-                  // Error message
-                  if (_error != null) ...[
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: colorScheme.errorContainer,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: colorScheme.error.withOpacity(0.3)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.error_outline_rounded, color: colorScheme.error),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              _error!,
-                              style: TextStyle(color: colorScheme.onErrorContainer, fontWeight: FontWeight.w500),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
+                  // ...existing code...
                   
                   // Form fields
                   _buildSimpleTextField(
@@ -1924,7 +2011,29 @@ class _EditDesaFormSheetState extends State<_EditDesaFormSheet> {
         'nama': _namaCtrl.text.trim(),
       });
     } catch (e) {
-      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: const Color(0xFF2563EB),
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline_rounded, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Gagal: ${e.toString().replaceFirst('Exception: ', '')}',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -1988,30 +2097,7 @@ class _EditDesaFormSheetState extends State<_EditDesaFormSheet> {
                         ),
                         const SizedBox(height: 24),
                         
-                        // Error message
-                        if (_error != null) ...[
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: colorScheme.errorContainer,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: colorScheme.error.withOpacity(0.3)),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.error_outline_rounded, color: colorScheme.error),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    _error!,
-                                    style: TextStyle(color: colorScheme.onErrorContainer, fontWeight: FontWeight.w500),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                        ],
+                        // ...existing code...
                         
                         // Form fields
                         _buildSimpleTextField(
