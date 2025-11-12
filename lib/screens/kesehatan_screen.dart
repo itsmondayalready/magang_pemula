@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
-import '../utils/responsive.dart';
+import '../utils/responsive.dart' as resp;
 import '../services/kesehatan_repository.dart';
 import '../services/auth_service.dart';
 
@@ -25,6 +25,7 @@ class _KesehatanScreenState extends State<KesehatanScreen>
   final _repo = KesehatanRepository();
   bool _loading = true;
   bool _hasChanges = false; // Track if data was modified
+  int _selectedYear = DateTime.now().year;
 
   // State data dari DB
   int? _totalFasilitas;
@@ -49,7 +50,7 @@ class _KesehatanScreenState extends State<KesehatanScreen>
     setState(() => _loading = true);
     try {
       final result = await _repo
-          .fetchLatest(widget.kodeWilayah)
+          .fetchLatest(widget.kodeWilayah, year: _selectedYear)
           .timeout(const Duration(seconds: 8));
 
       print('=== KESEHATAN DEBUG ===');
@@ -126,12 +127,31 @@ class _KesehatanScreenState extends State<KesehatanScreen>
                 elevation: 0,
                 backgroundColor: Colors.transparent,
                 toolbarHeight: 56,
-                title: const Text(
-                  'Kesehatan',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                  ),
+                title: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Kesehatan',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 40,
+                      child: resp.YearPicker(
+                        selectedYear: _selectedYear,
+                        onChanged: (year) {
+                          setState(() {
+                            _selectedYear = year;
+                            _loading = true;
+                          });
+                          _load();
+                        },
+                      ),
+                    ),
+                  ],
                 ),
                 centerTitle: false,
                 shape: const RoundedRectangleBorder(

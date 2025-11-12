@@ -133,152 +133,158 @@ class _ProfilDesaScreenState extends State<ProfilDesaScreen> {
           elevation: 0,
         ),
         body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(
-              context.horizontalPadding,
-              16,
-              context.horizontalPadding,
-              24,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Galeri Foto Desa
-                _SectionCard(
-                  title: 'Galeri Foto Desa',
-                  icon: Icons.photo_library_rounded,
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFF97316), Color(0xFFEC4899)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+          children: [
+            SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                context.horizontalPadding,
+                16,
+                context.horizontalPadding,
+                24,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Galeri Foto Desa
+                  _SectionCard(
+                    title: 'Galeri Foto Desa',
+                    icon: Icons.photo_library_rounded,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFF97316), Color(0xFFEC4899)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    children: [_PhotoCarousel(photos: _photos)],
                   ),
-                  children: [_PhotoCarousel(photos: _photos)],
-                ),
-                const SizedBox(height: 16),
+                  const SizedBox(height: 16),
 
-                // Identitas Desa
-                _SectionCard(
-                  title: 'Identitas Desa',
-                  icon: Icons.location_city_rounded,
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF2563EB), Color(0xFF7C3AED)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  children: [
-                    _InfoRow(label: 'Nama Desa', value: widget.desaName),
-                    _InfoRow(label: 'Kode Wilayah', value: widget.kodeWilayah),
-                    _InfoRow(label: 'Kecamatan', value: _kecamatan ?? '—'),
-                    _InfoRow(label: 'Kabupaten', value: _kabupaten ?? '—'),
-                    _InfoRow(label: 'Provinsi', value: _provinsi ?? '—'),
-                    _InfoRow(
-                      label: 'Jumlah RT',
-                      value: _totalRT != null ? '$_totalRT RT' : '—',
+                  // Identitas Desa
+                  _SectionCard(
+                    title: 'Identitas Desa',
+                    icon: Icons.location_city_rounded,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF2563EB), Color(0xFF7C3AED)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    _InfoRow(
-                      label: 'Jumlah RW',
-                      value: _totalRW != null ? '$_totalRW RW' : '—',
-                    ),
-                    if (_luasKm2 != null)
+                    children: [
+                      _InfoRow(label: 'Nama Desa', value: widget.desaName),
                       _InfoRow(
-                        label: 'Luas Wilayah',
-                        value: '${_luasKm2!.toStringAsFixed(2)} km²',
+                        label: 'Kode Wilayah',
+                        value: widget.kodeWilayah,
                       ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Aparatur Desa
-                _SectionCard(
-                  title: 'Aparatur Desa',
-                  icon: Icons.groups_3_rounded,
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF06B6D4), Color(0xFF1D4ED8)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  children: _aparatur.isEmpty
-                      ? const [_InfoRow(label: '—', value: 'Belum ada data')]
-                      : _aparatur
-                            .map(
-                              (a) => _InfoRow(
-                                label: (a['jabatan'] as String?) ?? '—',
-                                value: (a['nama'] as String?) ?? '—',
-                              ),
-                            )
-                            .toList(),
-                ),
-                const SizedBox(height: 16),
-
-                // Kontak & Sosial Media
-                _SectionCard(
-                  title: 'Kontak & Informasi',
-                  icon: Icons.contact_phone_rounded,
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFDC2626), Color(0xFFF97316)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  children: [
-                    _InfoRow(
-                      label: 'Telepon Kantor',
-                      value: _teleponKantor ?? '—',
-                    ),
-                    _InfoRow(label: 'Email Kantor', value: _emailKantor ?? '—'),
-                    _InfoRow(label: 'Website', value: _website ?? '—'),
-                    _InfoRow(
-                      label: 'Sosial Media',
-                      value: _formatSosmed(_sosmed),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-              ],
-            ),
-          ),
-          if (_loading)
-            Positioned.fill(
-              child: AbsorbPointer(
-                absorbing: true,
-                child: ColoredBox(
-                  color: Colors.black.withValues(alpha: 0.18),
-                  child: const Center(child: CircularProgressIndicator()),
-                ),
-              ),
-            ),
-        ],
-      ),
-      floatingActionButton: isAdmin
-          ? FloatingActionButton(
-              onPressed: _openEditBottomSheet,
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              child: Container(
-                width: 56,
-                height: 56,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [
-                      Color(0xFF9333EA), // purple
-                      Color(0xFFEC4899), // pink
+                      _InfoRow(label: 'Kecamatan', value: _kecamatan ?? '—'),
+                      _InfoRow(label: 'Kabupaten', value: _kabupaten ?? '—'),
+                      _InfoRow(label: 'Provinsi', value: _provinsi ?? '—'),
+                      _InfoRow(
+                        label: 'Jumlah RT',
+                        value: _totalRT != null ? '$_totalRT RT' : '—',
+                      ),
+                      _InfoRow(
+                        label: 'Jumlah RW',
+                        value: _totalRW != null ? '$_totalRW RW' : '—',
+                      ),
+                      if (_luasKm2 != null)
+                        _InfoRow(
+                          label: 'Luas Wilayah',
+                          value: '${_luasKm2!.toStringAsFixed(2)} km²',
+                        ),
                     ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0x409333EA),
-                      blurRadius: 8,
-                      offset: Offset(0, 4),
+                  const SizedBox(height: 16),
+
+                  // Aparatur Desa
+                  _SectionCard(
+                    title: 'Aparatur Desa',
+                    icon: Icons.groups_3_rounded,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF06B6D4), Color(0xFF1D4ED8)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                  ],
-                ),
-                child: Icon(Icons.edit_rounded, color: Colors.white),
+                    children: _aparatur.isEmpty
+                        ? const [_InfoRow(label: '—', value: 'Belum ada data')]
+                        : _aparatur
+                              .map(
+                                (a) => _InfoRow(
+                                  label: (a['jabatan'] as String?) ?? '—',
+                                  value: (a['nama'] as String?) ?? '—',
+                                ),
+                              )
+                              .toList(),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Kontak & Sosial Media
+                  _SectionCard(
+                    title: 'Kontak & Informasi',
+                    icon: Icons.contact_phone_rounded,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFDC2626), Color(0xFFF97316)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    children: [
+                      _InfoRow(
+                        label: 'Telepon Kantor',
+                        value: _teleponKantor ?? '—',
+                      ),
+                      _InfoRow(
+                        label: 'Email Kantor',
+                        value: _emailKantor ?? '—',
+                      ),
+                      _InfoRow(label: 'Website', value: _website ?? '—'),
+                      _InfoRow(
+                        label: 'Sosial Media',
+                        value: _formatSosmed(_sosmed),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                ],
               ),
-            )
-          : null,
+            ),
+            if (_loading)
+              Positioned.fill(
+                child: AbsorbPointer(
+                  absorbing: true,
+                  child: ColoredBox(
+                    color: Colors.black.withValues(alpha: 0.18),
+                    child: const Center(child: CircularProgressIndicator()),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        floatingActionButton: isAdmin
+            ? FloatingActionButton(
+                onPressed: _openEditBottomSheet,
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                child: Container(
+                  width: 56,
+                  height: 56,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [
+                        Color(0xFF9333EA), // purple
+                        Color(0xFFEC4899), // pink
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0x409333EA),
+                        blurRadius: 8,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Icon(Icons.edit_rounded, color: Colors.white),
+                ),
+              )
+            : null,
       ), // Scaffold
     ); // WillPopScope
   }
@@ -514,7 +520,7 @@ class _PhotoCarouselState extends State<_PhotoCarousel> {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth > 600;
-    
+
     // Empty state - Responsif dengan padding dan ukuran yang menyesuaikan
     if (widget.photos.isEmpty || _pageController == null) {
       return Container(
@@ -523,16 +529,10 @@ class _PhotoCarouselState extends State<_PhotoCarousel> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Colors.grey.shade50,
-              Colors.grey.shade100,
-            ],
+            colors: [Colors.grey.shade50, Colors.grey.shade100],
           ),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: Colors.grey.shade200,
-            width: 1,
-          ),
+          border: Border.all(color: Colors.grey.shade200, width: 1),
         ),
         child: Center(
           child: Padding(
@@ -574,9 +574,7 @@ class _PhotoCarouselState extends State<_PhotoCarousel> {
                 ),
                 const SizedBox(height: 8),
                 Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isTablet ? 40 : 20,
-                  ),
+                  padding: EdgeInsets.symmetric(horizontal: isTablet ? 40 : 20),
                   child: Text(
                     'Galeri foto desa akan ditampilkan di sini ketika sudah tersedia',
                     style: TextStyle(
@@ -612,77 +610,142 @@ class _PhotoCarouselState extends State<_PhotoCarousel> {
 
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Image.network(
-                        photo.url,
-                        fit: BoxFit.cover,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Container(
-                            color: Colors.grey.shade200,
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                value:
-                                    loadingProgress.expectedTotalBytes != null
-                                    ? loadingProgress.cumulativeBytesLoaded /
-                                          loadingProgress.expectedTotalBytes!
-                                    : null,
+                child: GestureDetector(
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      barrierDismissible: true,
+                      builder: (dialogContext) => Dialog(
+                        insetPadding: EdgeInsets.zero,
+                        backgroundColor: Colors.black.withOpacity(0.25),
+                        child: InteractiveViewer(
+                          child: GestureDetector(
+                            onTap: () => Navigator.of(dialogContext).pop(),
+                            child: Container(
+                              color: Colors.transparent,
+                              child: Center(
+                                child: Image.network(
+                                  photo.url,
+                                  fit: BoxFit.contain,
+                                  loadingBuilder:
+                                      (context, child, loadingProgress) {
+                                        if (loadingProgress == null)
+                                          return child;
+                                        return Container(
+                                          color: Colors.transparent,
+                                          child: Center(
+                                            child: CircularProgressIndicator(
+                                              value:
+                                                  loadingProgress
+                                                          .expectedTotalBytes !=
+                                                      null
+                                                  ? loadingProgress
+                                                            .cumulativeBytesLoaded /
+                                                        loadingProgress
+                                                            .expectedTotalBytes!
+                                                  : null,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                  errorBuilder: (context, error, stackTrace) {
+                                    debugPrint(
+                                      '❌ Error loading fullscreen image: $error',
+                                    );
+                                    return Container(
+                                      color: Colors.transparent,
+                                      child: const Center(
+                                        child: Icon(
+                                          Icons.broken_image_rounded,
+                                          size: 64,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
                               ),
                             ),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) {
-                          debugPrint('❌ Error loading image: $error');
-                          debugPrint('📸 Image URL: ${photo.url}');
-                          debugPrint('📁 Image path: ${photo.path}');
-                          return Container(
-                            color: Colors.grey.shade300,
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(
-                                  Icons.broken_image_rounded,
-                                  size: 64,
-                                  color: Colors.grey,
-                                ),
-                                const SizedBox(height: 8),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                                  child: Column(
-                                    children: [
-                                      Text(
-                                        'Gagal memuat foto',
-                                        style: TextStyle(
-                                          color: Colors.grey.shade600,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        photo.path,
-                                        style: TextStyle(
-                                          color: Colors.grey.shade500,
-                                          fontSize: 10,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
+                          ),
+                        ),
                       ),
-                    ],
+                    );
+                  },
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.network(
+                          photo.url,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Container(
+                              color: Colors.grey.shade200,
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  value:
+                                      loadingProgress.expectedTotalBytes != null
+                                      ? loadingProgress.cumulativeBytesLoaded /
+                                            loadingProgress.expectedTotalBytes!
+                                      : null,
+                                ),
+                              ),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            debugPrint('❌ Error loading image: $error');
+                            debugPrint('📸 Image URL: ${photo.url}');
+                            debugPrint('📁 Image path: ${photo.path}');
+                            return Container(
+                              color: Colors.grey.shade300,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(
+                                    Icons.broken_image_rounded,
+                                    size: 64,
+                                    color: Colors.grey,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        Text(
+                                          'Gagal memuat foto',
+                                          style: TextStyle(
+                                            color: Colors.grey.shade600,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          photo.path,
+                                          style: TextStyle(
+                                            color: Colors.grey.shade500,
+                                            fontSize: 10,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -770,7 +833,7 @@ class _EditBottomSheetState extends State<_EditBottomSheet>
 
   // Aparatur list
   late List<_AparaturItem> _aparaturList;
-  
+
   // Galeri photos
   List<String> _existingPhotos = [];
   List<XFile> _newPhotos = [];
@@ -783,36 +846,44 @@ class _EditBottomSheetState extends State<_EditBottomSheet>
     // Initialize identitas controllers
     _totalRTCtl = TextEditingController(text: widget.totalRT?.toString() ?? '');
     _totalRWCtl = TextEditingController(text: widget.totalRW?.toString() ?? '');
-    _luasWilayahCtl = TextEditingController(text: widget.luasWilayah?.toString() ?? '');
+    _luasWilayahCtl = TextEditingController(
+      text: widget.luasWilayah?.toString() ?? '',
+    );
 
     // Initialize kontak controllers
     _teleponCtl = TextEditingController(text: widget.teleponKantor ?? '');
     _emailCtl = TextEditingController(text: widget.emailKantor ?? '');
     _websiteCtl = TextEditingController(text: widget.website ?? '');
     _igCtl = TextEditingController(text: widget.sosmed?['ig'] as String? ?? '');
-    _facebookCtl = TextEditingController(text: widget.sosmed?['facebook'] as String? ?? '');
+    _facebookCtl = TextEditingController(
+      text: widget.sosmed?['facebook'] as String? ?? '',
+    );
     _ytCtl = TextEditingController(text: widget.sosmed?['yt'] as String? ?? '');
-    _tiktokCtl = TextEditingController(text: widget.sosmed?['tiktok'] as String? ?? '');
+    _tiktokCtl = TextEditingController(
+      text: widget.sosmed?['tiktok'] as String? ?? '',
+    );
     _xCtl = TextEditingController(text: widget.sosmed?['x'] as String? ?? '');
 
     // Initialize aparatur list
     _aparaturList = widget.aparaturList
-        .map((a) => _AparaturItem(
-              id: a['id'] as String?,
-              kategori: (a['kategori'] as String?) ?? 'perangkat',
-              jabatan: (a['jabatan'] as String?) ?? '',
-              nama: (a['nama'] as String?) ?? '',
-              urutan: a['urutan'] as int?,
-            ))
+        .map(
+          (a) => _AparaturItem(
+            id: a['id'] as String?,
+            kategori: (a['kategori'] as String?) ?? 'perangkat',
+            jabatan: (a['jabatan'] as String?) ?? '',
+            nama: (a['nama'] as String?) ?? '',
+            urutan: a['urutan'] as int?,
+          ),
+        )
         .toList();
-    
+
     // Initialize existing photos
     _existingPhotos = List.from(widget.existingPhotos);
-    
+
     // Normalisasi urutan saat init
     _normalizeUrutan();
   }
-  
+
   // Helper function untuk normalisasi urutan
   void _normalizeUrutan() {
     final activeItems = _aparaturList.where((a) => !a.removed).toList();
@@ -867,18 +938,12 @@ class _EditBottomSheetState extends State<_EditBottomSheet>
                 const SizedBox(height: 12),
                 const Text(
                   'Edit Profil Desa',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   widget.desaName,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey[600],
-                  ),
+                  style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                 ),
               ],
             ),
@@ -915,9 +980,7 @@ class _EditBottomSheetState extends State<_EditBottomSheet>
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white,
-              border: Border(
-                top: BorderSide(color: Colors.grey[200]!),
-              ),
+              border: Border(top: BorderSide(color: Colors.grey[200]!)),
             ),
             child: SizedBox(
               width: double.infinity,
@@ -989,22 +1052,34 @@ class _EditBottomSheetState extends State<_EditBottomSheet>
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.people_outline_rounded, size: 64, color: Colors.grey.shade400),
+                      Icon(
+                        Icons.people_outline_rounded,
+                        size: 64,
+                        color: Colors.grey.shade400,
+                      ),
                       const SizedBox(height: 16),
                       Text(
                         'Belum ada aparatur',
-                        style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 16,
+                        ),
                       ),
                     ],
                   ),
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 80), // Tambah padding bottom untuk button sticky
+                  padding: const EdgeInsets.fromLTRB(
+                    16,
+                    16,
+                    16,
+                    80,
+                  ), // Tambah padding bottom untuk button sticky
                   itemCount: _aparaturList.length,
                   itemBuilder: (context, index) {
                     final item = _aparaturList[index];
                     if (item.removed) return const SizedBox.shrink();
-                    
+
                     return _AparaturCard(
                       item: item,
                       index: index,
@@ -1035,14 +1110,16 @@ class _EditBottomSheetState extends State<_EditBottomSheet>
             onPressed: () {
               setState(() {
                 // Tambah aparatur baru di akhir
-                _aparaturList.add(_AparaturItem(
-                  id: null,
-                  kategori: 'perangkat',
-                  jabatan: '',
-                  nama: '',
-                  urutan: 999, // Temporary, akan dinormalisasi
-                ));
-                
+                _aparaturList.add(
+                  _AparaturItem(
+                    id: null,
+                    kategori: 'perangkat',
+                    jabatan: '',
+                    nama: '',
+                    urutan: 999, // Temporary, akan dinormalisasi
+                  ),
+                );
+
                 // Normalisasi urutan agar berurutan 1, 2, 3...
                 _normalizeUrutan();
               });
@@ -1088,11 +1165,26 @@ class _EditBottomSheetState extends State<_EditBottomSheet>
           ),
         ),
         const SizedBox(height: 12),
-        _buildTextField('Instagram', _igCtl, TextInputType.text, hintText: '@username'),
+        _buildTextField(
+          'Instagram',
+          _igCtl,
+          TextInputType.text,
+          hintText: '@username',
+        ),
         _buildTextField('Facebook', _facebookCtl, TextInputType.text),
         _buildTextField('YouTube', _ytCtl, TextInputType.text),
-        _buildTextField('TikTok', _tiktokCtl, TextInputType.text, hintText: '@username'),
-        _buildTextField('X (Twitter)', _xCtl, TextInputType.text, hintText: '@username'),
+        _buildTextField(
+          'TikTok',
+          _tiktokCtl,
+          TextInputType.text,
+          hintText: '@username',
+        ),
+        _buildTextField(
+          'X (Twitter)',
+          _xCtl,
+          TextInputType.text,
+          hintText: '@username',
+        ),
       ],
     );
   }
@@ -1125,7 +1217,10 @@ class _EditBottomSheetState extends State<_EditBottomSheet>
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(color: Color(0xFF9333EA), width: 2),
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
         ),
       ),
     );
@@ -1140,16 +1235,26 @@ class _EditBottomSheetState extends State<_EditBottomSheet>
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.photo_library_outlined, size: 64, color: Colors.grey.shade400),
+                      Icon(
+                        Icons.photo_library_outlined,
+                        size: 64,
+                        color: Colors.grey.shade400,
+                      ),
                       const SizedBox(height: 16),
                       Text(
                         'Belum ada foto',
-                        style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 16,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         'Tap tombol tambah di bawah untuk upload foto',
-                        style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+                        style: TextStyle(
+                          color: Colors.grey.shade500,
+                          fontSize: 13,
+                        ),
                       ),
                     ],
                   ),
@@ -1234,7 +1339,7 @@ class _EditBottomSheetState extends State<_EditBottomSheet>
                   child: CircularProgressIndicator(
                     value: loadingProgress.expectedTotalBytes != null
                         ? loadingProgress.cumulativeBytesLoaded /
-                            loadingProgress.expectedTotalBytes!
+                              loadingProgress.expectedTotalBytes!
                         : null,
                   ),
                 ),
@@ -1331,14 +1436,12 @@ class _EditBottomSheetState extends State<_EditBottomSheet>
   Future<void> _pickImage() async {
     try {
       print('📸 [PICK] Opening image picker...');
-      
+
       // Try multiple images first
-      final List<XFile> images = await _picker.pickMultiImage(
-        imageQuality: 80,
-      );
-      
+      final List<XFile> images = await _picker.pickMultiImage(imageQuality: 80);
+
       print('📸 [PICK] Selected ${images.length} images');
-      
+
       if (images.isNotEmpty) {
         setState(() {
           _newPhotos.addAll(images);
@@ -1349,7 +1452,7 @@ class _EditBottomSheetState extends State<_EditBottomSheet>
       }
     } catch (e) {
       print('❌ [PICK] Error with pickMultiImage: $e');
-      
+
       // Fallback: try single image
       try {
         print('📸 [PICK] Trying single image picker...');
@@ -1357,7 +1460,7 @@ class _EditBottomSheetState extends State<_EditBottomSheet>
           source: ImageSource.gallery,
           imageQuality: 80,
         );
-        
+
         if (image != null) {
           setState(() {
             _newPhotos.add(image);
@@ -1383,31 +1486,31 @@ class _EditBottomSheetState extends State<_EditBottomSheet>
 
     try {
       print('🔍 [SAVE] Starting save process...');
-      
+
       final desa = await _repo.fetchDesaDetailByKode(widget.kodeWilayah);
       if (desa == null) throw Exception('Desa tidak ditemukan');
-      
+
       final desaId = desa['id'] as String;
       final profile = desa['desa_profile'];
-      
+
       print('🔍 [SAVE] Desa ID: $desaId');
       print('🔍 [SAVE] Profile exists: ${profile != null}');
 
       // Prepare identitas & kontak data
       final data = <String, dynamic>{};
-      
+
       final totalRT = int.tryParse(_totalRTCtl.text.trim());
       final totalRW = int.tryParse(_totalRWCtl.text.trim());
       final luasWilayah = double.tryParse(_luasWilayahCtl.text.trim());
-      
+
       if (totalRT != null) data['total_rt'] = totalRT;
       if (totalRW != null) data['total_rw'] = totalRW;
       if (luasWilayah != null) data['luas_wilayah'] = luasWilayah;
-      
+
       data['telepon_kantor'] = _teleponCtl.text.trim();
       data['email_kantor'] = _emailCtl.text.trim();
       data['website'] = _websiteCtl.text.trim();
-      
+
       data['sosmed'] = {
         'ig': _igCtl.text.trim(),
         'facebook': _facebookCtl.text.trim(),
@@ -1432,7 +1535,7 @@ class _EditBottomSheetState extends State<_EditBottomSheet>
 
       // Save aparatur
       print('🔍 [SAVE] Processing ${_aparaturList.length} aparatur items...');
-      
+
       // Hapus aparatur yang di-remove
       for (final item in _aparaturList.where((a) => a.removed)) {
         if (item.id != null) {
@@ -1441,15 +1544,15 @@ class _EditBottomSheetState extends State<_EditBottomSheet>
           print('✅ [SAVE] Aparatur deleted');
         }
       }
-      
+
       // Normalisasi urutan: ambil yang tidak di-remove, urutkan, lalu beri urutan baru 1,2,3...
       final activeAparatur = _aparaturList.where((a) => !a.removed).toList();
       activeAparatur.sort((a, b) => (a.urutan ?? 0).compareTo(b.urutan ?? 0));
-      
+
       for (int i = 0; i < activeAparatur.length; i++) {
         final item = activeAparatur[i];
         final normalizedUrutan = i + 1; // Urutan baru: 1, 2, 3, 4, ...
-        
+
         final aparaturData = {
           'desa_id': desaId,
           'kategori': item.kategori,
@@ -1459,11 +1562,15 @@ class _EditBottomSheetState extends State<_EditBottomSheet>
         };
 
         if (item.id == null) {
-          print('🔍 [SAVE] Inserting new aparatur (urutan $normalizedUrutan): ${aparaturData['nama']}');
+          print(
+            '🔍 [SAVE] Inserting new aparatur (urutan $normalizedUrutan): ${aparaturData['nama']}',
+          );
           await _repo.insertAparatur(aparaturData);
           print('✅ [SAVE] Aparatur inserted');
         } else {
-          print('🔍 [SAVE] Updating aparatur (urutan $normalizedUrutan): ${item.id} - ${aparaturData['nama']}');
+          print(
+            '🔍 [SAVE] Updating aparatur (urutan $normalizedUrutan): ${item.id} - ${aparaturData['nama']}',
+          );
           await _repo.updateAparatur(item.id!, aparaturData);
           print('✅ [SAVE] Aparatur updated');
         }
@@ -1472,15 +1579,18 @@ class _EditBottomSheetState extends State<_EditBottomSheet>
       // Upload new photos dan update galeri_photos
       print('🔍 [SAVE] Processing photos...');
       final allPhotoPaths = List<String>.from(_existingPhotos);
-      
+
       if (_newPhotos.isNotEmpty) {
         print('🔍 [SAVE] Uploading ${_newPhotos.length} new photos...');
         setState(() => _uploadingPhoto = true);
-        
+
         for (final photo in _newPhotos) {
           try {
             final file = File(photo.path);
-            final uploadedPath = await _repo.uploadPhoto(widget.kodeWilayah, file);
+            final uploadedPath = await _repo.uploadPhoto(
+              widget.kodeWilayah,
+              file,
+            );
             allPhotoPaths.add(uploadedPath);
             print('✅ [SAVE] Photo uploaded: $uploadedPath');
           } catch (e) {
@@ -1488,13 +1598,15 @@ class _EditBottomSheetState extends State<_EditBottomSheet>
             // Continue dengan foto lainnya
           }
         }
-        
+
         setState(() => _uploadingPhoto = false);
       }
-      
+
       // Update galeri_photos di database
       if (allPhotoPaths.isNotEmpty || _newPhotos.isNotEmpty) {
-        print('🔍 [SAVE] Updating galeri_photos with ${allPhotoPaths.length} photos...');
+        print(
+          '🔍 [SAVE] Updating galeri_photos with ${allPhotoPaths.length} photos...',
+        );
         await _repo.updateGaleriPhotos(desaId, allPhotoPaths);
         print('✅ [SAVE] Galeri photos updated');
       }
@@ -1586,8 +1698,8 @@ class _AparaturItem {
     required String jabatan,
     required String nama,
     required this.urutan,
-  })  : jabatanCtl = TextEditingController(text: jabatan),
-        namaCtl = TextEditingController(text: nama);
+  }) : jabatanCtl = TextEditingController(text: jabatan),
+       namaCtl = TextEditingController(text: nama);
 }
 
 // Aparatur card widget
@@ -1658,34 +1770,43 @@ class _AparaturCardState extends State<_AparaturCard> {
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide(color: Colors.grey[300]!),
                       ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey[300]!),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF9333EA), width: 2),
-                        ),
-                        isDense: true,
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: isTablet ? 16 : 12,
-                          vertical: isTablet ? 14 : 12,
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: Color(0xFF9333EA),
+                          width: 2,
                         ),
                       ),
-                      items: const [
-                        DropdownMenuItem(value: 'perangkat', child: Text('Perangkat Desa')),
-                        DropdownMenuItem(value: 'rt', child: Text('Pengurus RT/RW')),
-                        DropdownMenuItem(value: 'bpd', child: Text('BPD')),
-                      ],
-                      onChanged: (val) {
-                        if (val != null) {
-                          setState(() {
-                            widget.item.kategori = val;
-                          });
-                        }
-                      },
+                      isDense: true,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: isTablet ? 16 : 12,
+                        vertical: isTablet ? 14 : 12,
+                      ),
                     ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'perangkat',
+                        child: Text('Perangkat Desa'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'rt',
+                        child: Text('Pengurus RT/RW'),
+                      ),
+                      DropdownMenuItem(value: 'bpd', child: Text('BPD')),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() {
+                          widget.item.kategori = val;
+                        });
+                      }
+                    },
                   ),
+                ),
                 IconButton(
                   onPressed: widget.onDelete,
                   icon: Icon(
@@ -1721,9 +1842,15 @@ class _AparaturCardState extends State<_AparaturCard> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF9333EA), width: 2),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF9333EA),
+                            width: 2,
+                          ),
                         ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
                       ),
                     ),
                   ),
@@ -1745,9 +1872,15 @@ class _AparaturCardState extends State<_AparaturCard> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF9333EA), width: 2),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF9333EA),
+                            width: 2,
+                          ),
                         ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
                       ),
                     ),
                   ),
@@ -1773,7 +1906,10 @@ class _AparaturCardState extends State<_AparaturCard> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFF9333EA), width: 2),
+                        borderSide: const BorderSide(
+                          color: Color(0xFF9333EA),
+                          width: 2,
+                        ),
                       ),
                       contentPadding: EdgeInsets.symmetric(
                         horizontal: 16,
@@ -1798,7 +1934,10 @@ class _AparaturCardState extends State<_AparaturCard> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFF9333EA), width: 2),
+                        borderSide: const BorderSide(
+                          color: Color(0xFF9333EA),
+                          width: 2,
+                        ),
                       ),
                       contentPadding: EdgeInsets.symmetric(
                         horizontal: 16,

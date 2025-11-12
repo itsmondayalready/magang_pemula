@@ -147,3 +147,53 @@ extension ResponsiveContext on BuildContext {
   // Max width helper
   double get maxContentWidth => Responsive.maxContentWidth(this);
 }
+
+/// Year picker widget for selecting year in menus
+class YearPicker extends StatelessWidget {
+  final int selectedYear;
+  final ValueChanged<int> onChanged;
+  final int startYear;
+  final int? endYear;
+
+  const YearPicker({
+    super.key,
+    required this.selectedYear,
+    required this.onChanged,
+    this.startYear = 2020,
+    this.endYear,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final currentYear = DateTime.now().year;
+    final effectiveEndYear = endYear ?? (currentYear + 1);
+    final years = List.generate(
+      effectiveEndYear - startYear + 1,
+      (i) => startYear + i,
+    ).reversed.toList(); // Start from latest year
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: DropdownButton<int>(
+        value: selectedYear,
+        isDense: true,
+        underline: const SizedBox.shrink(),
+        items: years.map((year) => DropdownMenuItem(
+          value: year,
+          child: Text(
+            '$year',
+            style: const TextStyle(fontSize: 14),
+          ),
+        )).toList(),
+        onChanged: (value) {
+          if (value != null) onChanged(value);
+        },
+      ),
+    );
+  }
+}

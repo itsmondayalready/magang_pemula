@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/kebencanaan_repository.dart';
-import '../utils/responsive.dart';
+import '../utils/responsive.dart' as responsive;
 
 class KebencanaanScreen extends StatefulWidget {
   const KebencanaanScreen({super.key});
@@ -21,6 +21,7 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
   bool _loading = false;
   String? _kodeWilayah; // simpan kode untuk kebutuhan edit
   bool _hasChanges = false; // Track if data has been modified
+  int _selectedYear = DateTime.now().year;
 
   late TabController _tabController;
 
@@ -65,6 +66,15 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
                     fontWeight: FontWeight.w800,
                   ),
                 ),
+                actions: [
+                  responsive.YearPicker(
+                    selectedYear: _selectedYear,
+                    onChanged: (year) {
+                      setState(() => _selectedYear = year);
+                      _load();
+                    },
+                  ),
+                ],
                 centerTitle: false,
                 shape: const RoundedRectangleBorder(
                   borderRadius: BorderRadius.only(
@@ -261,9 +271,9 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
       if (forceSnapshotId != null) {
         row = await _repo.fetchBySnapshotId(forceSnapshotId);
         // Jika fetch by id gagal (hapus atau id tidak ditemukan), fallback ke latest
-        row ??= await _repo.fetchLatest(kode, jenis: 'banjir');
+        row ??= await _repo.fetchLatest(kode, jenis: 'banjir', year: _selectedYear);
       } else {
-        row = await _repo.fetchLatest(kode, jenis: 'banjir');
+        row = await _repo.fetchLatest(kode, jenis: 'banjir', year: _selectedYear);
       }
       if (!mounted) return;
       if (row != null) {

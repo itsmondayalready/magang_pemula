@@ -130,14 +130,14 @@ class _MainMenuPageState extends State<MainMenuPage> {
         // Pendidikan: load data dari database
         final pendidikanRepo = PendidikanRepository();
         final pendidikanCounts = await pendidikanRepo.getCounts(_kodeWilayah);
-        
+
         // Hitung total negeri (SD, SMP, SMA, SMK)
         final sd = pendidikanCounts['SD'] ?? 0;
         final smp = pendidikanCounts['SMP'] ?? 0;
         final sma = pendidikanCounts['SMA'] ?? 0;
         final smk = pendidikanCounts['SMK'] ?? 0;
         _totalPendidikanNegeri = sd + smp + sma + smk;
-        
+
         // Hitung total swasta (PAUD, TK)
         final paud = pendidikanCounts['PAUD'] ?? 0;
         final tk = pendidikanCounts['TK'] ?? 0;
@@ -258,24 +258,18 @@ class _MainMenuPageState extends State<MainMenuPage> {
     final rtRwStr = (_totalRT != null && _totalRW != null)
         ? '$_totalRT/$_totalRW'
         : '—';
-    final pendudukStr = _latestPenduduk != null && _latestPenduduk! > 0
-        ? _latestPenduduk!.toString()
-        : '—';
-    final kkStr = _latestKK != null && _latestKK! > 0
-        ? _latestKK!.toString()
-        : '—';
-    final negeriStr = _totalPendidikanNegeri != null && _totalPendidikanNegeri! > 0
-        ? _totalPendidikanNegeri!.toString()
-        : '—';
-    final swastaStr = _totalPendidikanSwasta != null && _totalPendidikanSwasta! > 0
-        ? _totalPendidikanSwasta!.toString()
-        : '—';
-    final fasilitasStr = _totalFasilitas != null && _totalFasilitas! > 0
-        ? _totalFasilitas!.toString()
-        : '—';
-    final tenagaStr = _totalTenagaMedis != null && _totalTenagaMedis! > 0
-        ? _totalTenagaMedis!.toString()
-        : '—';
+    // Helper untuk menambahkan satuan jika nilai valid
+    String withSuffix(int? value, String suffix) {
+      if (value == null || value <= 0) return '—';
+      return '$value $suffix';
+    }
+
+    final pendudukStr = withSuffix(_latestPenduduk, 'orang');
+    final kkStr = withSuffix(_latestKK, 'Kepala keluarga');
+    final negeriStr = withSuffix(_totalPendidikanNegeri, 'sekolah negeri');
+    final swastaStr = withSuffix(_totalPendidikanSwasta, 'sekolah swasta');
+    final fasilitasStr = withSuffix(_totalFasilitas, 'fasilitas');
+    final tenagaStr = withSuffix(_totalTenagaMedis, 'tenaga medis');
     final summaryItems = <_SummaryItem>[
       _SummaryItem(
         title: 'Ringkasan Desa',
@@ -384,7 +378,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
                   color: Colors.white,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.08),
+                      color: Colors.black.withOpacity(0.08),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                       spreadRadius: 0,
@@ -429,7 +423,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
                 absorbing: true,
                 child: ColoredBox(
                   // Darker overlay so the loading state stands out more
-                  color: Colors.black.withValues(alpha: 0.18),
+                  color: Colors.black.withOpacity(0.18),
                   child: const Center(child: CircularProgressIndicator()),
                 ),
               ),
@@ -663,18 +657,17 @@ class _FeatureCard extends StatelessWidget {
   final _Feature feature;
   @override
   Widget build(BuildContext context) {
+    final parent = context.findAncestorStateOfType<_MainMenuPageState>();
     return InkWell(
       borderRadius: BorderRadius.circular(20),
       onTap: () async {
-        // Navigate via named route, passing current desa context as arguments
-        final parent = context.findAncestorStateOfType<_MainMenuPageState>();
         final args = {
           'kodeWilayah': parent?._kodeWilayah,
           'desaName': parent?._desaName,
         };
-        final result = await Navigator.of(context).pushNamed(feature.route, arguments: args);
-        
-        // Reload summary data only if there were changes (conditional refresh)
+        final result = await Navigator.of(
+          context,
+        ).pushNamed(feature.route, arguments: args);
         if (parent != null && parent.mounted && result == true) {
           parent._loadSummary();
         }
@@ -685,7 +678,7 @@ class _FeatureCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
+              color: Colors.black.withOpacity(0.08),
               blurRadius: 12,
               offset: const Offset(0, 6),
             ),
@@ -700,7 +693,7 @@ class _FeatureCard extends StatelessWidget {
                 children: [
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
+                      color: Colors.white.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     padding: const EdgeInsets.all(8),
@@ -743,7 +736,7 @@ class _Feature {
   });
 }
 
-// _AdminBadge removed — replaced by _AdminBadgeCompact for compact/consistent use
+// _AdminBadge removed — replaced by _RoleBadge for compact/consistent use
 
 // Compact variant of the admin badge used in the smaller header
 // Replaced by _RoleBadge above
@@ -756,9 +749,9 @@ class _RoleBadge extends StatelessWidget {
     final isAdmin = !(isGuest); // treat non-guest as admin for now
     final baseColor = isAdmin ? Colors.green : Colors.grey;
     final bgColor = isAdmin
-        ? baseColor.withValues(alpha: 0.16)
-        : baseColor.withValues(alpha: 0.08);
-    final borderColor = baseColor.withValues(alpha: 0.24);
+        ? baseColor.withOpacity(0.16)
+        : baseColor.withOpacity(0.08);
+    final borderColor = baseColor.withOpacity(0.24);
     final contentColor = isAdmin ? Colors.white : baseColor;
 
     return Container(
@@ -899,7 +892,7 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthService>(context);
     final isAdmin = !auth.isGuest;
-    
+
     return DraggableScrollableSheet(
       initialChildSize: 0.75,
       minChildSize: 0.5,
@@ -909,166 +902,165 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
         return Stack(
           children: [
             Column(
-          children: [
-            // Handle bar
-            Container(
-              margin: const EdgeInsets.only(top: 12, bottom: 8),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            // Header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Pilih Wilayah Desa',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${_filteredList.length} desa tersedia',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Search field
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: TextField(
-                controller: _searchController,
-                onChanged: _filterDesa,
-                decoration: InputDecoration(
-                  hintText: 'Cari nama desa, kecamatan, atau kode...',
-                  prefixIcon: const Icon(Icons.search_rounded),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear_rounded),
-                          onPressed: () {
-                            _searchController.clear();
-                            _filterDesa('');
-                          },
-                        )
-                      : null,
-                  filled: true,
-                  fillColor: Colors.grey.shade100,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    vertical: 12,
-                    horizontal: 16,
+              children: [
+                // Handle bar
+                Container(
+                  margin: const EdgeInsets.only(top: 12, bottom: 8),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Desa list
-            Expanded(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _filteredList.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.search_off_rounded,
-                            size: 64,
-                            color: Colors.grey.shade400,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Tidak ada desa ditemukan',
-                            style: TextStyle(
-                              color: Colors.grey.shade600,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
+                // Header
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Pilih Wilayah Desa',
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.w700),
                       ),
-                    )
-                  : ListView.separated(
-                      controller: scrollController,
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                      itemCount: _filteredList.length,
-                      separatorBuilder: (_, index) => const Divider(height: 1),
-                      itemBuilder: (context, index) {
-                        final desa = _filteredList[index];
-                        return ListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 8,
-                            horizontal: 12,
-                          ),
-                          leading: Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              gradient: _gradLogin,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(
-                              Icons.location_city_rounded,
-                              color: Colors.white,
-                            ),
-                          ),
-                          title: Text(
-                            desa.nama,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16,
-                            ),
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                      const SizedBox(height: 4),
+                      Text(
+                        '${_filteredList.length} desa tersedia',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Search field
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: _filterDesa,
+                    decoration: InputDecoration(
+                      hintText: 'Cari nama desa, kecamatan, atau kode...',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear_rounded),
+                              onPressed: () {
+                                _searchController.clear();
+                                _filterDesa('');
+                              },
+                            )
+                          : null,
+                      filled: true,
+                      fillColor: Colors.grey.shade100,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        vertical: 12,
+                        horizontal: 16,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Desa list
+                Expanded(
+                  child: _loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _filteredList.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              const SizedBox(height: 4),
-                              Text('Kec. ${desa.kecamatan} • ${desa.kode}'),
-                              if (desa.penduduk > 0) ...[
-                                const SizedBox(height: 2),
-                                Text(
-                                  '${desa.penduduk} penduduk',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey.shade600,
-                                  ),
+                              Icon(
+                                Icons.search_off_rounded,
+                                size: 64,
+                                color: Colors.grey.shade400,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Tidak ada desa ditemukan',
+                                style: TextStyle(
+                                  color: Colors.grey.shade600,
+                                  fontSize: 16,
                                 ),
-                              ],
+                              ),
                             ],
                           ),
-                          trailing: const Icon(Icons.chevron_right_rounded),
-                          onTap: () => Navigator.pop(context, desa),
-                        );
-                      },
-                    ),
-            ),
+                        )
+                      : ListView.separated(
+                          controller: scrollController,
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                          itemCount: _filteredList.length,
+                          separatorBuilder: (_, index) =>
+                              const Divider(height: 1),
+                          itemBuilder: (context, index) {
+                            final desa = _filteredList[index];
+                            return ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 8,
+                                horizontal: 12,
+                              ),
+                              leading: Container(
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  gradient: _gradLogin,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  Icons.location_city_rounded,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              title: Text(
+                                desa.nama,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: 4),
+                                  Text('Kec. ${desa.kecamatan} • ${desa.kode}'),
+                                  if (desa.penduduk > 0) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '${desa.penduduk} penduduk',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              trailing: const Icon(Icons.chevron_right_rounded),
+                              onTap: () => Navigator.pop(context, desa),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ), // End Column
+            // FAB for admin actions
+            if (isAdmin)
+              Positioned(
+                right: 20,
+                bottom: 20,
+                child: FloatingActionButton(
+                  onPressed: _openAdminActionsSheet,
+                  backgroundColor: const Color(0xFF2563EB),
+                  child: const Icon(Icons.add_rounded, color: Colors.white),
+                ),
+              ),
           ],
-        ), // End Column
-        
-        // FAB for admin actions
-        if (isAdmin)
-          Positioned(
-            right: 20,
-            bottom: 20,
-            child: FloatingActionButton(
-              onPressed: _openAdminActionsSheet,
-              backgroundColor: const Color(0xFF2563EB),
-              child: const Icon(Icons.add_rounded, color: Colors.white),
-            ),
-          ),
-        ],
-      );
+        );
       },
     );
   }
@@ -1129,21 +1121,28 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
       ),
       builder: (ctx) => const _AddDesaFormSheet(),
     );
-    
+
     if (result != null && mounted) {
       // Refresh list
-      await _load(search: _searchController.text.trim().isEmpty ? null : _searchController.text.trim());
-      
+      await _load(
+        search: _searchController.text.trim().isEmpty
+            ? null
+            : _searchController.text.trim(),
+      );
+
       // Show success
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('✅ Desa berhasil ditambahkan')),
         );
-        
+
         // Close picker and return new desa
         final kode = result['kode'] ?? '';
         final nama = result['nama'] ?? '';
-        Navigator.pop(context, _DesaData(nama: nama, kode: kode, kecamatan: '', penduduk: 0));
+        Navigator.pop(
+          context,
+          _DesaData(nama: nama, kode: kode, kecamatan: '', penduduk: 0),
+        );
       }
     }
   }
@@ -1151,7 +1150,7 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
   Future<void> _showEditFlow() async {
     final chosen = await _pickDesa(title: 'Pilih Desa untuk Diedit');
     if (chosen == null) return;
-    
+
     final result = await showModalBottomSheet<Map<String, String>?>(
       context: context,
       isScrollControlled: true,
@@ -1165,19 +1164,26 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
         initialKecamatan: chosen.kecamatan,
       ),
     );
-    
+
     if (result != null && mounted) {
-      await _load(search: _searchController.text.trim().isEmpty ? null : _searchController.text.trim());
-      
+      await _load(
+        search: _searchController.text.trim().isEmpty
+            ? null
+            : _searchController.text.trim(),
+      );
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('✅ Desa berhasil diperbarui')),
         );
-        
+
         // Close picker and return edited desa
         final kode = result['kode'] ?? '';
         final nama = result['nama'] ?? '';
-        Navigator.pop(context, _DesaData(nama: nama, kode: kode, kecamatan: '', penduduk: 0));
+        Navigator.pop(
+          context,
+          _DesaData(nama: nama, kode: kode, kecamatan: '', penduduk: 0),
+        );
       }
     }
   }
@@ -1185,7 +1191,7 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
   Future<void> _showDeleteFlow() async {
     final chosen = await _pickDesa(title: 'Pilih Desa untuk Dihapus');
     if (chosen == null) return;
-    
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dctx) => AlertDialog(
@@ -1206,22 +1212,26 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
         ],
       ),
     );
-    
+
     if (confirmed != true) return;
 
     try {
       await _repo.deleteDesaByKode(chosen.kode);
-      await _load(search: _searchController.text.trim().isEmpty ? null : _searchController.text.trim());
-      
+      await _load(
+        search: _searchController.text.trim().isEmpty
+            ? null
+            : _searchController.text.trim(),
+      );
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('✅ Desa berhasil dihapus')),
         );
-        
+
         // Check if deleted desa is currently active
         final parent = context.findAncestorStateOfType<_MainMenuPageState>();
         final needSwitch = parent != null && parent._kodeWilayah == chosen.kode;
-        
+
         if (needSwitch) {
           // Switch to default desa
           try {
@@ -1229,20 +1239,36 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
             if (fallback != null) {
               final newKode = (fallback['kode_wilayah'] ?? '') as String;
               final newNama = (fallback['nama'] ?? 'Desa') as String;
-              Navigator.pop(context, _DesaData(nama: newNama, kode: newKode, kecamatan: '', penduduk: 0));
+              Navigator.pop(
+                context,
+                _DesaData(
+                  nama: newNama,
+                  kode: newKode,
+                  kecamatan: '',
+                  penduduk: 0,
+                ),
+              );
               return;
             }
           } catch (_) {}
         }
-        
+
         // Just refresh without switching
-        Navigator.pop(context, const _DesaData(nama: '__RELOAD__', kode: '__RELOAD__', kecamatan: '', penduduk: 0));
+        Navigator.pop(
+          context,
+          const _DesaData(
+            nama: '__RELOAD__',
+            kode: '__RELOAD__',
+            kecamatan: '',
+            penduduk: 0,
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ Gagal menghapus: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('❌ Gagal menghapus: $e')));
       }
     }
   }
@@ -1427,9 +1453,7 @@ class _SummaryCarouselState extends State<_SummaryCarousel> {
               decoration: BoxDecoration(
                 color: i == _index
                     ? Theme.of(context).colorScheme.primary
-                    : Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.2),
+                    : Theme.of(context).colorScheme.onSurface.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(999),
               ),
             ),
@@ -1533,7 +1557,7 @@ class _SummaryCard extends StatelessWidget {
               height: iconSize,
               width: iconSize,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
+                color: Colors.white.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(context.rs(12)),
               ),
               child: Icon(data.icon, color: Colors.white, size: context.rs(24)),
@@ -1563,7 +1587,7 @@ class _SummaryPill extends StatelessWidget {
         vertical: context.rs(8),
       ),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.15),
+        color: Colors.white.withOpacity(0.15),
         borderRadius: BorderRadius.circular(context.rs(12)),
       ),
       child: Row(
@@ -1646,7 +1670,7 @@ class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return Container(
       decoration: BoxDecoration(
         color: colorScheme.surface,
@@ -1674,22 +1698,38 @@ class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
                           ),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(Icons.add_location_alt_rounded, color: Colors.white, size: 24),
+                        child: const Icon(
+                          Icons.add_location_alt_rounded,
+                          color: Colors.white,
+                          size: 24,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       const Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Tambah Desa Baru', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                            Text('Isi data desa dengan lengkap', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                            Text(
+                              'Tambah Desa Baru',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              'Isi data desa dengan lengkap',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey,
+                              ),
+                            ),
                           ],
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 24),
-                  
+
                   // Error message
                   if (_error != null) ...[
                     Container(
@@ -1697,16 +1737,24 @@ class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
                       decoration: BoxDecoration(
                         color: colorScheme.errorContainer,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: colorScheme.error.withOpacity(0.3)),
+                        border: Border.all(
+                          color: colorScheme.error.withOpacity(0.3),
+                        ),
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.error_outline_rounded, color: colorScheme.error),
+                          Icon(
+                            Icons.error_outline_rounded,
+                            color: colorScheme.error,
+                          ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
                               _error!,
-                              style: TextStyle(color: colorScheme.onErrorContainer, fontWeight: FontWeight.w500),
+                              style: TextStyle(
+                                color: colorScheme.onErrorContainer,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
                         ],
@@ -1714,28 +1762,31 @@ class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
                     ),
                     const SizedBox(height: 20),
                   ],
-                  
+
                   // Form fields
                   _buildSimpleTextField(
                     controller: _kodeCtrl,
                     label: 'Kode Wilayah',
                     hint: 'Contoh: 6303052009',
                     keyboardType: TextInputType.number,
-                    validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
+                    validator: (v) =>
+                        v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
                   ),
                   const SizedBox(height: 16),
                   _buildSimpleTextField(
                     controller: _namaCtrl,
                     label: 'Nama Desa',
                     hint: 'Contoh: Sungai Kupang',
-                    validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
+                    validator: (v) =>
+                        v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
                   ),
                   const SizedBox(height: 16),
                   _buildSimpleTextField(
                     controller: _kecamatanCtrl,
                     label: 'Kecamatan',
                     hint: 'Contoh: Kuripan',
-                    validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
+                    validator: (v) =>
+                        v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
                   ),
                   const SizedBox(height: 16),
                   _buildSimpleTextField(
@@ -1754,19 +1805,23 @@ class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
                     onFieldSubmitted: (_) => _submit(),
                   ),
                   const SizedBox(height: 28),
-                  
+
                   // Action buttons
                   Row(
                     children: [
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: _submitting ? null : () => Navigator.pop(context, null),
+                          onPressed: _submitting
+                              ? null
+                              : () => Navigator.pop(context, null),
                           icon: const Icon(Icons.close_rounded),
                           label: const Text('Batal'),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             side: BorderSide(color: Colors.grey.shade300),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                         ),
                       ),
@@ -1779,14 +1834,19 @@ class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
                               ? const SizedBox(
                                   width: 18,
                                   height: 18,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
                                 )
                               : const Icon(Icons.save_rounded),
                           label: Text(_submitting ? 'Menyimpan...' : 'Simpan'),
                           style: FilledButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             backgroundColor: const Color(0xFF6366F1),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                         ),
                       ),
@@ -1801,49 +1861,52 @@ class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
     );
   }
 
-// Shared simple text field builder for Add/Edit Desa forms
-Widget _buildSimpleTextField({
-  required TextEditingController controller,
-  required String label,
-  required String hint,
-  TextInputType? keyboardType,
-  TextInputAction? textInputAction,
-  String? Function(String?)? validator,
-  void Function(String)? onFieldSubmitted,
-  bool readOnly = false,
-}) {
-  return TextFormField(
-    controller: controller,
-    decoration: InputDecoration(
-      labelText: label,
-      hintText: hint,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey.shade300),
+  // Shared simple text field builder for Add/Edit Desa forms
+  Widget _buildSimpleTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    TextInputType? keyboardType,
+    TextInputAction? textInputAction,
+    String? Function(String?)? validator,
+    void Function(String)? onFieldSubmitted,
+    bool readOnly = false,
+  }) {
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red),
+        ),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
       ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey.shade300),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.red),
-      ),
-      filled: true,
-      fillColor: Colors.grey.shade50,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-    ),
-    keyboardType: keyboardType,
-    textInputAction: textInputAction ?? TextInputAction.next,
-    validator: validator,
-    onFieldSubmitted: onFieldSubmitted,
-    readOnly: readOnly,
-  );
-}
+      keyboardType: keyboardType,
+      textInputAction: textInputAction ?? TextInputAction.next,
+      validator: validator,
+      onFieldSubmitted: onFieldSubmitted,
+      readOnly: readOnly,
+    );
+  }
 }
 
 // =========================
@@ -1890,13 +1953,17 @@ class _EditDesaFormSheetState extends State<_EditDesaFormSheet> {
 
   Future<void> _init() async {
     if (widget.initialNama != null) _namaCtrl.text = widget.initialNama!;
-    if (widget.initialKecamatan != null) _kecamatanCtrl.text = widget.initialKecamatan!;
+    if (widget.initialKecamatan != null)
+      _kecamatanCtrl.text = widget.initialKecamatan!;
 
     try {
-      final detail = await DesaRepository().fetchDesaDetailByKode(widget.kodeWilayah);
+      final detail = await DesaRepository().fetchDesaDetailByKode(
+        widget.kodeWilayah,
+      );
       if (detail != null && mounted) {
         _namaCtrl.text = (detail['nama'] ?? _namaCtrl.text) as String;
-        _kecamatanCtrl.text = (detail['kecamatan'] ?? _kecamatanCtrl.text) as String;
+        _kecamatanCtrl.text =
+            (detail['kecamatan'] ?? _kecamatanCtrl.text) as String;
         _kabupatenCtrl.text = (detail['kabupaten'] ?? '') as String;
         _provinsiCtrl.text = (detail['provinsi'] ?? '') as String;
       }
@@ -1934,7 +2001,7 @@ class _EditDesaFormSheetState extends State<_EditDesaFormSheet> {
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return Container(
       decoration: BoxDecoration(
         color: colorScheme.surface,
@@ -1965,21 +2032,38 @@ class _EditDesaFormSheetState extends State<_EditDesaFormSheet> {
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
                                 gradient: const LinearGradient(
-                                  colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                                  colors: [
+                                    Color(0xFF6366F1),
+                                    Color(0xFF8B5CF6),
+                                  ],
                                 ),
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: const Icon(Icons.edit_location_alt_rounded, color: Colors.white, size: 24),
+                              child: const Icon(
+                                Icons.edit_location_alt_rounded,
+                                color: Colors.white,
+                                size: 24,
+                              ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text('Edit Desa', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                                  const Text(
+                                    'Edit Desa',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                   Text(
                                     'Kode: ${widget.kodeWilayah}',
-                                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.grey.shade600,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -1987,7 +2071,7 @@ class _EditDesaFormSheetState extends State<_EditDesaFormSheet> {
                           ],
                         ),
                         const SizedBox(height: 24),
-                        
+
                         // Error message
                         if (_error != null) ...[
                           Container(
@@ -1995,16 +2079,24 @@ class _EditDesaFormSheetState extends State<_EditDesaFormSheet> {
                             decoration: BoxDecoration(
                               color: colorScheme.errorContainer,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: colorScheme.error.withOpacity(0.3)),
+                              border: Border.all(
+                                color: colorScheme.error.withOpacity(0.3),
+                              ),
                             ),
                             child: Row(
                               children: [
-                                Icon(Icons.error_outline_rounded, color: colorScheme.error),
+                                Icon(
+                                  Icons.error_outline_rounded,
+                                  color: colorScheme.error,
+                                ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
                                     _error!,
-                                    style: TextStyle(color: colorScheme.onErrorContainer, fontWeight: FontWeight.w500),
+                                    style: TextStyle(
+                                      color: colorScheme.onErrorContainer,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -2012,20 +2104,24 @@ class _EditDesaFormSheetState extends State<_EditDesaFormSheet> {
                           ),
                           const SizedBox(height: 20),
                         ],
-                        
+
                         // Form fields
                         _buildSimpleTextField(
                           controller: _namaCtrl,
                           label: 'Nama Desa',
                           hint: 'Contoh: Sungai Kupang',
-                          validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
+                          validator: (v) => v == null || v.trim().isEmpty
+                              ? 'Wajib diisi'
+                              : null,
                         ),
                         const SizedBox(height: 16),
                         _buildSimpleTextField(
                           controller: _kecamatanCtrl,
                           label: 'Kecamatan',
                           hint: 'Contoh: Kuripan',
-                          validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
+                          validator: (v) => v == null || v.trim().isEmpty
+                              ? 'Wajib diisi'
+                              : null,
                         ),
                         const SizedBox(height: 16),
                         _buildSimpleTextField(
@@ -2044,19 +2140,25 @@ class _EditDesaFormSheetState extends State<_EditDesaFormSheet> {
                           onFieldSubmitted: (_) => _submit(),
                         ),
                         const SizedBox(height: 28),
-                        
+
                         // Action buttons
                         Row(
                           children: [
                             Expanded(
                               child: OutlinedButton.icon(
-                                onPressed: _saving ? null : () => Navigator.pop(context, null),
+                                onPressed: _saving
+                                    ? null
+                                    : () => Navigator.pop(context, null),
                                 icon: const Icon(Icons.close_rounded),
                                 label: const Text('Batal'),
                                 style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
                                   side: BorderSide(color: Colors.grey.shade300),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
                                 ),
                               ),
                             ),
@@ -2069,14 +2171,23 @@ class _EditDesaFormSheetState extends State<_EditDesaFormSheet> {
                                     ? const SizedBox(
                                         width: 18,
                                         height: 18,
-                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
                                       )
                                     : const Icon(Icons.save_rounded),
-                                label: Text(_saving ? 'Menyimpan...' : 'Simpan'),
+                                label: Text(
+                                  _saving ? 'Menyimpan...' : 'Simpan',
+                                ),
                                 style: FilledButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
                                   backgroundColor: const Color(0xFF6366F1),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
                                 ),
                               ),
                             ),
@@ -2123,7 +2234,12 @@ class _SelectDesaSheet extends StatelessWidget {
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-              child: Text(title, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
+              child: Text(
+                title,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
             Expanded(
               child: ListView.separated(
@@ -2141,9 +2257,15 @@ class _SelectDesaSheet extends StatelessWidget {
                         gradient: _gradLogin,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.home_rounded, color: Colors.white),
+                      child: const Icon(
+                        Icons.home_rounded,
+                        color: Colors.white,
+                      ),
                     ),
-                    title: Text(desa.nama, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    title: Text(
+                      desa.nama,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
                     subtitle: Text('Kec. ${desa.kecamatan} • ${desa.kode}'),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: () => Navigator.pop(context, desa),

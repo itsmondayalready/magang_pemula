@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/infrastruktur_repository_single.dart';
-import '../utils/responsive.dart';
+import '../utils/responsive.dart' as resp;
 
 class InfrastrukturScreen extends StatefulWidget {
   const InfrastrukturScreen({super.key});
@@ -22,6 +22,7 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
   String? _error;
   String? _kodeWilayah; // track current kode for save
   String? _desaId; // desa id for desa_id-based upserts
+  int _selectedYear = DateTime.now().year;
 
   // Data state yang akan diisi dari repository (tanpa hardcoded)
   final Map<String, dynamic> _data = {
@@ -83,7 +84,7 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
   }
 
   Future<void> _loadFromRepo(String kode) async {
-    final year = DateTime.now().year;
+    final year = _selectedYear;
 
     // Pendidikan
     final pendidikan = await _repo.getPendidikan(kode, year: year);
@@ -206,10 +207,29 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
                 elevation: 0,
                 backgroundColor: Colors.transparent,
                 toolbarHeight: 56,
-                title: const _AppBarTitle(
-                  title: 'Infrastruktur Desa',
-                  subtitle:
-                      'Pendidikan • Kesehatan • Transportasi • Komunikasi • Sanitasi',
+                title: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const _AppBarTitle(
+                      title: 'Infrastruktur Desa',
+                      subtitle:
+                          'Pendidikan • Kesehatan • Transportasi • Komunikasi • Sanitasi',
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 40,
+                      child: resp.YearPicker(
+                        selectedYear: _selectedYear,
+                        onChanged: (year) {
+                          setState(() {
+                            _selectedYear = year;
+                            _loading = true;
+                          });
+                          _loadFromRepo(_kodeWilayah!);
+                        },
+                      ),
+                    ),
+                  ],
                 ),
                 centerTitle: false,
                 shape: const RoundedRectangleBorder(

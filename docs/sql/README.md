@@ -1,30 +1,63 @@
-# SQL Seeds for Kebencanaan
+# SQL Seeds and Migrations
 
-This folder contains SQL scripts to seed normalized kebencanaan tables in Supabase.
+This folder contains SQL scripts for seeding and migrating the Supabase database used by the Flutter application.
 
-Tables used (normalized):
-- public.kebencanaan_rekap
-- public.kebencanaan_rt
-- public.kebencanaan_bantuan
-- public.kebencanaan_penanganan
+## Files
 
-## How to run
+### Seed Files
+- `kebencanaan_seed_6969.sql` - Sample kebencanaan data for desa code 6969
+- `kebencanaan_seed_69696969.sql` - Sample kebencanaan data for desa code 69696969
+
+## Year Selection Migration
+
+**⚠️ IMPORTANT: Run the year migration BEFORE using the year selection feature**
+
+The year selection feature requires specific database columns to work properly. Use the `supabase_year_migration.sql` file in the project root.
+
+### Tables and Required Columns
+- `kependudukan` - `tahun` (INTEGER) - already exists
+- `kesehatan` - `tahun` (INTEGER) - already exists
+- `infrastruktur` - `year` (INTEGER) - already exists
+- `pendidikan` - `year` (INTEGER) - already exists
+- `kebencanaan_rekap` - `period_end` (DATE) - already exists
+- `aparatur_desa` - `year` (INTEGER) - **needs to be added**
+- `desa_profile` - `year` (INTEGER) - **needs to be added**
+
+### Running the Migration
+
+1. Copy the content of `supabase_year_migration.sql` from the project root
+2. Go to your Supabase Dashboard → SQL → New Query
+3. Paste and run the script
+
+### Verification
+
+After running the migration, verify that all tables have the required columns by running the verification query included at the bottom of the migration file.
+
+## Kebencanaan Seeds
+
+The kebencanaan seed files populate normalized kebencanaan tables with sample data.
+
+### Tables Used
+- `public.kebencanaan_rekap` - Summary data
+- `public.kebencanaan_rt` - RT-level details
+- `public.kebencanaan_bantuan` - Aid distribution
+- `public.kebencanaan_penanganan` - Handling procedures
+
+### Running Seeds
 
 Option A — Supabase SQL Editor:
-1. Open your Supabase project Dashboard.
-2. Go to SQL > New query.
-3. Paste the content of the desired seed file (e.g., `kebencanaan_seed_69696969.sql`).
-4. Run. If RLS is enabled, the Dashboard SQL editor uses a service role and should succeed.
+1. Open your Supabase project Dashboard
+2. Go to SQL > New query
+3. Paste the content of the desired seed file
+4. Run
 
-Option B — psql (service role):
-- Ensure your `DATABASE_URL` (service role) is set. Then:
-
+Option B — psql:
 ```bash
 psql "$DATABASE_URL" -f docs/sql/kebencanaan_seed_69696969.sql
 ```
 
 ## Notes
-- The script expects a row in `public.desa` with the matching `kode_wilayah`. If it's missing, create it first or adjust the script to insert it.
-- The app queries with `jenis='banjir'` by default, so seeds use `banjir`.
-- If you have RLS enabled for these tables and want to read the data from the app, ensure you have `SELECT` policies that allow your anon key to read rows for the target desa.
-- Feel free to duplicate an existing seed and adjust values (periode, RT rows, bantuan items, penanganan steps).
+- Ensure the target `desa` record exists before running seeds
+- The app queries with `jenis='banjir'` by default
+- If RLS is enabled, ensure proper policies are set
+- Year migration must be run before using year selection features

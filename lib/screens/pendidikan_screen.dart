@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/infrastruktur_repository_single.dart';
 import '../services/notes_repository.dart';
-import '../utils/responsive.dart';
+import '../utils/responsive.dart' as responsive;
 import '../utils/pendidikan_constants.dart';
 
 class PendidikanScreen extends StatefulWidget {
@@ -25,6 +25,7 @@ class _PendidikanScreenState extends State<PendidikanScreen>
   String? _error;
   String? _kodeWilayah;
   String? _desaId;
+  int _selectedYear = DateTime.now().year;
   final Map<String, dynamic> _data = {
     'negeri': <String, int>{},
     'swasta': <Map<String, dynamic>>[],
@@ -78,8 +79,7 @@ class _PendidikanScreenState extends State<PendidikanScreen>
   }
 
   Future<void> _loadFromRepo(String kode) async {
-    final year = DateTime.now().year;
-    final pend = await _repo.getPendidikan(kode, year: year);
+    final pend = await _repo.getPendidikan(kode, year: _selectedYear);
 
     final negeri = <String, int>{
       for (final e in pend.entries)
@@ -122,8 +122,7 @@ class _PendidikanScreenState extends State<PendidikanScreen>
 
   Future<void> _loadNotes(String kode) async {
     try {
-      final year = DateTime.now().year;
-      final notes = await _notesRepo.getPendidikanNotes(kode, year: year);
+      final notes = await _notesRepo.getPendidikanNotes(kode, year: _selectedYear);
       _notesBySection.clear();
       for (final n in notes) {
         final section = (n['section'] as String).toLowerCase();
@@ -208,6 +207,15 @@ class _PendidikanScreenState extends State<PendidikanScreen>
                     fontWeight: FontWeight.w800,
                   ),
                 ),
+                actions: [
+                  responsive.YearPicker(
+                    selectedYear: _selectedYear,
+                    onChanged: (year) {
+                      setState(() => _selectedYear = year);
+                      _initAndLoad();
+                    },
+                  ),
+                ],
                 centerTitle: false,
                 shape: const RoundedRectangleBorder(
                   borderRadius: BorderRadius.only(
@@ -771,8 +779,7 @@ class _PendidikanScreenState extends State<PendidikanScreen>
     
     final kode = _kodeWilayah!;
     final desaId = _desaId!;
-    final year = DateTime.now().year;
-    final pend = await _repo.getPendidikan(kode, year: year);
+    final pend = await _repo.getPendidikan(kode, year: _selectedYear);
 
     final items = pend.entries
         .map(
@@ -1006,7 +1013,7 @@ class _PendidikanScreenState extends State<PendidikanScreen>
                                 if (item.removed) {
                                   await _repo.deleteMetric(
                                     kodeWilayah: kode,
-                                    year: year,
+                                    year: _selectedYear,
                                     domain: 'pendidikan',
                                     jenis: item.originalLabel,
                                     metricName: 'jumlah',
@@ -1021,7 +1028,7 @@ class _PendidikanScreenState extends State<PendidikanScreen>
                                 await _repo.upsertMetric(
                                   kodeWilayah: kode,
                                   desaId: desaId,
-                                  year: year,
+                                  year: _selectedYear,
                                   domain: 'pendidikan',
                                   jenis: label,
                                   metricName: 'jumlah',
@@ -1031,7 +1038,7 @@ class _PendidikanScreenState extends State<PendidikanScreen>
                                 if (label != item.originalLabel) {
                                   await _repo.deleteMetric(
                                     kodeWilayah: kode,
-                                    year: year,
+                                    year: _selectedYear,
                                     domain: 'pendidikan',
                                     jenis: item.originalLabel,
                                     metricName: 'jumlah',
@@ -1051,7 +1058,7 @@ class _PendidikanScreenState extends State<PendidikanScreen>
                                 await _notesRepo.upsertPendidikanNote(
                                   kodeWilayah: kode,
                                   desaId: desaId,
-                                  year: year,
+                                  year: _selectedYear,
                                   section: section,
                                   title: title.isEmpty ? 'Catatan' : title,
                                   paras: paras,

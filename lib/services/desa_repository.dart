@@ -410,6 +410,239 @@ class DesaRepository {
       throw Exception('Error updating galeri photos: $e');
     }
   }
+
+  // ===== YEAR-BASED FETCH METHODS =====
+
+  // Kependudukan by year
+  Future<List<Map<String, dynamic>>> fetchKependudukanByYear(String kodeWilayah, int year) async {
+    try {
+      final desa = await _db.from('desa').select('id').eq('kode_wilayah', kodeWilayah).maybeSingle();
+      if (desa == null) return [];
+      final desaId = desa['id'] as String;
+      final response = await _db
+          .from('kependudukan')
+          .select('*')
+          .eq('desa_id', desaId)
+          .eq('tahun', year)
+          .order('periode_date', ascending: false);
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      debugPrint('❌ Error fetching kependudukan by year: $e');
+      return [];
+    }
+  }
+
+  // Kesehatan by year
+  Future<List<Map<String, dynamic>>> fetchKesehatanByYear(String kodeWilayah, int year) async {
+    try {
+      final desa = await _db.from('desa').select('id').eq('kode_wilayah', kodeWilayah).maybeSingle();
+      if (desa == null) return [];
+      final desaId = desa['id'] as String;
+      final response = await _db
+          .from('kesehatan')
+          .select('*')
+          .eq('desa_id', desaId)
+          .eq('tahun', year)
+          .order('periode_date', ascending: false);
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      debugPrint('❌ Error fetching kesehatan by year: $e');
+      return [];
+    }
+  }
+
+  // Infrastruktur by year
+  Future<List<Map<String, dynamic>>> fetchInfrastrukturByYear(String kodeWilayah, int year) async {
+    try {
+      final response = await _db
+          .from('infrastruktur')
+          .select('*')
+          .eq('kode_wilayah', kodeWilayah)
+          .eq('year', year)
+          .order('created_at', ascending: false);
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      debugPrint('❌ Error fetching infrastruktur by year: $e');
+      return [];
+    }
+  }
+
+  // Pendidikan by year
+  Future<List<Map<String, dynamic>>> fetchPendidikanByYear(String kodeWilayah, int year) async {
+    try {
+      final response = await _db
+          .from('pendidikan')
+          .select('*')
+          .eq('kode_wilayah', kodeWilayah)
+          .eq('year', year)
+          .order('created_at', ascending: false);
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      debugPrint('❌ Error fetching pendidikan by year: $e');
+      return [];
+    }
+  }
+
+  // Kebencanaan by year
+  Future<List<Map<String, dynamic>>> fetchKebencanaanByYear(String kodeWilayah, int year) async {
+    try {
+      final desa = await _db.from('desa').select('id').eq('kode_wilayah', kodeWilayah).maybeSingle();
+      if (desa == null) return [];
+      final desaId = desa['id'] as String;
+      final response = await _db
+          .from('kebencanaan_rekap')
+          .select('*')
+          .eq('desa_id', desaId)
+          .eq('year', year)
+          .order('created_at', ascending: false);
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      debugPrint('❌ Error fetching kebencanaan by year: $e');
+      return [];
+    }
+  }
+
+  // Aparatur by year (untuk Profil Desa)
+  Future<List<Map<String, dynamic>>> fetchAparaturByYear(String kodeWilayah, int year) async {
+    try {
+      final desa = await _db.from('desa').select('id').eq('kode_wilayah', kodeWilayah).maybeSingle();
+      if (desa == null) return [];
+      final desaId = desa['id'] as String;
+      final response = await _db
+          .from('aparatur_desa')
+          .select('*')
+          .eq('desa_id', desaId)
+          .eq('year', year)
+          .order('urutan', ascending: true)
+          .order('created_at', ascending: true);
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      debugPrint('❌ Error fetching aparatur by year: $e');
+      return [];
+    }
+  }
+
+  // Desa profile by year (untuk Profil Desa)
+  Future<Map<String, dynamic>?> fetchDesaProfileByYear(String kodeWilayah, int year) async {
+    try {
+      final desa = await _db.from('desa').select('id').eq('kode_wilayah', kodeWilayah).maybeSingle();
+      if (desa == null) return null;
+      final desaId = desa['id'] as String;
+      final response = await _db
+          .from('desa_profile')
+          .select('*')
+          .eq('desa_id', desaId)
+          .eq('year', year)
+          .maybeSingle();
+      return response != null ? Map<String, dynamic>.from(response) : null;
+    } catch (e) {
+      debugPrint('❌ Error fetching desa profile by year: $e');
+      return null;
+    }
+  }
+
+  // Update desa profile by year
+  Future<void> updateDesaProfileByYear(String desaId, int year, Map<String, dynamic> data) async {
+    data['year'] = year;
+    await _db.from('desa_profile').upsert(data, onConflict: 'desa_id,year');
+  }
+
+  // Insert/Update kependudukan by year
+  Future<void> upsertKependudukan(String kodeWilayah, int year, Map<String, dynamic> data) async {
+    final desa = await _db.from('desa').select('id').eq('kode_wilayah', kodeWilayah).maybeSingle();
+    if (desa == null) throw Exception('Desa tidak ditemukan');
+    final desaId = desa['id'] as String;
+
+    data['desa_id'] = desaId;
+    data['tahun'] = year;
+    data['periode_date'] = data['periode_date'] ?? DateTime(year, 12, 31); // Default to end of year
+
+    await _db.from('kependudukan').upsert(data, onConflict: 'desa_id,tahun');
+  }
+
+  // Update pendidikan kependudukan (simplified - assuming single record per desa/year)
+  Future<void> updatePendidikanKependudukan(String kodeWilayah, int year, Map<String, int> pendidikanData) async {
+    final desa = await _db.from('desa').select('id').eq('kode_wilayah', kodeWilayah).maybeSingle();
+    if (desa == null) throw Exception('Desa tidak ditemukan');
+    final desaId = desa['id'] as String;
+
+    // Get kependudukan record for this desa/year
+    final kependudukan = await _db.from('kependudukan').select('id').eq('desa_id', desaId).eq('tahun', year).maybeSingle();
+    if (kependudukan == null) throw Exception('Data kependudukan tidak ditemukan untuk tahun $year');
+
+    final kependudukanId = kependudukan['id'] as String;
+
+    // For each pendidikan category, upsert to kependudukan_pendidikan
+    for (final entry in pendidikanData.entries) {
+      await _db.from('kependudukan_pendidikan').upsert({
+        'kependudukan_id': kependudukanId,
+        'kategori': entry.key,
+        'jumlah': entry.value,
+      });
+    }
+  }
+
+  // Update pekerjaan kependudukan
+  Future<void> updatePekerjaanKependudukan(String kodeWilayah, int year, Map<String, int> pekerjaanData) async {
+    final desa = await _db.from('desa').select('id').eq('kode_wilayah', kodeWilayah).maybeSingle();
+    if (desa == null) throw Exception('Desa tidak ditemukan');
+    final desaId = desa['id'] as String;
+
+    // Get kependudukan record for this desa/year
+    final kependudukan = await _db.from('kependudukan').select('id').eq('desa_id', desaId).eq('tahun', year).maybeSingle();
+    if (kependudukan == null) throw Exception('Data kependudukan tidak ditemukan untuk tahun $year');
+
+    final kependudukanId = kependudukan['id'] as String;
+
+    // For each pekerjaan, upsert to kependudukan_pekerjaan
+    for (final entry in pekerjaanData.entries) {
+      final pekerjaan = await _db.from('ref_pekerjaan').select('id').eq('nama', entry.key).maybeSingle();
+      if (pekerjaan != null) {
+        await _db.from('kependudukan_pekerjaan').upsert({
+          'kependudukan_id': kependudukanId,
+          'pekerjaan_id': pekerjaan['id'],
+          'jumlah': entry.value,
+        });
+      }
+    }
+  }
+
+  // Upsert header kependudukan
+  Future<void> upsertHeader({
+    required String kodeWilayah,
+    required int totalPenduduk,
+    required int totalKK,
+    required int lakiLaki,
+    required int perempuan,
+    required int produktifBekerja,
+    required int produktifTidak,
+  }) async {
+    final data = {
+      'total_penduduk': totalPenduduk,
+      'total_kk': totalKK,
+      'laki_laki': lakiLaki,
+      'perempuan': perempuan,
+      'produktif_bekerja': produktifBekerja,
+      'produktif_tidak': produktifTidak,
+    };
+    await upsertKependudukan(kodeWilayah, DateTime.now().year, data);
+  }
+
+  // Update pendidikan (alias for updatePendidikanKependudukan)
+  Future<void> updatePendidikan({
+    required String kodeWilayah,
+    required Map<String, int> pendidikanData,
+  }) async {
+    await updatePendidikanKependudukan(kodeWilayah, DateTime.now().year, pendidikanData);
+  }
+
+  // Update pekerjaan (alias for updatePekerjaanKependudukan)
+  Future<void> updatePekerjaan({
+    required String kodeWilayah,
+    required Map<String, int> pekerjaanData,
+  }) async {
+    await updatePekerjaanKependudukan(kodeWilayah, DateTime.now().year, pekerjaanData);
+  }
 }
 
 // Model class for desa photos

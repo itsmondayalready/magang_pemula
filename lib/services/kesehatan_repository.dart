@@ -4,11 +4,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class KesehatanRepository {
   final SupabaseClient _db = Supabase.instance.client;
 
-  /// Ambil data kesehatan terbaru berdasarkan kode_wilayah
+  /// Ambil data kesehatan terbaru berdasarkan kode_wilayah dan tahun
   /// Mengembalikan map dengan semua field fasilitas dan tenaga medis
-  Future<Map<String, dynamic>?> fetchLatest(String kodeWilayah) async {
+  Future<Map<String, dynamic>?> fetchLatest(String kodeWilayah, {int? year}) async {
     try {
-      print('fetchLatest kesehatan untuk kode: $kodeWilayah');
+      print('fetchLatest kesehatan untuk kode: $kodeWilayah, tahun: $year');
       final desa = await _db
           .from('desa')
           .select('id')
@@ -21,17 +21,23 @@ class KesehatanRepository {
       final desaId = desa['id'] as String;
       print('Desa ID: $desaId');
 
-      // Ambil data terbaru dari view atau langsung dari tabel
-      final List rows = await _db
+      // Query dengan filter tahun jika disediakan
+      var query = _db
           .from('kesehatan')
           .select()
-          .eq('desa_id', desaId)
+          .eq('desa_id', desaId);
+
+      if (year != null) {
+        query = query.eq('tahun', year);
+      }
+
+      final List rows = await query
           .order('periode_date', ascending: false)
           .limit(1);
       print('Rows kesehatan: $rows');
 
       if (rows.isEmpty) {
-        print('Tidak ada data kesehatan untuk desa ini');
+        print('Tidak ada data kesehatan untuk desa ini${year != null ? ' pada tahun $year' : ''}');
         return null;
       }
 

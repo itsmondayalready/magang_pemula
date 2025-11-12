@@ -17,12 +17,14 @@ class KebencanaanRepository {
   Future<Map<String, dynamic>?> fetchLatest(
     String kodeWilayah, {
     String jenis = 'banjir',
+    int? year,
   }) async {
     // 1) Coba skema NORMAL (tabel terpisah): kebencanaan_snapshot + detail
     try {
       final normalized = await _fetchLatestNormalized(
         kodeWilayah,
         jenis: jenis,
+        year: year,
       );
       if (normalized != null) return normalized;
     } catch (e) {
@@ -31,11 +33,22 @@ class KebencanaanRepository {
 
     // Coba query langsung berdasarkan kolom kode_wilayah (skema terbaru)
     try {
-      final List rows = await _db
+      var query = _db
           .from('kebencanaan')
           .select()
           .eq('kode_wilayah', kodeWilayah)
-          .eq('jenis', jenis)
+          .eq('jenis', jenis);
+      
+      if (year != null) {
+        // Filter by year if provided
+        final startOfYear = DateTime(year, 1, 1);
+        final endOfYear = DateTime(year + 1, 1, 1);
+        query = query
+            .gte('period_end', startOfYear.toIso8601String())
+            .lt('period_end', endOfYear.toIso8601String());
+      }
+      
+      final List rows = await query
           .order('period_end', ascending: false)
           .order('periode_date', ascending: false)
           .order('created_at', ascending: false)
@@ -58,11 +71,22 @@ class KebencanaanRepository {
       if (desa == null) return null;
       final desaId = desa['id'];
 
-      final List rows = await _db
+      var query = _db
           .from('kebencanaan')
           .select()
           .eq('desa_id', desaId)
-          .eq('jenis', jenis)
+          .eq('jenis', jenis);
+      
+      if (year != null) {
+        // Filter by year if provided
+        final startOfYear = DateTime(year, 1, 1);
+        final endOfYear = DateTime(year + 1, 1, 1);
+        query = query
+            .gte('period_end', startOfYear.toIso8601String())
+            .lt('period_end', endOfYear.toIso8601String());
+      }
+      
+      final List rows = await query
           .order('period_end', ascending: false)
           .order('periode_date', ascending: false)
           .order('created_at', ascending: false)
@@ -250,15 +274,27 @@ class KebencanaanRepository {
   Future<Map<String, dynamic>?> _fetchLatestNormalized(
     String kodeWilayah, {
     required String jenis,
+    int? year,
   }) async {
     // Ambil snapshot terbaru berdasarkan kode_wilayah & jenis
     Map<String, dynamic>? snapshot;
     try {
-      final snap = await _db
+      var query = _db
           .from('kebencanaan_rekap')
           .select()
           .eq('kode_wilayah', kodeWilayah)
-          .eq('jenis', jenis)
+          .eq('jenis', jenis);
+      
+      if (year != null) {
+        // Filter by year if provided
+        final startOfYear = DateTime(year, 1, 1);
+        final endOfYear = DateTime(year + 1, 1, 1);
+        query = query
+            .gte('period_end', startOfYear.toIso8601String())
+            .lt('period_end', endOfYear.toIso8601String());
+      }
+      
+      final snap = await query
           .order('period_end', ascending: false, nullsFirst: false)
           .order('periode_date', ascending: false, nullsFirst: false)
           .order('created_at', ascending: false)

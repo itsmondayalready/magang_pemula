@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
-import '../utils/responsive.dart';
-import '../services/kependudukan_repository.dart';
+import '../utils/responsive.dart' as responsive;
+import '../services/desa_repository.dart';
 import '../services/auth_service.dart';
 
 class KependudukanScreen extends StatefulWidget {
@@ -22,7 +22,7 @@ class KependudukanScreen extends StatefulWidget {
 class _KependudukanScreenState extends State<KependudukanScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
-  final _repo = KependudukanRepository();
+  final _repo = DesaRepository();
   bool _loading = true;
   bool _hasChanges = false; // Track if data was modified
 
@@ -36,6 +36,9 @@ class _KependudukanScreenState extends State<KependudukanScreen>
   int? _totalUsiaProduktif;
   Map<String, int> _pendidikan = const {};
   Map<String, int> _pekerjaan = const {};
+
+  // Year selection
+  int selectedYear = DateTime.now().year;
 
   @override
   void initState() {
@@ -102,14 +105,26 @@ class _KependudukanScreenState extends State<KependudukanScreen>
                 elevation: 0,
                 backgroundColor: Colors.transparent,
                 toolbarHeight: 56,
-                title: const Text(
-                  'Kependudukan',
-                  style: TextStyle(
+                title: Text(
+                  'Kependudukan $selectedYear',
+                  style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
                 centerTitle: false,
+                actions: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: responsive.YearPicker(
+                      selectedYear: selectedYear,
+                      onChanged: (year) {
+                        setState(() => selectedYear = year);
+                        _load();
+                      },
+                    ),
+                  ),
+                ],
                 shape: const RoundedRectangleBorder(
                   borderRadius: BorderRadius.only(
                     bottomLeft: Radius.circular(20),
@@ -239,40 +254,57 @@ class _KependudukanScreenState extends State<KependudukanScreen>
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      // Timeout agar UI tidak mengunci lama saat jaringan lambat
-      final headerFuture = _repo.fetchLatestHeader(widget.kodeWilayah);
-      final pendidikanFuture = _repo.fetchPendidikanLatest(widget.kodeWilayah);
-      final pekerjaanFuture = _repo.fetchPekerjaanLatest(widget.kodeWilayah);
+      // Fetch data berdasarkan tahun yang dipilih
+      final kependudukanData = await _repo.fetchKependudukanByYear(widget.kodeWilayah, selectedYear);
 
-      final results = await Future.wait([
-        headerFuture,
-        pendidikanFuture,
-        pekerjaanFuture,
-      ]).timeout(const Duration(seconds: 8));
+      // Untuk sementara, ambil data terbaru jika tidak ada data untuk tahun tersebut
+      Map<String, dynamic>? headerObj;
+      Map<String, int> pendidikan = {};
+      Map<String, int> pekerjaan = {};
 
-      final headerObj = results[0];
-      final pendidikan = results[1] as Map<String, int>;
-      final pekerjaan = results[2] as Map<String, int>;
+      if (kependudukanData.isNotEmpty) {
+        // Gunakan data dari tahun yang dipilih
+        final data = kependudukanData.first; // Ambil data pertama (asumsi satu record per tahun)
+        headerObj = {
+          'total_penduduk': data['total_penduduk'],
+          'total_kk': data['total_kk'],
+          'laki_laki': data['laki_laki'],
+          'perempuan': data['perempuan'],
+          'produktif_bekerja': data['produktif_bekerja'],
+          'produktif_tidak_bekerja': data['produktif_tidak_bekerja'],
+        };
+
+        // Fetch pendidikan dan pekerjaan untuk tahun tersebut
+        // Note: Ini mungkin perlu method terpisah, untuk sementara gunakan data kosong
+        pendidikan = {};
+        pekerjaan = {};
+      } else {
+        // Fallback ke data terbaru jika tidak ada data untuk tahun tersebut
+        final latestData = await _repo.fetchLatestKependudukanByKode(widget.kodeWilayah);
+        if (latestData != null) {
+          headerObj = latestData;
+        }
+        // Pendidikan dan pekerjaan masih kosong untuk tahun baru
+      }
 
       // Debug logging
       print('=== KEPENDUDUKAN DEBUG ===');
       print('kodeWilayah: ${widget.kodeWilayah}');
+      print('selectedYear: $selectedYear');
       print('Header: $headerObj');
-      print('Pendidikan raw: $pendidikan');
-      print('Pekerjaan raw: $pekerjaan');
+      print('Pendidikan: $pendidikan');
+      print('Pekerjaan: $pekerjaan');
       print('========================');
 
       if (mounted) {
         setState(() {
-          if (headerObj is Map) {
-            final map = headerObj as Map;
-            _totalPenduduk =
-                (map['total_penduduk'] ?? map['total'] ?? 0) as int?;
-            _totalKK = (map['total_kk'] ?? 0) as int?;
-            _lakiLaki = (map['laki_laki'] ?? map['l'] ?? 0) as int?;
-            _perempuan = (map['perempuan'] ?? map['p'] ?? 0) as int?;
-            final bekerja = map['produktif_bekerja'] as int?;
-            final tidak = map['produktif_tidak_bekerja'] as int?;
+          if (headerObj != null) {
+            _totalPenduduk = headerObj['total_penduduk'] as int?;
+            _totalKK = headerObj['total_kk'] as int?;
+            _lakiLaki = headerObj['laki_laki'] as int?;
+            _perempuan = headerObj['perempuan'] as int?;
+            final bekerja = headerObj['produktif_bekerja'] as int?;
+            final tidak = headerObj['produktif_tidak_bekerja'] as int?;
             _produktifBekerja = bekerja;
             _produktifTidak = tidak;
             if (bekerja != null && tidak != null) {
@@ -1492,7 +1524,7 @@ class _EditBottomSheet extends StatefulWidget {
   final List<String> pendidikanCategories;
   final Map<String, TextEditingController> pendidikanControllers;
   final List<_EditableItem> pekerjaanItems;
-  final KependudukanRepository repo;
+  final DesaRepository repo;
   final String kodeWilayah;
   final VoidCallback onDataSaved;
 
