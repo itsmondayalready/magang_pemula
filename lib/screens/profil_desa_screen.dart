@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:provider/provider.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import '../utils/responsive.dart';
 import '../services/desa_repository.dart';
@@ -287,7 +288,7 @@ class _ProfilDesaScreenState extends State<ProfilDesaScreen> {
     if (!mounted) return;
 
     try {
-      final result = await showModalBottomSheet<bool>(
+      final result = await showModalBottomSheet<dynamic>(
         context: context,
         isScrollControlled: true,
         useSafeArea: true,
@@ -309,13 +310,61 @@ class _ProfilDesaScreenState extends State<ProfilDesaScreen> {
         ),
       );
 
-      // Reload jika ada perubahan
-      if (result == true && mounted) {
+      // Handle result: support legacy `true` boolean and new structured map
+      if ((result == true || (result is Map && result['success'] == true)) && mounted) {
         _hasChanges = true; // Mark that data was modified
         setState(() {
           _loading = true;
         });
         await _load();
+
+        // Show success SnackBar in parent (styled like main_menu)
+        if (mounted) {
+          final message = (result is Map && result['message'] != null)
+              ? result['message'] as String
+              : 'Profil desa berhasil disimpan!';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              behavior: SnackBarBehavior.fixed,
+              backgroundColor: const Color(0xFF16A34A),
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      message,
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      } else if (result is Map && result['success'] == false && mounted) {
+        // Show an error toast in parent (if sheet returned an error state)
+        final message = (result['message'] as String?) ?? 'Terjadi kesalahan. Silakan coba lagi.';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.fixed,
+            backgroundColor: const Color(0xFFDC2626),
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline_rounded, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    message,
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            duration: const Duration(seconds: 4),
+          ),
+        );
       }
     } catch (e) {
       print('ModalBottomSheet error: $e');
@@ -768,6 +817,15 @@ class _EditBottomSheetState extends State<_EditBottomSheet>
   late final TextEditingController _tiktokCtl;
   late final TextEditingController _xCtl;
 
+  // Per-field validation messages
+  String? _rtError;
+  String? _rwError;
+  String? _luasError;
+  // Kontak field errors
+  String? _teleponError;
+  String? _emailError;
+  String? _websiteError;
+
   // Aparatur list
   late List<_AparaturItem> _aparaturList;
   
@@ -794,6 +852,43 @@ class _EditBottomSheetState extends State<_EditBottomSheet>
     _ytCtl = TextEditingController(text: widget.sosmed?['yt'] as String? ?? '');
     _tiktokCtl = TextEditingController(text: widget.sosmed?['tiktok'] as String? ?? '');
     _xCtl = TextEditingController(text: widget.sosmed?['x'] as String? ?? '');
+
+    // Clear field errors when user edits the values. Accept comma as decimal separator.
+    _totalRTCtl.addListener(() {
+      if (_rtError != null) {
+        final text = _totalRTCtl.text.trim().replaceAll(RegExp(r'[^0-9]'), '');
+        final v = int.tryParse(text);
+        if (v == null || v >= 0) setState(() => _rtError = null);
+      }
+    });
+    _totalRWCtl.addListener(() {
+      if (_rwError != null) {
+        final text = _totalRWCtl.text.trim().replaceAll(RegExp(r'[^0-9]'), '');
+        final v = int.tryParse(text);
+        if (v == null || v >= 0) setState(() => _rwError = null);
+      }
+    });
+    _luasWilayahCtl.addListener(() {
+      if (_luasError != null) {
+        final text = _luasWilayahCtl.text.trim().replaceAll(',', '.');
+        final v = double.tryParse(text);
+        if (v == null || v >= 0) setState(() => _luasError = null);
+      }
+    });
+
+    // Clear kontak errors when user edits
+    _teleponCtl.addListener(() {
+      if (_teleponError != null) {
+        final digits = _teleponCtl.text.replaceAll(RegExp(r'[^0-9]'), '');
+        if (digits.length >= 6 || digits.isEmpty) setState(() => _teleponError = null);
+      }
+    });
+    _emailCtl.addListener(() {
+      if (_emailError != null) setState(() => _emailError = null);
+    });
+    _websiteCtl.addListener(() {
+      if (_websiteError != null) setState(() => _websiteError = null);
+    });
 
     // Initialize aparatur list
     _aparaturList = widget.aparaturList
@@ -969,12 +1064,26 @@ class _EditBottomSheetState extends State<_EditBottomSheet>
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        _buildTextField('Jumlah RT', _totalRTCtl, TextInputType.number),
-        _buildTextField('Jumlah RW', _totalRWCtl, TextInputType.number),
+        _buildTextField(
+          'Jumlah RT',
+          _totalRTCtl,
+          TextInputType.number,
+          errorText: _rtError,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        ),
+        _buildTextField(
+          'Jumlah RW',
+          _totalRWCtl,
+          TextInputType.number,
+          errorText: _rwError,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        ),
         _buildTextField(
           'Luas Wilayah (km²)',
           _luasWilayahCtl,
           const TextInputType.numberWithOptions(decimal: true),
+          errorText: _luasError,
+          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
         ),
       ],
     );
@@ -1072,9 +1181,27 @@ class _EditBottomSheetState extends State<_EditBottomSheet>
           ),
         ),
         const SizedBox(height: 12),
-        _buildTextField('Telepon Kantor', _teleponCtl, TextInputType.phone),
-        _buildTextField('Email Kantor', _emailCtl, TextInputType.emailAddress),
-        _buildTextField('Website', _websiteCtl, TextInputType.url),
+        _buildTextField(
+          'Telepon Kantor',
+          _teleponCtl,
+          TextInputType.phone,
+          errorText: _teleponError,
+          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9+\-() ]'))],
+        ),
+        _buildTextField(
+          'Email Kantor',
+          _emailCtl,
+          TextInputType.emailAddress,
+          errorText: _emailError,
+          inputFormatters: [FilteringTextInputFormatter.deny(RegExp(r'\s'))],
+        ),
+        _buildTextField(
+          'Website',
+          _websiteCtl,
+          TextInputType.url,
+          errorText: _websiteError,
+          inputFormatters: [FilteringTextInputFormatter.deny(RegExp(r'\s'))],
+        ),
 
         const SizedBox(height: 24),
 
@@ -1088,11 +1215,11 @@ class _EditBottomSheetState extends State<_EditBottomSheet>
           ),
         ),
         const SizedBox(height: 12),
-        _buildTextField('Instagram', _igCtl, TextInputType.text, hintText: '@username'),
+  _buildTextField('Instagram', _igCtl, TextInputType.text),
         _buildTextField('Facebook', _facebookCtl, TextInputType.text),
-        _buildTextField('YouTube', _ytCtl, TextInputType.text),
-        _buildTextField('TikTok', _tiktokCtl, TextInputType.text, hintText: '@username'),
-        _buildTextField('X (Twitter)', _xCtl, TextInputType.text, hintText: '@username'),
+  _buildTextField('YouTube', _ytCtl, TextInputType.text),
+  _buildTextField('TikTok', _tiktokCtl, TextInputType.text),
+  _buildTextField('X (Twitter)', _xCtl, TextInputType.text),
       ],
     );
   }
@@ -1102,15 +1229,19 @@ class _EditBottomSheetState extends State<_EditBottomSheet>
     TextEditingController controller,
     TextInputType keyboardType, {
     String? hintText,
+    String? errorText,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextField(
         controller: controller,
         keyboardType: keyboardType,
+        inputFormatters: inputFormatters,
         decoration: InputDecoration(
           labelText: label,
           hintText: hintText,
+          errorText: errorText,
           filled: true,
           fillColor: Colors.grey[50],
           border: OutlineInputBorder(
@@ -1381,6 +1512,73 @@ class _EditBottomSheetState extends State<_EditBottomSheet>
   Future<void> _save() async {
     setState(() => _saving = true);
 
+    // Per-field validation: set error text on offending fields
+  final parsedRT = int.tryParse(_totalRTCtl.text.trim().replaceAll(RegExp(r'[^0-9]'), ''));
+  final parsedRW = int.tryParse(_totalRWCtl.text.trim().replaceAll(RegExp(r'[^0-9]'), ''));
+  final parsedLuas = double.tryParse(_luasWilayahCtl.text.trim().replaceAll(',', '.'));
+    bool hasError = false;
+    if (parsedRT != null && parsedRT < 0) {
+      _rtError = 'Tidak boleh negatif';
+      hasError = true;
+    } else {
+      _rtError = null;
+    }
+    if (parsedRW != null && parsedRW < 0) {
+      _rwError = 'Tidak boleh negatif';
+      hasError = true;
+    } else {
+      _rwError = null;
+    }
+    if (parsedLuas != null && parsedLuas < 0) {
+      _luasError = 'Tidak boleh negatif';
+      hasError = true;
+    } else {
+      _luasError = null;
+    }
+
+    // Kontak validation: phone (min length), email format, website format
+    final phoneDigits = _teleponCtl.text.replaceAll(RegExp(r'[^0-9]'), '');
+    if (phoneDigits.isNotEmpty && phoneDigits.length < 6) {
+      _teleponError = 'Nomor telepon terlalu pendek';
+      hasError = true;
+    } else {
+      _teleponError = null;
+    }
+
+    final emailText = _emailCtl.text.trim();
+    if (emailText.isNotEmpty) {
+      final emailRegex = RegExp(r"^[^\s@]+@[^\s@]+\.[^\s@]+$");
+      if (!emailRegex.hasMatch(emailText)) {
+        _emailError = 'Email tidak valid';
+        hasError = true;
+      } else {
+        _emailError = null;
+      }
+    } else {
+      _emailError = null;
+    }
+
+    final websiteText = _websiteCtl.text.trim();
+    if (websiteText.isNotEmpty) {
+      var testUrl = websiteText;
+      if (!testUrl.startsWith(RegExp(r'https?://'))) testUrl = 'https://$testUrl';
+      final uri = Uri.tryParse(testUrl);
+      if (uri == null || uri.host.isEmpty || !uri.host.contains('.')) {
+        _websiteError = 'URL tidak valid';
+        hasError = true;
+      } else {
+        _websiteError = null;
+      }
+    } else {
+      _websiteError = null;
+    }
+
+    if (hasError) {
+      if (mounted) setState(() {});
+      setState(() => _saving = false);
+      return;
+    }
+
     try {
       print('🔍 [SAVE] Starting save process...');
       
@@ -1396,9 +1594,9 @@ class _EditBottomSheetState extends State<_EditBottomSheet>
       // Prepare identitas & kontak data
       final data = <String, dynamic>{};
       
-      final totalRT = int.tryParse(_totalRTCtl.text.trim());
-      final totalRW = int.tryParse(_totalRWCtl.text.trim());
-      final luasWilayah = double.tryParse(_luasWilayahCtl.text.trim());
+  final totalRT = int.tryParse(_totalRTCtl.text.trim().replaceAll(RegExp(r'[^0-9]'), ''));
+  final totalRW = int.tryParse(_totalRWCtl.text.trim().replaceAll(RegExp(r'[^0-9]'), ''));
+  final luasWilayah = double.tryParse(_luasWilayahCtl.text.trim().replaceAll(',', '.'));
       
       if (totalRT != null) data['total_rt'] = totalRT;
       if (totalRW != null) data['total_rw'] = totalRW;
@@ -1501,65 +1699,38 @@ class _EditBottomSheetState extends State<_EditBottomSheet>
 
       print('✅ [SAVE] All data saved successfully!');
 
+      // On success: close the sheet and return a structured result.
+      // The parent will show a styled SnackBar (keeps the flow consistent with main_menu).
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.check_circle_rounded,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text(
-                        'Berhasil!',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Profil desa berhasil disimpan',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.white.withOpacity(0.9),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: const Color(0xFF10B981),
-            behavior: SnackBarBehavior.fixed,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-        print('🔍 [SAVE] Closing bottom sheet with result: true');
-        Navigator.pop(context, true);
+        print('🔍 [SAVE] Closing bottom sheet with result: success');
+        Navigator.pop(context, {
+          'success': true,
+          'message': 'Profil desa berhasil disimpan!',
+        });
       }
     } catch (e, stackTrace) {
       print('❌ [SAVE] Error: $e');
       print('❌ [SAVE] StackTrace: $stackTrace');
       if (mounted) {
+        // Show an inline, user-friendly error inside the sheet (styled like main_menu)
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal menyimpan: $e'),
-            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: const Color(0xFFDC2626),
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline_rounded, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Gagal menyimpan profil. Silakan coba lagi.',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             duration: const Duration(seconds: 4),
           ),
         );
