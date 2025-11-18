@@ -1133,35 +1133,54 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
     if (result != null && mounted) {
       // Refresh list
       await _load(search: _searchController.text.trim().isEmpty ? null : _searchController.text.trim());
-      
-      // Show success
+
+      // Close picker and return new desa first, then show notification
+      final kode = result['kode'] ?? '';
+      final nama = result['nama'] ?? '';
+      Navigator.pop(context, _DesaData(nama: nama, kode: kode, kecamatan: '', penduduk: 0));
+
+      // Show success after sheet is closed
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: const Color(0xFF16A34A),
             content: Row(
               children: [
-                const Icon(Icons.check_circle_rounded, color: Colors.white),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.check_circle_rounded,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
                 const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Desa berhasil ditambahkan!',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Desa berhasil ditambahkan!',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            backgroundColor: const Color(0xFF16A34A),
+            behavior: SnackBarBehavior.fixed,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             duration: const Duration(seconds: 3),
           ),
         );
-        
-        // Close picker and return new desa
-        final kode = result['kode'] ?? '';
-        final nama = result['nama'] ?? '';
-        Navigator.pop(context, _DesaData(nama: nama, kode: kode, kecamatan: '', penduduk: 0));
       }
     }
   }
@@ -1186,34 +1205,54 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
     
     if (result != null && mounted) {
       await _load(search: _searchController.text.trim().isEmpty ? null : _searchController.text.trim());
-      
+
+      // Close picker and return edited desa first
+      final kode = result['kode'] ?? '';
+      final nama = result['nama'] ?? '';
+      Navigator.pop(context, _DesaData(nama: nama, kode: kode, kecamatan: '', penduduk: 0));
+
+      // Then show success notification
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: const Color(0xFF16A34A),
             content: Row(
               children: [
-                const Icon(Icons.check_circle_rounded, color: Colors.white),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.check_circle_rounded,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
                 const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Desa berhasil diperbarui!',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Desa berhasil diperbarui!',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            backgroundColor: const Color(0xFF16A34A),
+            behavior: SnackBarBehavior.fixed,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             duration: const Duration(seconds: 3),
           ),
         );
-        
-        // Close picker and return edited desa
-        final kode = result['kode'] ?? '';
-        final nama = result['nama'] ?? '';
-        Navigator.pop(context, _DesaData(nama: nama, kode: kode, kecamatan: '', penduduk: 0));
       }
     }
   }
@@ -1250,47 +1289,71 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
       await _load(search: _searchController.text.trim().isEmpty ? null : _searchController.text.trim());
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: const Color(0xFF16A34A),
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle_rounded, color: Colors.white),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Desa berhasil dihapus!',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ],
-            ),
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            duration: const Duration(seconds: 3),
-          ),
-        );
-        
-        // Check if deleted desa is currently active
+        // Determine return value for picker closure (if deleted was active, try to get fallback)
         final parent = context.findAncestorStateOfType<_MainMenuPageState>();
         final needSwitch = parent != null && parent._kodeWilayah == chosen.kode;
-        
+
+        _DesaData? returnData;
         if (needSwitch) {
-          // Switch to default desa
           try {
             final fallback = await _repo.fetchDefaultDesa();
             if (fallback != null) {
               final newKode = (fallback['kode_wilayah'] ?? '') as String;
               final newNama = (fallback['nama'] ?? 'Desa') as String;
-              Navigator.pop(context, _DesaData(nama: newNama, kode: newKode, kecamatan: '', penduduk: 0));
-              return;
+              returnData = _DesaData(nama: newNama, kode: newKode, kecamatan: '', penduduk: 0);
             }
           } catch (_) {}
         }
-        
-        // Just refresh without switching
-        Navigator.pop(context, const _DesaData(nama: '__RELOAD__', kode: '__RELOAD__', kecamatan: '', penduduk: 0));
+
+        // If no special switch needed, return sentinel to reload
+        returnData ??= const _DesaData(nama: '__RELOAD__', kode: '__RELOAD__', kecamatan: '', penduduk: 0);
+
+        // Close picker first
+        Navigator.pop(context, returnData);
+
+        // Then show success notification
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.check_circle_rounded,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Desa berhasil dihapus!',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: const Color(0xFF16A34A),
+              behavior: SnackBarBehavior.fixed,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -1301,27 +1364,54 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
         } else {
           userMsg = 'Gagal menghapus desa. Silakan coba lagi.';
         }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: const Color(0xFFDC2626),
-            content: Row(
-              children: [
-                const Icon(Icons.error_outline_rounded, color: Colors.white),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    userMsg,
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        // Close picker first so notification appears on the underlying page
+        Navigator.pop(context);
+
+        // Then show error notification
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.error_outline_rounded,
+                      color: Colors.white,
+                      size: 24,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'Gagal',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          userMsg,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: const Color(0xFFDC2626),
+              behavior: SnackBarBehavior.fixed,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              duration: const Duration(seconds: 4),
             ),
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            duration: const Duration(seconds: 4),
-          ),
-        );
+          );
+        }
       }
     }
   }
@@ -1682,7 +1772,6 @@ class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
   final _kabupatenCtrl = TextEditingController(text: 'Banjar');
   final _provinsiCtrl = TextEditingController(text: 'Kalimantan Selatan');
   bool _submitting = false;
-  String? _error;
 
   @override
   void dispose() {
@@ -1698,7 +1787,6 @@ class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() {
       _submitting = true;
-      _error = null;
     });
     try {
       final repo = DesaRepository();
@@ -1958,7 +2046,6 @@ class _EditDesaFormSheetState extends State<_EditDesaFormSheet> {
   final _provinsiCtrl = TextEditingController();
   bool _loading = true;
   bool _saving = false;
-  String? _error;
 
   @override
   void initState() {
@@ -1995,7 +2082,6 @@ class _EditDesaFormSheetState extends State<_EditDesaFormSheet> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() {
       _saving = true;
-      _error = null;
     });
     try {
       await DesaRepository().updateDesaByKode(

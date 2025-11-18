@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/services.dart';
 import '../utils/responsive.dart';
 import '../services/kependudukan_repository.dart';
 import '../services/auth_service.dart';
@@ -1516,6 +1517,33 @@ class _EditBottomSheet extends StatefulWidget {
 }
 
 class _EditBottomSheetState extends State<_EditBottomSheet> {
+  // Per-field inline error messages (keyed by label or pekerjaan_<index>)
+  final Map<String, String?> _fieldErrors = {};
+
+  void _validateField(String key, String value) {
+    final v = value.trim();
+    // Disallow comma, dot, minus
+    if (v.contains(',') || v.contains('.') || v.contains('-')) {
+      setState(() => _fieldErrors[key] = 'Inputan tidak valid');
+      return;
+    }
+    // Allow empty (don't show error for empty yet)
+    if (v.isEmpty) {
+      if (_fieldErrors.containsKey(key) && _fieldErrors[key] != null) {
+        setState(() => _fieldErrors[key] = null);
+      }
+      return;
+    }
+    // Only digits allowed (one or more digits)
+    if (!RegExp(r'^\d+$').hasMatch(v)) {
+      setState(() => _fieldErrors[key] = 'Inputan tidak valid');
+      return;
+    }
+    // Clear error when OK
+    if (_fieldErrors.containsKey(key) && _fieldErrors[key] != null) {
+      setState(() => _fieldErrors[key] = null);
+    }
+  }
   @override
   Widget build(BuildContext context) {
     bool saving = false;
@@ -1599,6 +1627,20 @@ class _EditBottomSheetState extends State<_EditBottomSheet> {
                 child: ElevatedButton(
                   onPressed: saving ? null : () async {
                     setLocal(() => saving = true);
+                    // If any inline field errors exist, stop and inform the user
+                    if (_fieldErrors.values.any((e) => e != null)) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Perbaiki input yang tidak valid'),
+                            backgroundColor: Color(0xFFF59E0B),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                      setLocal(() => saving = false);
+                      return;
+                    }
                     try {
                       // Validasi dan parse data utama
                       final totalPenduduk = int.tryParse(widget.totalPendudukCtl.text.trim());
@@ -2054,8 +2096,11 @@ class _EditBottomSheetState extends State<_EditBottomSheet> {
                             TextField(
                               controller: item.valueCtl,
                               keyboardType: TextInputType.number,
+                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                              onChanged: (v) => _validateField('pekerjaan_$index', v),
                               decoration: InputDecoration(
                                 labelText: 'Jumlah',
+                                errorText: _fieldErrors['pekerjaan_$index'],
                                 filled: true,
                                 fillColor: Colors.grey[50],
                                 border: OutlineInputBorder(
@@ -2133,8 +2178,11 @@ class _EditBottomSheetState extends State<_EditBottomSheet> {
       child: TextField(
         controller: controller,
         keyboardType: TextInputType.number,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        onChanged: (v) => _validateField(label, v),
         decoration: InputDecoration(
           labelText: label,
+          errorText: _fieldErrors[label],
           filled: true,
           fillColor: Colors.grey[50],
           border: OutlineInputBorder(

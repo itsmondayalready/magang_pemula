@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/services.dart';
 import '../utils/responsive.dart';
 import '../services/kesehatan_repository.dart';
 import '../services/auth_service.dart';
@@ -911,16 +912,511 @@ class _EditBottomSheet extends StatefulWidget {
   @override
   State<_EditBottomSheet> createState() => _EditBottomSheetState();
 }
+class _EditableMetric {
+  _EditableMetric({required this.label, required String value, this.fromPreload = false})
+      : valueCtl = TextEditingController(text: value),
+        focusNode = FocusNode();
+
+  final String label;
+  final TextEditingController valueCtl;
+  // mark if this item originated from preloaded DB values
+  final bool fromPreload;
+  // focus node so we can detect when editing finishes
+  final FocusNode focusNode;
+  bool removed = false;
+
+  void dispose() {
+    try {
+      valueCtl.dispose();
+    } catch (_) {}
+    try {
+      focusNode.dispose();
+    } catch (_) {}
+  }
+}
 
 class _EditBottomSheetState extends State<_EditBottomSheet> {
+  // track saving state to show spinner and disable button
+  bool _saving = false;
+  // Editable lists for both categories (only items the user added / existing non-zero)
+  final List<_EditableMetric> _fasilitasItems = [];
+  final List<_EditableMetric> _tenagaItems = [];
+
+  // Track which labels are currently added (to disable their chip)
+  final Set<String> _addedFasilitas = {};
+  final Set<String> _addedTenaga = {};
+  // Track which labels the user marked for deletion (persist as 0 on save)
+  final Set<String> _removedFasilitas = {};
+  final Set<String> _removedTenaga = {};
+
+  // Per-field inline errors keyed by a unique id (we'll use controller hash)
+  final Map<int, String?> _fieldErrors = {};
+
+  // Track controllers that we created so we can dispose safely
+  final List<TextEditingController> _ownedControllers = [];
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize lists from incoming categories/controllers
+    // Preload only entries that have a non-zero value to avoid clutter.
+    for (final cat in widget.fasilitasCategories) {
+      final ctl = widget.fasilitasControllers[cat];
+      final text = ctl != null ? ctl.text.trim() : '';
+      final v = int.tryParse(text) ?? 0;
+      if (v > 0) {
+        final item = _EditableMetric(label: cat, value: text, fromPreload: true);
+        _fasilitasItems.add(item);
+        _ownedControllers.add(item.valueCtl);
+        _addedFasilitas.add(cat);
+        // attach focus listener to mark deletion only when focus is lost
+        _attachFocusHandler(item, _fasilitasItems, _addedFasilitas, true);
+      }
+    }
+    for (final cat in widget.tenagaMedisCategories) {
+      final ctl = widget.tenagaMedisControllers[cat];
+      final text = ctl != null ? ctl.text.trim() : '';
+      final v = int.tryParse(text) ?? 0;
+      if (v > 0) {
+        final item = _EditableMetric(label: cat, value: text, fromPreload: true);
+        _tenagaItems.add(item);
+        _ownedControllers.add(item.valueCtl);
+        _addedTenaga.add(cat);
+        // attach focus listener to mark deletion only when focus is lost
+        _attachFocusHandler(item, _tenagaItems, _addedTenaga, false);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final c in _ownedControllers) {
+      try {
+        c.dispose();
+      } catch (_) {}
+    }
+    super.dispose();
+  }
+
+  void _validateNumeric(TextEditingController ctl) {
+    final key = ctl.hashCode;
+    final v = ctl.text.trim();
+    if (v.isEmpty) {
+      if (_fieldErrors[key] != null) setState(() => _fieldErrors[key] = null);
+      return;
+    }
+      // Disallow comma, dot, minus and require digits only
+      if (v.contains(',') || v.contains('.') || v.contains('-') || !RegExp(r'^\d+$').hasMatch(v)) {
+      // Note: we will use a simple digits-only check when saving; show inline error
+      setState(() => _fieldErrors[key] = 'Inputan tidak valid');
+    } else {
+      if (_fieldErrors[key] != null) setState(() => _fieldErrors[key] = null);
+    }
+  }
+
+  void _onFieldChanged(List<_EditableMetric> list, Set<String> addedSet, _EditableMetric item, String val, bool isFasilitas) {
+    // Validate current value only. Deletion will be handled when focus is lost.
+    _validateNumeric(item.valueCtl);
+  }
+
+  void _attachFocusHandler(_EditableMetric item, List<_EditableMetric> list, Set<String> addedSet, bool isFasilitas) {
+    // Avoid adding multiple listeners
+    item.focusNode.addListener(() {
+      if (!item.focusNode.hasFocus) {
+        final v = item.valueCtl.text.trim();
+        if (v.isEmpty && item.fromPreload) {
+          // mark as removed and remove from UI
+          setState(() {
+            if (isFasilitas) {
+              _removedFasilitas.add(item.label);
+            } else {
+              _removedTenaga.add(item.label);
+            }
+            final idx = list.indexOf(item);
+            if (idx != -1) list.removeAt(idx);
+            addedSet.remove(item.label);
+            try {
+              _ownedControllers.remove(item.valueCtl);
+              item.dispose();
+            } catch (_) {}
+          });
+          // Note: do NOT show per-delete snackbars here. We collect deletions
+          // and will show a single combined notification when the user saves.
+        }
+      }
+    });
+  }
+
+  bool _hasAnyValidationErrors() {
+    // check label non-empty and numeric fields contain digits
+    for (final item in [..._fasilitasItems, ..._tenagaItems]) {
+      if (item.removed) continue;
+  final label = item.label.trim();
+      final value = item.valueCtl.text.trim();
+      if (label.isEmpty) return true;
+      if (value.isEmpty) return true;
+        if (!RegExp(r'^\d+$').hasMatch(value)) return true;
+    }
+    // also check per-field inline errors
+    if (_fieldErrors.values.any((e) => e != null)) return true;
+    return false;
+  }
+
+  Future<void> _onSave() async {
+    setState(() => _saving = true);
+
+    // If there are inline field errors, close sheet then show a small warning snackbar
+    if (_fieldErrors.values.any((e) => e != null)) {
+      if (mounted) Navigator.of(context).pop();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Perbaiki input yang tidak valid'),
+            backgroundColor: Color(0xFFF59E0B),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+      if (mounted) setState(() => _saving = false);
+      return;
+    }
+
+    // check other validation (empty or non-digit)
+    if (_hasAnyValidationErrors()) {
+      if (mounted) Navigator.of(context).pop();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.error_outline,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Validasi Gagal',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Ada input kosong atau tidak valid',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.fixed,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+      if (mounted) setState(() => _saving = false);
+      return;
+    }
+
+    // build maps
+    final fasilitas = <String, int>{};
+    final tenaga = <String, int>{};
+    for (final it in _fasilitasItems) {
+      if (it.removed) continue;
+      final label = it.label.trim();
+      final value = int.tryParse(it.valueCtl.text.trim()) ?? 0;
+      fasilitas[label] = value;
+    }
+    for (final it in _tenagaItems) {
+      if (it.removed) continue;
+      final label = it.label.trim();
+      final value = int.tryParse(it.valueCtl.text.trim()) ?? 0;
+      tenaga[label] = value;
+    }
+
+    // Include any labels the user marked for deletion — persist as 0
+    for (final removed in _removedFasilitas) {
+      fasilitas[removed] = 0;
+    }
+    for (final removed in _removedTenaga) {
+      tenaga[removed] = 0;
+    }
+
+    try {
+      await widget.repo.upsertKesehatan(
+        kodeWilayah: widget.kodeWilayah,
+        fasilitasData: fasilitas,
+        tenagaMedisData: tenaga,
+      );
+
+      // notify parent to refresh
+      widget.onDataSaved();
+
+      if (mounted) {
+        // Build a combined deletion summary (if any) to show in one SnackBar
+        final deletedLabels = [..._removedFasilitas, ..._removedTenaga];
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.check_circle_rounded,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Berhasil!',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'Data kesehatan berhasil disimpan',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      if (deletedLabels.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          'Kategori dihapus: ${deletedLabels.join(', ')}',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.fixed,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.error_outline,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Gagal Menyimpan',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '$e',
+                        style: const TextStyle(fontSize: 12),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFFDC2626),
+            behavior: SnackBarBehavior.fixed,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _onDeleteItem(List<_EditableMetric> list, Set<String> addedSet, _EditableMetric item, bool isFasilitas) async {
+    // Mark the item as deleted locally; persist deletion on Save only.
+    setState(() {
+      if (isFasilitas) {
+        _removedFasilitas.add(item.label);
+      } else {
+        _removedTenaga.add(item.label);
+      }
+      final idx = list.indexOf(item);
+      if (idx != -1) list.removeAt(idx);
+      addedSet.remove(item.label);
+      try {
+        _ownedControllers.remove(item.valueCtl);
+        item.dispose();
+      } catch (_) {}
+    });
+    // Do not show immediate SnackBar here; deletion will be summarized on Save.
+  }
+
+  Widget _buildListTab(List<_EditableMetric> list, List<String> allCategories, bool isFasilitas) {
+    final addedSet = isFasilitas ? _addedFasilitas : _addedTenaga;
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Added items list (show first so new items appear at top)
+          Expanded(
+            child: list.isEmpty
+                ? Center(child: Text('Belum ada ${isFasilitas ? "fasilitas" : "tenaga medis"}', style: const TextStyle(color: Colors.grey)))
+                : ListView.separated(
+                    itemCount: list.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (ctx, idx) {
+                      final item = list[idx];
+                      if (item.removed) return const SizedBox.shrink();
+                      return Row(
+                        children: [
+                          Expanded(
+                            flex: 6,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[50],
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.grey[300]!),
+                              ),
+                              child: Text(item.label),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            flex: 4,
+                            child: TextField(
+                              controller: item.valueCtl,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                              onChanged: (val) => _onFieldChanged(list, addedSet, item, val, isFasilitas),
+                              decoration: InputDecoration(
+                                labelText: 'Jumlah',
+                                errorText: _fieldErrors[item.valueCtl.hashCode],
+                                filled: true,
+                                fillColor: Colors.grey[50],
+                                border: OutlineInputBorder(borderSide: BorderSide(color: Colors.grey[300]!)),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            onPressed: () => _onDeleteItem(list, addedSet, item, isFasilitas),
+                            icon: const Icon(Icons.delete_outline, color: Colors.red),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+          ),
+          const SizedBox(height: 16),
+          // Chips row to add categories (placed after the list so new items show above)
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: allCategories.map((cat) {
+              final already = addedSet.contains(cat);
+              return ChoiceChip(
+                selected: already,
+                onSelected: (sel) {
+                  if (sel && !addedSet.contains(cat)) {
+                    setState(() {
+                      // if previously removed, unmark it so saving will include it again
+                      _removedFasilitas.remove(cat);
+                      _removedTenaga.remove(cat);
+                      final it = _EditableMetric(label: cat, value: '0');
+                      list.insert(0, it); // put new item on top
+                      _ownedControllers.add(it.valueCtl);
+                      addedSet.add(cat);
+                    });
+                  }
+                },
+                // use avatar to render a compact leading icon so spacing is consistent
+                avatar: Padding(
+                  padding: const EdgeInsets.only(left: 2, right: 4),
+                  child: Icon(
+                    already ? Icons.check : Icons.add,
+                    size: 16,
+                    color: already ? Colors.black : Colors.grey[700],
+                  ),
+                ),
+                label: Text(cat),
+                labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                visualDensity: VisualDensity.compact,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                backgroundColor: Colors.white,
+                selectedColor: Colors.grey[200],
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey[300]!)),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    bool saving = false;
-    
-    return StatefulBuilder(
-      builder: (context, setLocal) => DefaultTabController(
-        length: 2,
-        child: Container(
+    return DefaultTabController(
+      length: 2,
+      child: Container(
         height: MediaQuery.of(context).size.height * 0.85,
         decoration: const BoxDecoration(
           color: Colors.white,
@@ -928,9 +1424,8 @@ class _EditBottomSheetState extends State<_EditBottomSheet> {
         ),
         child: Column(
           children: [
-            // Header dengan garis dekoratif
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
               child: Column(
                 children: [
                   Container(
@@ -953,7 +1448,7 @@ class _EditBottomSheetState extends State<_EditBottomSheet> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Perbarui informasi fasilitas dan tenaga medis',
+                    'Perbarui informasi sarana kesehatan',
                     style: TextStyle(
                       fontSize: 13,
                       color: Colors.grey[600],
@@ -963,268 +1458,76 @@ class _EditBottomSheetState extends State<_EditBottomSheet> {
               ),
             ),
             const Divider(height: 1),
-            const TabBar(
-              isScrollable: true,
-              tabs: [
-                Tab(text: 'Fasilitas'),
-                Tab(text: 'Tenaga Medis'),
-              ],
+            TabBar(
+              isScrollable: false,
+              labelColor: const Color(0xFF06B6D4),
+              unselectedLabelColor: Colors.grey[600],
+              tabs: const [Tab(text: 'Fasilitas'), Tab(text: 'Tenaga Medis')],
             ),
             Expanded(
               child: TabBarView(
                 children: [
-                  _buildFasilitasTab(),
-                  _buildTenagaMedisTab(),
+                  _buildListTab(_fasilitasItems, widget.fasilitasCategories, true),
+                  _buildListTab(_tenagaItems, widget.tenagaMedisCategories, false),
                 ],
               ),
             ),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border(
-                  top: BorderSide(color: Colors.grey[200]!),
-                ),
-              ),
-              child: SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: saving ? null : () async {
-                    setLocal(() => saving = true);
-                    try {
-                      // Parse fasilitas
-                      final fasilitasData = <String, int>{};
-                      for (final entry in widget.fasilitasControllers.entries) {
-                        final value = int.tryParse(entry.value.text.trim()) ?? 0;
-                        if (value >= 0) {
-                          fasilitasData[entry.key] = value;
-                        }
-                      }
-
-                      // Parse tenaga medis
-                      final tenagaMedisData = <String, int>{};
-                      for (final entry in widget.tenagaMedisControllers.entries) {
-                        final value = int.tryParse(entry.value.text.trim()) ?? 0;
-                        if (value >= 0) {
-                          tenagaMedisData[entry.key] = value;
-                        }
-                      }
-
-                      // Save to database
-                      await widget.repo.upsertKesehatan(
-                        kodeWilayah: widget.kodeWilayah,
-                        fasilitasData: fasilitasData,
-                        tenagaMedisData: tenagaMedisData,
-                      );
-
-                      // Close bottom sheet
-                      if (context.mounted) {
-                        Navigator.of(context).pop();
-                        
-                        // Call parent callback to refresh data
-                        widget.onDataSaved();
-                        
-                        // Show success notification
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.2),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Icon(
-                                    Icons.check_circle_rounded,
-                                    color: Colors.white,
-                                    size: 24,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Column(
+                children: [
+                  // Removed 'Batal' button to match Kependudukan UI
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: _saving ? null : _onSave,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.grey[300],
+                        elevation: 0,
+                        shadowColor: Colors.transparent,
+                        padding: EdgeInsets.zero,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: _saving
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : Ink(
+                              decoration: BoxDecoration(
+                                // use app-bar colors gradient to match Kesehatan app bar
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFF06B6D4), Color(0xFF1D4ED8)],
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Container(
+                                alignment: Alignment.center,
+                                child: const Text(
+                                  'Simpan Perubahan',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                                const SizedBox(width: 12),
-                                const Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        'Berhasil!',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                      SizedBox(height: 2),
-                                      Text(
-                                        'Data kesehatan berhasil diperbarui',
-                                        style: TextStyle(fontSize: 12),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
-                            backgroundColor: const Color(0xFF10B981),
-                            behavior: SnackBarBehavior.fixed,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            duration: const Duration(seconds: 3),
-                          ),
-                        );
-                      }
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.2),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Icon(
-                                    Icons.error_outline,
-                                    color: Colors.white,
-                                    size: 24,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Text(
-                                        'Gagal Menyimpan',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        '$e',
-                                        style: const TextStyle(fontSize: 12),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                            backgroundColor: const Color(0xFFDC2626),
-                            behavior: SnackBarBehavior.fixed,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            duration: const Duration(seconds: 5),
-                          ),
-                        );
-                      }
-                    } finally {
-                      if (context.mounted) {
-                        setLocal(() => saving = false);
-                      }
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    foregroundColor: Colors.white,
-                    disabledBackgroundColor: Colors.grey[300],
-                    elevation: 0,
-                    shadowColor: Colors.transparent,
-                    padding: EdgeInsets.zero,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: saving
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : Ink(
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF06B6D4), Color(0xFF1D4ED8)],
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Container(
-                      alignment: Alignment.center,
-                      child: const Text(
-                        'Simpan Perubahan',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+                ],
               ),
             ),
           ],
-        ),
-      ), // Container
-      ), // DefaultTabController
-    ); // StatefulBuilder
-  }
-
-  Widget _buildFasilitasTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: widget.fasilitasCategories
-          .map((cat) =>
-              _buildTextField(cat, widget.fasilitasControllers[cat]!))
-          .toList(),
-    );
-  }
-
-  Widget _buildTenagaMedisTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: widget.tenagaMedisCategories
-          .map((cat) =>
-              _buildTextField(cat, widget.tenagaMedisControllers[cat]!))
-          .toList(),
-    );
-  }
-
-  Widget _buildTextField(String label, TextEditingController controller) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: TextField(
-        controller: controller,
-        keyboardType: TextInputType.number,
-        decoration: InputDecoration(
-          labelText: label,
-          filled: true,
-          fillColor: Colors.grey[50],
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey[300]!),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey[300]!),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF06B6D4), width: 2),
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         ),
       ),
     );
