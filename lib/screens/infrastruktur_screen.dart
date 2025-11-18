@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
@@ -991,10 +992,16 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFFF97316), width: 2),
+                    borderSide: const BorderSide(
+                      color: Color(0xFFF97316),
+                      width: 2,
+                    ),
                   ),
                   isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
                 );
 
             return Padding(
@@ -1015,7 +1022,10 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
                               height: 4,
                               decoration: BoxDecoration(
                                 gradient: const LinearGradient(
-                                  colors: [Color(0xFFF97316), Color(0xFFEC4899)],
+                                  colors: [
+                                    Color(0xFFF97316),
+                                    Color(0xFFEC4899),
+                                  ],
                                 ),
                                 borderRadius: BorderRadius.circular(2),
                               ),
@@ -1103,6 +1113,10 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
                                                         keyboardType:
                                                             TextInputType
                                                                 .number,
+                                                        inputFormatters: [
+                                                          FilteringTextInputFormatter
+                                                              .digitsOnly,
+                                                        ],
                                                         validator: (v) {
                                                           if (v == null ||
                                                               v.trim().isEmpty)
@@ -1208,6 +1222,10 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
                                                         keyboardType:
                                                             TextInputType
                                                                 .number,
+                                                        inputFormatters: [
+                                                          FilteringTextInputFormatter
+                                                              .digitsOnly,
+                                                        ],
                                                         validator: (v) {
                                                           if (v == null ||
                                                               v.trim().isEmpty)
@@ -1300,6 +1318,10 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
                                                         keyboardType:
                                                             TextInputType
                                                                 .number,
+                                                        inputFormatters: [
+                                                          FilteringTextInputFormatter
+                                                              .digitsOnly,
+                                                        ],
                                                         validator: (v) {
                                                           if (v == null ||
                                                               v.trim().isEmpty)
@@ -1501,6 +1523,10 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
                                                         keyboardType:
                                                             TextInputType
                                                                 .number,
+                                                        inputFormatters: [
+                                                          FilteringTextInputFormatter
+                                                              .digitsOnly,
+                                                        ],
                                                         validator: (v) {
                                                           if (v == null ||
                                                               v.trim().isEmpty)
@@ -1640,12 +1666,18 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
                                       controller: btsCtl,
                                       decoration: deco('Menara BTS'),
                                       keyboardType: TextInputType.number,
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.digitsOnly,
+                                      ],
                                     ),
                                     const SizedBox(height: 12),
                                     TextFormField(
                                       controller: operatorCtl,
                                       decoration: deco('Operator Seluler'),
                                       keyboardType: TextInputType.number,
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.digitsOnly,
+                                      ],
                                     ),
                                     const SizedBox(height: 12),
                                     TextFormField(
@@ -1671,12 +1703,18 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
                                       controller: komputerCtl,
                                       decoration: deco('Komputer (unit)'),
                                       keyboardType: TextInputType.number,
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.digitsOnly,
+                                      ],
                                     ),
                                     const SizedBox(height: 12),
                                     TextFormField(
                                       controller: tvCtl,
                                       decoration: deco('TV/Radio (pusat)'),
                                       keyboardType: TextInputType.number,
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.digitsOnly,
+                                      ],
                                     ),
                                   ],
                                 ),
@@ -1735,6 +1773,10 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
                                                         keyboardType:
                                                             TextInputType
                                                                 .number,
+                                                        inputFormatters: [
+                                                          FilteringTextInputFormatter
+                                                              .digitsOnly,
+                                                        ],
                                                         validator: (v) {
                                                           if (v == null ||
                                                               v.trim().isEmpty)
@@ -1827,6 +1869,10 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
                                                         keyboardType:
                                                             TextInputType
                                                                 .number,
+                                                        inputFormatters: [
+                                                          FilteringTextInputFormatter
+                                                              .digitsOnly,
+                                                        ],
                                                         validator: (v) {
                                                           if (v == null ||
                                                               v.trim().isEmpty)
@@ -1906,7 +1952,10 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
                             child: Ink(
                               decoration: BoxDecoration(
                                 gradient: const LinearGradient(
-                                  colors: [Color(0xFFF97316), Color(0xFFEC4899)],
+                                  colors: [
+                                    Color(0xFFF97316),
+                                    Color(0xFFEC4899),
+                                  ],
                                 ),
                                 borderRadius: BorderRadius.circular(12),
                               ),

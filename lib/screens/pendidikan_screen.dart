@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
@@ -169,156 +170,156 @@ class _PendidikanScreenState extends State<PendidikanScreen>
                 elevation: 0,
                 child: Container(
                   width: 56,
-                height: 56,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [
-                      Color(0xFF2563EB), // blue
-                      Color(0xFF1D4ED8), // darker blue
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0x402563EB),
-                      blurRadius: 8,
-                      offset: Offset(0, 4),
+                  height: 56,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [
+                        Color(0xFF2563EB), // blue
+                        Color(0xFF1D4ED8), // darker blue
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                  ],
-                ),
-                child: const Icon(Icons.edit, color: Colors.white),
-              ),
-            )
-          : null,
-      body: Stack(
-        children: [
-          CustomScrollView(
-            slivers: [
-              SliverAppBar(
-                pinned: true,
-                elevation: 0,
-                backgroundColor: Colors.transparent,
-                toolbarHeight: 56,
-                title: const Text(
-                  'Pendidikan',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0x402563EB),
+                        blurRadius: 8,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
                   ),
+                  child: const Icon(Icons.edit, color: Colors.white),
                 ),
-                centerTitle: false,
-                shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.only(
-                    bottomLeft: Radius.circular(20),
-                    bottomRight: Radius.circular(20),
+              )
+            : null,
+        body: Stack(
+          children: [
+            CustomScrollView(
+              slivers: [
+                SliverAppBar(
+                  pinned: true,
+                  elevation: 0,
+                  backgroundColor: Colors.transparent,
+                  toolbarHeight: 56,
+                  title: const Text(
+                    'Pendidikan',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
-                flexibleSpace: ClipRRect(
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(20),
-                    bottomRight: Radius.circular(20),
+                  centerTitle: false,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(20),
+                      bottomRight: Radius.circular(20),
+                    ),
                   ),
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Color(0xFF2563EB), // blue
-                          Color(0xFF1D4ED8), // darker blue
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                  flexibleSpace: ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(20),
+                      bottomRight: Radius.circular(20),
+                    ),
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Color(0xFF2563EB), // blue
+                            Color(0xFF1D4ED8), // darker blue
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    context.horizontalPadding,
-                    12,
-                    context.horizontalPadding,
-                    8,
-                  ),
-                  child: GridView.count(
-                    shrinkWrap: true,
-                    crossAxisCount: context.gridCount(
-                      mobile: 2,
-                      tablet: 3,
-                      desktop: 4,
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      context.horizontalPadding,
+                      12,
+                      context.horizontalPadding,
+                      8,
                     ),
-                    childAspectRatio: context.summaryAspect,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
+                    child: GridView.count(
+                      shrinkWrap: true,
+                      crossAxisCount: context.gridCount(
+                        mobile: 2,
+                        tablet: 3,
+                        desktop: 4,
+                      ),
+                      childAspectRatio: context.summaryAspect,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      children: [
+                        _summaryCard(
+                          label: 'Lembaga Negeri',
+                          value: '$totalNegeri',
+                          icon: Icons.account_balance_rounded,
+                          color: const Color(0xFF2563EB),
+                        ),
+                        _summaryCard(
+                          label: 'Lembaga Swasta',
+                          value: '$totalSwasta',
+                          icon: Icons.apartment_rounded,
+                          color: const Color(0xFF2563EB),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                SliverFillRemaining(
+                  child: TabBarView(
+                    controller: _tabController,
                     children: [
-                      _summaryCard(
-                        label: 'Lembaga Negeri',
-                        value: '$totalNegeri',
-                        icon: Icons.account_balance_rounded,
-                        color: const Color(0xFF2563EB),
-                      ),
-                      _summaryCard(
-                        label: 'Lembaga Swasta',
-                        value: '$totalSwasta',
-                        icon: Icons.apartment_rounded,
-                        color: const Color(0xFF2563EB),
-                      ),
+                      _section(_buildNegeri(negeri)),
+                      _section(_buildSwasta(swasta)),
+                      _section(_buildLBKeagamaan(lb, keagamaan, keterampilan)),
                     ],
                   ),
                 ),
-              ),
-              SliverFillRemaining(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _section(_buildNegeri(negeri)),
-                    _section(_buildSwasta(swasta)),
-                    _section(_buildLBKeagamaan(lb, keagamaan, keterampilan)),
-                  ],
+              ],
+            ),
+            if (_loading)
+              Positioned.fill(
+                child: ColoredBox(
+                  color: Colors.black.withOpacity(0.15),
+                  child: const Center(child: CircularProgressIndicator()),
                 ),
               ),
-            ],
-          ),
-          if (_loading)
-            Positioned.fill(
-              child: ColoredBox(
-                color: Colors.black.withOpacity(0.15),
-                child: const Center(child: CircularProgressIndicator()),
-              ),
-            ),
-        ],
-      ),
-      bottomNavigationBar: Material(
-        color: Colors.white,
-        elevation: 8,
-        child: SafeArea(
-          top: false,
-          child: TabBar(
-            controller: _tabController,
-            labelColor: const Color(0xFF2563EB),
-            unselectedLabelColor: Colors.grey[600],
-            indicatorColor: const Color(0xFF2563EB),
-            tabs: const [
-              Tab(
-                icon: Icon(Icons.account_balance_rounded, size: 20),
-                text: 'Negeri',
-              ),
-              Tab(
-                icon: Icon(Icons.apartment_rounded, size: 20),
-                text: 'Swasta',
-              ),
-              Tab(
-                icon: Icon(Icons.school_rounded, size: 20),
-                text: 'LB & Keag',
-              ),
-            ],
-          ),
+          ],
         ),
-      ), // bottomNavigationBar (Material)
-    ), // Scaffold
+        bottomNavigationBar: Material(
+          color: Colors.white,
+          elevation: 8,
+          child: SafeArea(
+            top: false,
+            child: TabBar(
+              controller: _tabController,
+              labelColor: const Color(0xFF2563EB),
+              unselectedLabelColor: Colors.grey[600],
+              indicatorColor: const Color(0xFF2563EB),
+              tabs: const [
+                Tab(
+                  icon: Icon(Icons.account_balance_rounded, size: 20),
+                  text: 'Negeri',
+                ),
+                Tab(
+                  icon: Icon(Icons.apartment_rounded, size: 20),
+                  text: 'Swasta',
+                ),
+                Tab(
+                  icon: Icon(Icons.school_rounded, size: 20),
+                  text: 'LB & Keag',
+                ),
+              ],
+            ),
+          ),
+        ), // bottomNavigationBar (Material)
+      ), // Scaffold
     ); // WillPopScope
   }
 
@@ -765,10 +766,10 @@ class _PendidikanScreenState extends State<PendidikanScreen>
   // ------------- Bottom Sheet Editor -------------
   Future<void> _openEditBottomSheet() async {
     if (_kodeWilayah == null || _desaId == null) return;
-    
+
     // Capture parent state reference for use in callbacks
     final parentState = this;
-    
+
     final kode = _kodeWilayah!;
     final desaId = _desaId!;
     final year = DateTime.now().year;
@@ -920,10 +921,7 @@ class _PendidikanScreenState extends State<PendidikanScreen>
                       const SizedBox(height: 4),
                       Text(
                         'Perbarui informasi sarana pendidikan',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[600],
-                        ),
+                        style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                       ),
                     ],
                   ),
@@ -942,9 +940,54 @@ class _PendidikanScreenState extends State<PendidikanScreen>
                     key: formKey,
                     child: TabBarView(
                       children: [
-                        _buildTabContent(ctx, setLocal, items, formKey, scrollCtl, deco, 0, negeriSuggestions, isNegeri, _sectionKeyForTab, _noteTitleCtl, _noteBodyCtl, _noteTitleNode, _noteBodyNode),
-                        _buildTabContent(ctx, setLocal, items, formKey, scrollCtl, deco, 1, swastaSuggestions, (l) => !isNegeri(l) && !isLbKeag(l), _sectionKeyForTab, _noteTitleCtl, _noteBodyCtl, _noteTitleNode, _noteBodyNode),
-                        _buildTabContent(ctx, setLocal, items, formKey, scrollCtl, deco, 2, lbKeagSuggestions, isLbKeag, _sectionKeyForTab, _noteTitleCtl, _noteBodyCtl, _noteTitleNode, _noteBodyNode),
+                        _buildTabContent(
+                          ctx,
+                          setLocal,
+                          items,
+                          formKey,
+                          scrollCtl,
+                          deco,
+                          0,
+                          negeriSuggestions,
+                          isNegeri,
+                          _sectionKeyForTab,
+                          _noteTitleCtl,
+                          _noteBodyCtl,
+                          _noteTitleNode,
+                          _noteBodyNode,
+                        ),
+                        _buildTabContent(
+                          ctx,
+                          setLocal,
+                          items,
+                          formKey,
+                          scrollCtl,
+                          deco,
+                          1,
+                          swastaSuggestions,
+                          (l) => !isNegeri(l) && !isLbKeag(l),
+                          _sectionKeyForTab,
+                          _noteTitleCtl,
+                          _noteBodyCtl,
+                          _noteTitleNode,
+                          _noteBodyNode,
+                        ),
+                        _buildTabContent(
+                          ctx,
+                          setLocal,
+                          items,
+                          formKey,
+                          scrollCtl,
+                          deco,
+                          2,
+                          lbKeagSuggestions,
+                          isLbKeag,
+                          _sectionKeyForTab,
+                          _noteTitleCtl,
+                          _noteBodyCtl,
+                          _noteTitleNode,
+                          _noteBodyNode,
+                        ),
                       ],
                     ),
                   ),
@@ -953,9 +996,7 @@ class _PendidikanScreenState extends State<PendidikanScreen>
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    border: Border(
-                      top: BorderSide(color: Colors.grey[200]!),
-                    ),
+                    border: Border(top: BorderSide(color: Colors.grey[200]!)),
                   ),
                   child: SizedBox(
                     width: double.infinity,
@@ -974,178 +1015,187 @@ class _PendidikanScreenState extends State<PendidikanScreen>
                           ? null
                           : () async {
                               if (!formKey.currentState!.validate()) return;
-                            final labels = items
-                                .where(
-                                  (e) =>
-                                      !e.removed &&
-                                      e.labelCtl.text.trim().isNotEmpty,
-                                )
-                                .map((e) => e.labelCtl.text.trim())
-                                .toList();
-                            final dup = <String, int>{};
-                            for (final l in labels) {
-                              dup[l] = (dup[l] ?? 0) + 1;
-                            }
-                            final dups = dup.entries
-                                .where((e) => e.value > 1)
-                                .map((e) => e.key)
-                                .toList();
-                            if (dups.isNotEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Label duplikat: ${dups.join(', ')}',
-                                  ),
-                                ),
-                              );
-                              return;
-                            }
-                            setLocal(() => saving = true);
-                            try {
-                              for (final item in items) {
-                                if (item.removed) {
-                                  await _repo.deleteMetric(
-                                    kodeWilayah: kode,
-                                    year: year,
-                                    domain: 'pendidikan',
-                                    jenis: item.originalLabel,
-                                    metricName: 'jumlah',
-                                  );
-                                  continue;
-                                }
-                                final label = item.labelCtl.text.trim();
-                                if (label.isEmpty) continue;
-                                final v =
-                                    int.tryParse(item.valueCtl.text.trim()) ??
-                                    0;
-                                await _repo.upsertMetric(
-                                  kodeWilayah: kode,
-                                  desaId: desaId,
-                                  year: year,
-                                  domain: 'pendidikan',
-                                  jenis: label,
-                                  metricName: 'jumlah',
-                                  valueInt: v,
-                                  unit: 'unit',
-                                );
-                                if (label != item.originalLabel) {
-                                  await _repo.deleteMetric(
-                                    kodeWilayah: kode,
-                                    year: year,
-                                    domain: 'pendidikan',
-                                    jenis: item.originalLabel,
-                                    metricName: 'jumlah',
-                                  );
-                                }
+                              final labels = items
+                                  .where(
+                                    (e) =>
+                                        !e.removed &&
+                                        e.labelCtl.text.trim().isNotEmpty,
+                                  )
+                                  .map((e) => e.labelCtl.text.trim())
+                                  .toList();
+                              final dup = <String, int>{};
+                              for (final l in labels) {
+                                dup[l] = (dup[l] ?? 0) + 1;
                               }
-                              // Persist notes after metrics
-                              for (final t in [0, 1, 2]) {
-                                final section = _sectionKeyForTab(t);
-                                final title = _noteTitleCtl[t]!.text.trim();
-                                final body = _noteBodyCtl[t]!.text;
-                                final paras = body
-                                    .split(RegExp(r'\r?\n'))
-                                    .map((e) => e.trim())
-                                    .where((e) => e.isNotEmpty)
-                                    .toList();
-                                await _notesRepo.upsertPendidikanNote(
-                                  kodeWilayah: kode,
-                                  desaId: desaId,
-                                  year: year,
-                                  section: section,
-                                  title: title.isEmpty ? 'Catatan' : title,
-                                  paras: paras,
-                                );
-                              }
-                              await _loadFromRepo(kode);
-                              await _loadNotes(kode); // refresh catatan agar langsung muncul
-                              
-                              // Set _hasChanges flag for conditional refresh (using parent state)
-                              if (parentState.mounted) {
-                                parentState._hasChanges = true;
-                                parentState.setState(() {});
-                              }
-                              
-                              if (ctx.mounted) Navigator.pop(ctx);
-                              
-                              if (parentState.mounted) {
-                                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                              final dups = dup.entries
+                                  .where((e) => e.value > 1)
+                                  .map((e) => e.key)
+                                  .toList();
+                              if (dups.isNotEmpty) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Row(
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.all(8),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white.withOpacity(0.2),
-                                            borderRadius: BorderRadius.circular(8),
-                                          ),
-                                          child: const Icon(
-                                            Icons.check_circle_rounded,
-                                            color: Colors.white,
-                                            size: 24,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              const Text(
-                                                'Berhasil!',
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 14,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 2),
-                                              Text(
-                                                'Data pendidikan berhasil disimpan',
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: Colors.white.withOpacity(0.9),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
+                                    content: Text(
+                                      'Label duplikat: ${dups.join(', ')}',
                                     ),
-                                    backgroundColor: const Color(0xFF10B981),
-                                    behavior: SnackBarBehavior.fixed,
-                                    duration: const Duration(seconds: 3),
                                   ),
                                 );
+                                return;
                               }
-                            } catch (e) {
-                              if (parentState.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Gagal menyimpan: $e'),
-                                  ),
-                                );
+                              setLocal(() => saving = true);
+                              try {
+                                for (final item in items) {
+                                  if (item.removed) {
+                                    await _repo.deleteMetric(
+                                      kodeWilayah: kode,
+                                      year: year,
+                                      domain: 'pendidikan',
+                                      jenis: item.originalLabel,
+                                      metricName: 'jumlah',
+                                    );
+                                    continue;
+                                  }
+                                  final label = item.labelCtl.text.trim();
+                                  if (label.isEmpty) continue;
+                                  final v =
+                                      int.tryParse(item.valueCtl.text.trim()) ??
+                                      0;
+                                  await _repo.upsertMetric(
+                                    kodeWilayah: kode,
+                                    desaId: desaId,
+                                    year: year,
+                                    domain: 'pendidikan',
+                                    jenis: label,
+                                    metricName: 'jumlah',
+                                    valueInt: v,
+                                    unit: 'unit',
+                                  );
+                                  if (label != item.originalLabel) {
+                                    await _repo.deleteMetric(
+                                      kodeWilayah: kode,
+                                      year: year,
+                                      domain: 'pendidikan',
+                                      jenis: item.originalLabel,
+                                      metricName: 'jumlah',
+                                    );
+                                  }
+                                }
+                                // Persist notes after metrics
+                                for (final t in [0, 1, 2]) {
+                                  final section = _sectionKeyForTab(t);
+                                  final title = _noteTitleCtl[t]!.text.trim();
+                                  final body = _noteBodyCtl[t]!.text;
+                                  final paras = body
+                                      .split(RegExp(r'\r?\n'))
+                                      .map((e) => e.trim())
+                                      .where((e) => e.isNotEmpty)
+                                      .toList();
+                                  await _notesRepo.upsertPendidikanNote(
+                                    kodeWilayah: kode,
+                                    desaId: desaId,
+                                    year: year,
+                                    section: section,
+                                    title: title.isEmpty ? 'Catatan' : title,
+                                    paras: paras,
+                                  );
+                                }
+                                await _loadFromRepo(kode);
+                                await _loadNotes(
+                                  kode,
+                                ); // refresh catatan agar langsung muncul
+
+                                // Set _hasChanges flag for conditional refresh (using parent state)
+                                if (parentState.mounted) {
+                                  parentState._hasChanges = true;
+                                  parentState.setState(() {});
+                                }
+
+                                if (ctx.mounted) Navigator.pop(ctx);
+
+                                if (parentState.mounted) {
+                                  ScaffoldMessenger.of(
+                                    context,
+                                  ).hideCurrentSnackBar();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(8),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withOpacity(
+                                                0.2,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: const Icon(
+                                              Icons.check_circle_rounded,
+                                              color: Colors.white,
+                                              size: 24,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Text(
+                                                  'Berhasil!',
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 14,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  'Data pendidikan berhasil disimpan',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.white
+                                                        .withOpacity(0.9),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      backgroundColor: const Color(0xFF10B981),
+                                      behavior: SnackBarBehavior.fixed,
+                                      duration: const Duration(seconds: 3),
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (parentState.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Gagal menyimpan: $e'),
+                                    ),
+                                  );
+                                }
+                              } finally {
+                                if (ctx.mounted) setLocal(() => saving = false);
                               }
-                            } finally {
-                              if (ctx.mounted) setLocal(() => saving = false);
-                            }
-                          },
+                            },
                       child: saving
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'Simpan Perubahan',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          )
-                        : const Text(
-                            'Simpan Perubahan',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
                     ),
                   ),
                 ),
@@ -1173,13 +1223,10 @@ class _PendidikanScreenState extends State<PendidikanScreen>
     Map<int, FocusNode> noteTitleNode,
     Map<int, FocusNode> noteBodyNode,
   ) {
-    final filtered = items
-        .where((i) => !i.removed)
-        .where((i) {
-          final l = i.labelCtl.text.trim();
-          return filterFn(l);
-        })
-        .toList();
+    final filtered = items.where((i) => !i.removed).where((i) {
+      final l = i.labelCtl.text.trim();
+      return filterFn(l);
+    }).toList();
     final suggestions = getSuggestions();
 
     return Column(
@@ -1187,7 +1234,12 @@ class _PendidikanScreenState extends State<PendidikanScreen>
         Expanded(
           child: ListView(
             controller: scrollCtl,
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 80), // Tambah padding bottom untuk button sticky
+            padding: const EdgeInsets.fromLTRB(
+              16,
+              8,
+              16,
+              80,
+            ), // Tambah padding bottom untuk button sticky
             children: [
               ...filtered.map(
                 (item) => Padding(
@@ -1201,8 +1253,7 @@ class _PendidikanScreenState extends State<PendidikanScreen>
                             TextFormField(
                               controller: item.labelCtl,
                               decoration: deco('Jenis'),
-                              validator: (v) =>
-                                  (v == null || v.trim().isEmpty)
+                              validator: (v) => (v == null || v.trim().isEmpty)
                                   ? 'Wajib diisi'
                                   : null,
                             ),
@@ -1211,138 +1262,130 @@ class _PendidikanScreenState extends State<PendidikanScreen>
                               controller: item.valueCtl,
                               decoration: deco('Jumlah'),
                               keyboardType: TextInputType.number,
-                          validator: (v) {
-                            if (v == null || v.trim().isEmpty) return null;
-                            return int.tryParse(v) == null
-                                ? 'Angka tidak valid'
-                                : null;
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    tooltip: 'Hapus',
-                    onPressed: () => setLocal(() => item.removed = true),
-                    icon: const Icon(Icons.delete_outline),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (suggestions.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: suggestions
-                    .map(
-                      (s) => ActionChip(
-                        label: Text(
-                          s,
-                          style: const TextStyle(fontSize: 11),
-                        ),
-                        avatar: const Icon(Icons.add, size: 16),
-                        onPressed: () => setLocal(() {
-                          items.add(
-                            _MetricEditItemInt(
-                              originalLabel: s,
-                              labelCtl: TextEditingController(
-                                text: s,
-                              ),
-                              valueCtl: TextEditingController(
-                                text: '0',
-                              ),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
+                              validator: (v) {
+                                if (v == null || v.trim().isEmpty) return null;
+                                return int.tryParse(v) == null
+                                    ? 'Angka tidak valid'
+                                    : null;
+                              },
                             ),
-                          );
-                        }),
+                          ],
+                        ),
                       ),
-                    )
-                    .toList(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Divider(),
-            const SizedBox(height: 8),
-            Text(
-              'Judul Catatan (${sectionKeyForTab(tab)})',
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 12,
-              ),
-            ),
-            const SizedBox(height: 6),
-            TextFormField(
-              controller: noteTitleCtl[tab],
-              focusNode: noteTitleNode[tab],
-              decoration: deco('Judul Catatan'),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Catatan',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 12,
-              ),
-            ),
-            const SizedBox(height: 6),
-            TextFormField(
-              controller: noteBodyCtl[tab],
-              focusNode: noteBodyNode[tab],
-              decoration: deco(
-                'Tulis catatan, pisahkan per baris',
-              ),
-              minLines: 3,
-              maxLines: 6,
-              keyboardType: TextInputType.multiline,
-            ),
-          ],
-        ),
-      ),
-      // Sticky button di bawah
-      Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.all(16),
-        child: OutlinedButton.icon(
-          onPressed: () => setLocal(() {
-            final defaultLabel = switch (tab) {
-              0 => 'Negeri Baru',
-              2 => 'Keagamaan/SLB Baru',
-              _ => 'Jenis Pendidikan',
-            };
-            items.add(
-              _MetricEditItemInt(
-                originalLabel: '_new_${items.length}',
-                labelCtl: TextEditingController(
-                  text: defaultLabel,
+                      const SizedBox(width: 8),
+                      IconButton(
+                        tooltip: 'Hapus',
+                        onPressed: () => setLocal(() => item.removed = true),
+                        icon: const Icon(Icons.delete_outline),
+                      ),
+                    ],
+                  ),
                 ),
-                valueCtl: TextEditingController(),
               ),
-            );
-          }),
-          icon: const Icon(Icons.add),
-          label: const Text('Tambah Jenis Pendidikan'),
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size(double.infinity, 48),
+              if (suggestions.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: suggestions
+                        .map(
+                          (s) => ActionChip(
+                            label: Text(
+                              s,
+                              style: const TextStyle(fontSize: 11),
+                            ),
+                            avatar: const Icon(Icons.add, size: 16),
+                            onPressed: () => setLocal(() {
+                              items.add(
+                                _MetricEditItemInt(
+                                  originalLabel: s,
+                                  labelCtl: TextEditingController(text: s),
+                                  valueCtl: TextEditingController(text: '0'),
+                                ),
+                              );
+                            }),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 8),
+              Text(
+                'Judul Catatan (${sectionKeyForTab(tab)})',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 6),
+              TextFormField(
+                controller: noteTitleCtl[tab],
+                focusNode: noteTitleNode[tab],
+                decoration: deco('Judul Catatan'),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Catatan',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+              ),
+              const SizedBox(height: 6),
+              TextFormField(
+                controller: noteBodyCtl[tab],
+                focusNode: noteBodyNode[tab],
+                decoration: deco('Tulis catatan, pisahkan per baris'),
+                minLines: 3,
+                maxLines: 6,
+                keyboardType: TextInputType.multiline,
+              ),
+            ],
           ),
         ),
-      ),
-    ],
-  );
-}
+        // Sticky button di bawah
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 8,
+                offset: const Offset(0, -2),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.all(16),
+          child: OutlinedButton.icon(
+            onPressed: () => setLocal(() {
+              final defaultLabel = switch (tab) {
+                0 => 'Negeri Baru',
+                2 => 'Keagamaan/SLB Baru',
+                _ => 'Jenis Pendidikan',
+              };
+              items.add(
+                _MetricEditItemInt(
+                  originalLabel: '_new_${items.length}',
+                  labelCtl: TextEditingController(text: defaultLabel),
+                  valueCtl: TextEditingController(),
+                ),
+              );
+            }),
+            icon: const Icon(Icons.add),
+            label: const Text('Tambah Jenis Pendidikan'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 48),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
-/*
+  /*
                     crossAxisCount: context.gridCount(
                       mobile: 2,
                       tablet: 3,
