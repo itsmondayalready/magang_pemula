@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
@@ -1534,15 +1535,19 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
   InputDecoration _dec(String label) => InputDecoration(
         labelText: label,
         border: const OutlineInputBorder(),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         isDense: true,
       );
   Widget _numField(String label, TextEditingController ctl) => TextFormField(
         controller: ctl,
         decoration: _dec(label),
         keyboardType: TextInputType.number,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         validator: (v) {
           if (v == null || v.trim().isEmpty) return null;
-          return int.tryParse(v.trim()) == null ? 'Angka?' : null;
+          return int.tryParse(v.trim()) == null ? 'Harus angka positif' : null;
         },
       );
 
@@ -1857,6 +1862,8 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
                                                   child: TextFormField(
                                                     controller: it.rtCodeCtl,
                                                     decoration: _dec('RT Code'),
+                                                    keyboardType: TextInputType.number,
+                                                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                                                     validator: (v) => v == null || v.trim().isEmpty ? 'Wajib' : null,
                                                   ),
                                                 ),
