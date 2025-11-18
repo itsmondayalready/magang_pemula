@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../services/auth_service.dart';
 import '../services/desa_repository.dart';
 import '../services/kesehatan_repository.dart';
@@ -77,6 +79,8 @@ class MainMenuPage extends StatefulWidget {
 class _MainMenuPageState extends State<MainMenuPage> {
   late String _desaName;
   late String _kodeWilayah;
+  // Nomor WhatsApp diambil dari Profil Desa (telepon_kantor)
+  String? _teleponKantor;
 
   // Summary data (loaded from DB)
   double? _luasWilayahKm2;
@@ -115,6 +119,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
           _luasWilayahKm2 = (p?['luas_wilayah'] as num?)?.toDouble();
           _totalRT = p?['total_rt'] as int?;
           _totalRW = p?['total_rw'] as int?;
+          _teleponKantor = p?['telepon_kantor'] as String?;
         }
 
         // Kependudukan terbaru (total penduduk & KK)
@@ -196,6 +201,100 @@ class _MainMenuPageState extends State<MainMenuPage> {
         await prefs.setString('last_desa_name', selected.nama);
       } catch (_) {}
       await _loadSummary();
+    }
+  }
+
+  String? _normalizePhoneForWa(String? phone) {
+    if (phone == null) return null;
+    final raw = phone.trim();
+    if (raw.isEmpty) return null;
+    String digits = raw.replaceAll(RegExp(r'[^0-9+]'), '');
+    if (digits.startsWith('+')) digits = digits.substring(1);
+    if (digits.startsWith('0')) {
+      // Asumsi Indonesia: ganti leading 0 dengan 62
+      digits = '62${digits.substring(1)}';
+    }
+    return digits;
+  }
+
+  Future<void> _openWhatsApp() async {
+    // Buka langsung aplikasi WhatsApp via deep link; fallback ke wa.me
+    final defaultMessage = 'Halo Admin Desa';
+    final number = _normalizePhoneForWa(_teleponKantor);
+    if (number == null || number.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFFDC2626),
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline_rounded, color: Colors.white),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Nomor kantor belum diisi di Profil Desa',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          duration: const Duration(seconds: 4),
+          action: SnackBarAction(
+            label: 'Buka Profil',
+            textColor: Colors.white,
+            onPressed: () => Navigator.of(context).pushNamed(
+              '/profil-desa',
+              arguments: {'kodeWilayah': _kodeWilayah, 'desaName': _desaName},
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+
+    final appUri = Uri.parse(
+      'whatsapp://send?phone=$number&text=${Uri.encodeComponent(defaultMessage)}',
+    );
+    final webUri = Uri.parse(
+      'https://wa.me/$number?text=${Uri.encodeComponent(defaultMessage)}',
+    );
+    try {
+      bool launched = await launchUrl(
+        appUri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched) {
+        launched = await launchUrl(
+          webUri,
+          mode: LaunchMode.externalApplication,
+        );
+      }
+      if (!launched && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Gagal membuka WhatsApp'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Gagal membuka WhatsApp'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -450,6 +549,13 @@ class _MainMenuPageState extends State<MainMenuPage> {
               ),
             ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _openWhatsApp,
+        tooltip: 'Hubungi via WhatsApp',
+        backgroundColor: const Color(0xFF25D366), // WhatsApp green
+        child: const FaIcon(FontAwesomeIcons.whatsapp, color: Colors.white),
+        shape: const CircleBorder(),
       ),
     );
   }

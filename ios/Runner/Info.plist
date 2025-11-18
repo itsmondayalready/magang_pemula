@@ -45,6 +45,10 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>whatsapp</string>
+	</array>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Aplikasi memerlukan akses ke galeri foto untuk upload foto profil desa</string>
 	<key>NSCameraUsageDescription</key>
