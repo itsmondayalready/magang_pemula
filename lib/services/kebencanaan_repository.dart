@@ -77,6 +77,101 @@ class KebencanaanRepository {
     }
   }
 
+  /// Ambil record kebencanaan terbaru untuk `kodeWilayah` tanpa memfilter
+  /// berdasarkan `jenis`. Berguna ketika UI ingin menampilkan snapshot
+  /// terbaru apapun jenisnya.
+  Future<Map<String, dynamic>?> fetchLatestAnyJenis(String kodeWilayah) async {
+    // 1) coba skema normalized (kebencanaan_rekap)
+    try {
+      final snap = await _db
+          .from('kebencanaan_rekap')
+          .select()
+          .eq('kode_wilayah', kodeWilayah)
+          .order('period_end', ascending: false, nullsFirst: false)
+          .order('periode_date', ascending: false, nullsFirst: false)
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+      if (snap != null) {
+        final snapshot = Map<String, dynamic>.from(snap);
+
+        // Try to load details; best-effort — re-use existing assembly helper
+        final snapshotId = snapshot['id'];
+        List<dynamic> rtRows = const [];
+        List<dynamic> bantuanRows = const [];
+        List<dynamic> penangananRows = const [];
+        try {
+          rtRows = await _db
+              .from('kebencanaan_rt')
+              .select()
+              .eq('snapshot_id', snapshotId)
+              .order('rt_code', ascending: true);
+        } catch (_) {}
+        try {
+          bantuanRows = await _db
+              .from('kebencanaan_bantuan')
+              .select()
+              .eq('snapshot_id', snapshotId)
+              .order('nama', ascending: true);
+        } catch (_) {}
+        try {
+          penangananRows = await _db
+              .from('kebencanaan_penanganan')
+              .select()
+              .eq('snapshot_id', snapshotId)
+              .order('urutan', ascending: true);
+        } catch (_) {}
+
+        return _assembleRowFromNormalized(
+          snapshot: snapshot,
+          rtRows: rtRows,
+          bantuanRows: bantuanRows,
+          penangananRows: penangananRows,
+        );
+      }
+    } catch (e) {
+      dev.log('fetchLatestAnyJenis (normalized) failed: $e');
+    }
+
+    // 2) coba tabel kebencanaan (legacy/new single-table) tanpa filter jenis
+    try {
+      final List rows = await _db
+          .from('kebencanaan')
+          .select()
+          .order('period_end', ascending: false)
+          .order('periode_date', ascending: false)
+          .order('created_at', ascending: false)
+          .limit(1);
+      if (rows.isNotEmpty) return Map<String, dynamic>.from(rows.first as Map);
+    } catch (e) {
+      dev.log('fetchLatestAnyJenis (direct kebencanaan) failed: $e');
+    }
+
+    // 3) fallback legacy: cari desa_id lalu ambil dari kebencanaan
+    try {
+      final desa = await _db
+          .from('desa')
+          .select('id')
+          .eq('kode_wilayah', kodeWilayah)
+          .maybeSingle();
+      if (desa == null) return null;
+      final desaId = desa['id'];
+      final List rows = await _db
+          .from('kebencanaan')
+          .select()
+          .eq('desa_id', desaId)
+          .order('period_end', ascending: false)
+          .order('periode_date', ascending: false)
+          .order('created_at', ascending: false)
+          .limit(1);
+      if (rows.isEmpty) return null;
+      return Map<String, dynamic>.from(rows.first as Map);
+    } catch (e) {
+      dev.log('fetchLatestAnyJenis (fallback) error: $e');
+      return null;
+    }
+  }
+
   /// Bentuk data sesuai kebutuhan UI kebencanaan_screen.dart
   /// Struktur hasil:
   /// {

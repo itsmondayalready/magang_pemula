@@ -129,8 +129,8 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
                             color: const Color(0xFFDC2626),
                           ),
                           const SizedBox(
-                            height: 8,
-                          ), // jarak kecil, jadi terlihat rapat tapi rapi
+                            height: 4,
+                          ), // jarak kecil, diperkecil agar card lebih rapat
                         ],
 
                         GridView.count(
@@ -308,10 +308,11 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
       Map<String, dynamic>? row;
       if (forceSnapshotId != null) {
         row = await _repo.fetchBySnapshotId(forceSnapshotId);
-        // Jika fetch by id gagal (hapus atau id tidak ditemukan), fallback ke latest
-        row ??= await _repo.fetchLatest(kode, jenis: 'banjir');
+        // Jika fetch by id gagal (hapus atau id tidak ditemukan), fallback ke latest apapun jenisnya
+        row ??= await _repo.fetchLatestAnyJenis(kode);
       } else {
-        row = await _repo.fetchLatest(kode, jenis: 'banjir');
+        // Ambil snapshot terbaru apapun jenisnya
+        row = await _repo.fetchLatestAnyJenis(kode);
       }
       if (!mounted) return;
       if (row != null) {
