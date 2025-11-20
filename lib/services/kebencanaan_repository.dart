@@ -11,7 +11,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 class KebencanaanRepository {
   final SupabaseClient _db = Supabase.instance.client;
   bool? _supportsNormalizedCached;
-  final Map<String, String?> _snapshotDesaCache = {}; // cache snapshot_id -> desa_id
+  final Map<String, String?> _snapshotDesaCache =
+      {}; // cache snapshot_id -> desa_id
 
   /// Ambil satu record kebencanaan terbaru untuk desa+jenis tertentu.
   /// Mengembalikan row apa adanya (map) atau null jika tidak ada.
@@ -175,7 +176,9 @@ class KebencanaanRepository {
       await _db.from('kebencanaan_rt').select('id').limit(1);
       _supportsNormalizedCached = true;
     } catch (e) {
-      dev.log('Normalized detail tables not available, using legacy JSON columns. $e');
+      dev.log(
+        'Normalized detail tables not available, using legacy JSON columns. $e',
+      );
       _supportsNormalizedCached = false;
     }
     return _supportsNormalizedCached!;
@@ -474,10 +477,7 @@ class KebencanaanRepository {
               .maybeSingle();
           if (existing != null) {
             final exId = existing['id'];
-            await _db
-                .from('kebencanaan_rekap')
-                .update(payload)
-                .eq('id', exId);
+            await _db.from('kebencanaan_rekap').update(payload).eq('id', exId);
             return exId == null ? null : exId.toString();
           }
 
@@ -516,10 +516,7 @@ class KebencanaanRepository {
               .maybeSingle();
           if (existing != null) {
             final exId = existing['id'];
-            await _db
-                .from('kebencanaan_rekap')
-                .update(payload)
-                .eq('id', exId);
+            await _db.from('kebencanaan_rekap').update(payload).eq('id', exId);
             return exId == null ? null : exId.toString();
           }
 
@@ -574,7 +571,9 @@ class KebencanaanRepository {
         await _db.from('kebencanaan').select('id').limit(1);
       } catch (probeErr) {
         if (probeErr is PostgrestException && probeErr.code == 'PGRST205') {
-          dev.log('Legacy table kebencanaan not found (schema migrated). Skipping legacy fallback.');
+          dev.log(
+            'Legacy table kebencanaan not found (schema migrated). Skipping legacy fallback.',
+          );
           return null;
         }
       }
@@ -865,12 +864,26 @@ class KebencanaanRepository {
   /// a sensible default list.
   Future<List<String>> fetchJenisOptions() async {
     try {
-      final rows = await _db.from('kebencanaan_jenis').select('name').order('name', ascending: true);
-      if (rows is List && rows.isNotEmpty) {
-        return rows.map((r) => (r as Map)['name'].toString()).where((s) => s.isNotEmpty).toList();
+      final rows = await _db
+          .from('kebencanaan_jenis')
+          .select('name')
+          .order('name', ascending: true);
+      if (rows.isNotEmpty) {
+        // Safely extract, trim, deduplicate, and filter non-empty names.
+        final names =
+            rows
+                .whereType<Map>()
+                .map((m) => (m['name'] ?? '').toString().trim())
+                .where((s) => s.isNotEmpty)
+                .toSet() // ensure uniqueness
+                .toList()
+              ..sort(); // keep sorted order for UI consistency
+        if (names.isNotEmpty) return names;
       }
     } catch (e) {
-      dev.log('fetchJenisOptions: table query failed, falling back to prefs: $e');
+      dev.log(
+        'fetchJenisOptions: table query failed, falling back to prefs: $e',
+      );
     }
 
     try {
@@ -892,7 +905,11 @@ class KebencanaanRepository {
     if (nm.isEmpty) return;
     try {
       // Check existing first to avoid duplicates
-      final exists = await _db.from('kebencanaan_jenis').select('id').eq('name', nm).maybeSingle();
+      final exists = await _db
+          .from('kebencanaan_jenis')
+          .select('id')
+          .eq('name', nm)
+          .maybeSingle();
       if (exists == null) {
         await _db.from('kebencanaan_jenis').insert({'name': nm});
       }
@@ -903,7 +920,8 @@ class KebencanaanRepository {
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      final list = prefs.getStringList('kebencanaan_jenis_options') ?? <String>[];
+      final list =
+          prefs.getStringList('kebencanaan_jenis_options') ?? <String>[];
       if (!list.contains(nm)) {
         list.add(nm);
         await prefs.setStringList('kebencanaan_jenis_options', list);

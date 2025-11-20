@@ -31,7 +31,10 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
     // Determine initial tab count based on current auth role so the TabController
     // is created with correct length. We read provider with listen:false here
     // because initState cannot subscribe to changes.
-    final isAdminInit = Provider.of<AuthService>(context, listen: false).isAdmin;
+    final isAdminInit = Provider.of<AuthService>(
+      context,
+      listen: false,
+    ).isAdmin;
     _tabController = TabController(length: isAdminInit ? 4 : 3, vsync: this);
     // Load data dari Supabase (fallback ke sample jika kosong)
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
@@ -54,201 +57,218 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
       },
       child: Scaffold(
         backgroundColor: Colors.grey[50],
-      body: Stack(
-        children: [
-          NestedScrollView(
-            headerSliverBuilder: (context, innerBoxIsScrolled) => [
-              SliverAppBar(
-                pinned: true,
-                elevation: 0,
-                backgroundColor: Colors.transparent,
-                toolbarHeight: 56,
-                title: (() {
-                  final titleText = ((_dataBanjir?['jenis'] ?? '').toString().isNotEmpty)
-                      ? 'Data Kebencanaan • ${_capitalize(_dataBanjir?['jenis'])}'
-                      : 'Data Kebencanaan';
-                  return Tooltip(
-                    message: titleText,
-                    child: SizedBox(
-                      height: 28,
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          titleText,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
+        body: Stack(
+          children: [
+            NestedScrollView(
+              headerSliverBuilder: (context, innerBoxIsScrolled) => [
+                SliverAppBar(
+                  pinned: true,
+                  elevation: 0,
+                  backgroundColor: Colors.transparent,
+                  toolbarHeight: 56,
+                  // Static title changed per request: always "Data Tematik"
+                  title: const Text(
+                    'Data Tematik',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
                     ),
-                  );
-                })(),
-                centerTitle: false,
-                shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.only(
-                    bottomLeft: Radius.circular(20),
-                    bottomRight: Radius.circular(20),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                flexibleSpace: ClipRRect(
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(20),
-                    bottomRight: Radius.circular(20),
+                  centerTitle: false,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(20),
+                      bottomRight: Radius.circular(20),
+                    ),
                   ),
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Color(0xFFDC2626), Color(0xFFF97316)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                  flexibleSpace: ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(20),
+                      bottomRight: Radius.circular(20),
+                    ),
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Color(0xFFDC2626), Color(0xFFF97316)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              // Summary cards + small header (jenis & periode)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    context.horizontalPadding,
-                    0,
-                    context.horizontalPadding,
-                    8,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Show periode if available (jenis removed from body)
-                      if (_dataBanjir != null) ...[
-                        if ((_dataBanjir?['periode'] ?? '').toString().isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 6),
-                            child: Text(
-                              'Periode: ${_dataBanjir?['periode']}',
-                              style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.w600),
-                            ),
-                          ),
-                        const SizedBox(height: 12),
-                      ],
-
-                      GridView.count(
-                        shrinkWrap: true,
-                        crossAxisCount: context.gridCount(
-                          mobile: 2,
-                          tablet: 3,
-                          desktop: 4,
-                        ),
-                        childAspectRatio: context.summaryAspect,
-                        physics: const NeverScrollableScrollPhysics(),
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        children: [
+                // Summary cards + small header (jenis & periode)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      context.horizontalPadding,
+                      8,
+                      context.horizontalPadding,
+                      8,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (_dataBanjir != null) ...[
                           _buildSummaryCard(
-                            label: 'Rumah',
-                            value: _fmtInt(_dataBanjir?['total_rumah']),
-                            icon: Icons.home_rounded,
-                            color: const Color(0xFFDC2626),
-                          ),
-                          _buildSummaryCard(
-                            label: 'Kepala Keluarga',
-                            value: _fmtInt(_dataBanjir?['total_kk']),
-                            icon: Icons.people_rounded,
-                            color: const Color(0xFFDC2626),
-                          ),
-                          _buildSummaryCard(
-                            label: 'Jiwa Terdampak',
-                            value: _fmtInt(_dataBanjir?['total_jiwa']),
-                            icon: Icons.person_rounded,
-                            color: const Color(0xFFDC2626),
-                          ),
-                          _buildSummaryCard(
-                            label: 'Kelompok Rentan',
-                            value: _fmtInt(
-                              ((_dataBanjir?['lansia'] ?? 0) as int) +
-                                  ((_dataBanjir?['bumil'] ?? 0) as int) +
-                                  ((_dataBanjir?['balita'] ?? 0) as int),
-                              allowZero: true,
-                            ),
+                            label:
+                                ((_dataBanjir?['periode'] ?? '')
+                                    .toString()
+                                    .isNotEmpty)
+                                ? 'Periode: ${_dataBanjir?['periode']}'
+                                : 'Periode: -',
+                            value:
+                                ((_dataBanjir?['jenis'] ?? '')
+                                    .toString()
+                                    .isNotEmpty)
+                                ? _capitalize(_dataBanjir?['jenis'])
+                                : '-'.toString(),
                             icon: Icons.warning_amber_rounded,
                             color: const Color(0xFFDC2626),
                           ),
+                          const SizedBox(
+                            height: 8,
+                          ), // jarak kecil, jadi terlihat rapat tapi rapi
                         ],
-                      ),
-                    ],
+
+                        GridView.count(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          crossAxisCount: context.gridCount(
+                            mobile: 2,
+                            tablet: 3,
+                            desktop: 4,
+                          ),
+                          childAspectRatio: context.summaryAspect,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          children: [
+                            _buildSummaryCard(
+                              label: 'Rumah',
+                              value: _fmtInt(_dataBanjir?['total_rumah']),
+                              icon: Icons.home_rounded,
+                              color: const Color(0xFFDC2626),
+                            ),
+                            _buildSummaryCard(
+                              label: 'Kepala Keluarga',
+                              value: _fmtInt(_dataBanjir?['total_kk']),
+                              icon: Icons.people_rounded,
+                              color: const Color(0xFFDC2626),
+                            ),
+                            _buildSummaryCard(
+                              label: 'Jiwa Terdampak',
+                              value: _fmtInt(_dataBanjir?['total_jiwa']),
+                              icon: Icons.person_rounded,
+                              color: const Color(0xFFDC2626),
+                            ),
+                            _buildSummaryCard(
+                              label: 'Kelompok Rentan',
+                              value: _fmtInt(
+                                ((_dataBanjir?['lansia'] ?? 0) as int) +
+                                    ((_dataBanjir?['bumil'] ?? 0) as int) +
+                                    ((_dataBanjir?['balita'] ?? 0) as int),
+                                allowZero: true,
+                              ),
+                              icon: Icons.warning_amber_rounded,
+                              color: const Color(0xFFDC2626),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+              body: Padding(
+                padding: EdgeInsets.zero,
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildStatistik(),
+                    _buildPerRT(),
+                    if (context.watch<AuthService>().isAdmin) _buildBantuan(),
+                    _buildPenanganan(),
+                  ],
+                ),
+              ),
+            ),
+            if (_loading)
+              Positioned.fill(
+                child: AbsorbPointer(
+                  child: Container(
+                    color: Colors.black.withOpacity(0.08),
+                    child: const Center(child: CircularProgressIndicator()),
                   ),
                 ),
               ),
-            ],
-            body: Padding(
-              padding: EdgeInsets.zero,
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildStatistik(),
-                  _buildPerRT(),
-                  if (context.watch<AuthService>().isAdmin) _buildBantuan(),
-                  _buildPenanganan(),
-                ],
-              ),
+          ],
+        ),
+        floatingActionButton: isAdmin
+            ? FloatingActionButton(
+                onPressed: _openEditKebencanaanSheet,
+                backgroundColor: const Color(0xFFDC2626),
+                shape: const CircleBorder(),
+                elevation: 6,
+                child: const Icon(Icons.edit, color: Colors.white),
+              )
+            : null,
+        bottomNavigationBar: Material(
+          color: Colors.white,
+          elevation: 8,
+          child: SafeArea(
+            top: false,
+            child: Builder(
+              builder: (tabCtx) {
+                final isAdmin = context.watch<AuthService>().isAdmin;
+                final tabs = <Tab>[
+                  const Tab(
+                    icon: Icon(Icons.bar_chart_rounded, size: 20),
+                    text: 'Statistik',
+                  ),
+                  const Tab(
+                    icon: Icon(Icons.location_city_rounded, size: 20),
+                    text: 'Per RT',
+                  ),
+                  if (isAdmin)
+                    const Tab(
+                      icon: Icon(Icons.volunteer_activism_rounded, size: 20),
+                      text: 'Bantuan',
+                    ),
+                  const Tab(
+                    icon: Icon(Icons.engineering_rounded, size: 20),
+                    text: 'Penanganan',
+                  ),
+                ];
+                return TabBar(
+                  controller: _tabController,
+                  tabs: tabs,
+                  labelColor: const Color(0xFFDC2626),
+                  unselectedLabelColor: Colors.grey,
+                  indicatorColor: const Color(0xFFDC2626),
+                  indicatorWeight: 3,
+                  labelStyle: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  unselectedLabelStyle: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.normal,
+                  ),
+                );
+              },
             ),
           ),
-          if (_loading)
-            Positioned.fill(
-              child: AbsorbPointer(
-                child: Container(
-                  color: Colors.black.withOpacity(0.08),
-                  child: const Center(child: CircularProgressIndicator()),
-                ),
-              ),
-            ),
-        ],
-      ),
-      floatingActionButton: isAdmin
-          ? FloatingActionButton(
-              onPressed: _openEditKebencanaanSheet,
-              backgroundColor: const Color(0xFFDC2626),
-              shape: const CircleBorder(),
-              elevation: 6,
-              child: const Icon(Icons.edit, color: Colors.white),
-            )
-          : null,
-      bottomNavigationBar: Material(
-        color: Colors.white,
-        elevation: 8,
-        child: SafeArea(
-          top: false,
-          child: Builder(builder: (tabCtx) {
-            final isAdmin = context.watch<AuthService>().isAdmin;
-            final tabs = <Tab>[
-              const Tab(icon: Icon(Icons.bar_chart_rounded, size: 20), text: 'Statistik'),
-              const Tab(icon: Icon(Icons.location_city_rounded, size: 20), text: 'Per RT'),
-              if (isAdmin) const Tab(icon: Icon(Icons.volunteer_activism_rounded, size: 20), text: 'Bantuan'),
-              const Tab(icon: Icon(Icons.engineering_rounded, size: 20), text: 'Penanganan'),
-            ];
-            return TabBar(
-              controller: _tabController,
-              tabs: tabs,
-              labelColor: const Color(0xFFDC2626),
-              unselectedLabelColor: Colors.grey,
-              indicatorColor: const Color(0xFFDC2626),
-              indicatorWeight: 3,
-              labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-              unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
-            );
-          }),
-        ),
-      ), // End bottomNavigationBar
-    ), // End Scaffold
+        ), // End bottomNavigationBar
+      ), // End Scaffold
     ); // End WillPopScope
   }
 
   void _openEditKebencanaanSheet() {
     if (_kodeWilayah == null) return;
-    final snapshotId = _dataBanjir?['snapshot_id'] as String?; // bisa null (insert baru)
+    final snapshotId =
+        _dataBanjir?['snapshot_id'] as String?; // bisa null (insert baru)
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -478,10 +498,14 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
                       child: BarChart(
                         BarChartData(
                           alignment: BarChartAlignment.spaceAround,
-              maxY: top
-                .map((e) => ((e.value['jiwa'] ?? 0) as num).toDouble())
-                .fold<double>(0, (p, c) => c > p ? c : p) +
-              20,
+                          maxY:
+                              top
+                                  .map(
+                                    (e) => ((e.value['jiwa'] ?? 0) as num)
+                                        .toDouble(),
+                                  )
+                                  .fold<double>(0, (p, c) => c > p ? c : p) +
+                              20,
                           barTouchData: BarTouchData(
                             enabled: true,
                             touchTooltipData: BarTouchTooltipData(
@@ -1462,14 +1486,22 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
     super.initState();
     _repo = KebencanaanRepository();
     final d = widget.initialData;
-    _newJenisCtl = TextEditingController(text: (d?['jenis'] ?? 'banjir').toString());
-    totalRumahCtl = TextEditingController(text: (d?['total_rumah'] ?? 0).toString());
+    _newJenisCtl = TextEditingController(
+      text: (d?['jenis'] ?? 'banjir').toString(),
+    );
+    totalRumahCtl = TextEditingController(
+      text: (d?['total_rumah'] ?? 0).toString(),
+    );
     totalKkCtl = TextEditingController(text: (d?['total_kk'] ?? 0).toString());
-    totalJiwaCtl = TextEditingController(text: (d?['total_jiwa'] ?? 0).toString());
+    totalJiwaCtl = TextEditingController(
+      text: (d?['total_jiwa'] ?? 0).toString(),
+    );
     lansiaCtl = TextEditingController(text: (d?['lansia'] ?? 0).toString());
     bumilCtl = TextEditingController(text: (d?['bumil'] ?? 0).toString());
     balitaCtl = TextEditingController(text: (d?['balita'] ?? 0).toString());
-    periodeLabelCtl = TextEditingController(text: (d?['periode'] ?? '').toString());
+    periodeLabelCtl = TextEditingController(
+      text: (d?['periode'] ?? '').toString(),
+    );
 
     final rtMap = (d?['rt'] as Map<String, dynamic>?) ?? const {};
     for (final e in rtMap.entries) {
@@ -1492,27 +1524,22 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
 
     final bantuanRaw = d?['bantuan_raw'];
     final List<Map<String, dynamic>> bantuanSource;
-    
+
     if (bantuanRaw != null && bantuanRaw is List && bantuanRaw.isNotEmpty) {
       // If bantuan_raw exists and is a list, use it
       bantuanSource = List<Map<String, dynamic>>.from(
-        bantuanRaw.map((item) => Map<String, dynamic>.from(item as Map))
+        bantuanRaw.map((item) => Map<String, dynamic>.from(item as Map)),
       );
     } else if (d != null && d['bantuan'] != null && d['bantuan'] is Map) {
       // If bantuan exists as a Map, convert it
-      bantuanSource = Map<String, dynamic>.from(d['bantuan'] as Map)
-        .entries
-        .map((e) => {
-          'nama': e.key,
-          'jenis': '-',
-          'jumlah': e.value,
-        })
-        .toList();
+      bantuanSource = Map<String, dynamic>.from(d['bantuan'] as Map).entries
+          .map((e) => {'nama': e.key, 'jenis': '-', 'jumlah': e.value})
+          .toList();
     } else {
       // No data, use empty list
       bantuanSource = [];
     }
-    
+
     for (final b in bantuanSource) {
       bantuanItems.add(
         _BantuanEditItem(
@@ -1569,26 +1596,24 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
     super.dispose();
   }
 
-  
-
   InputDecoration _dec(String label) => InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        isDense: true,
-      );
+    labelText: label,
+    border: const OutlineInputBorder(),
+    filled: true,
+    fillColor: Colors.white,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    isDense: true,
+  );
   Widget _numField(String label, TextEditingController ctl) => TextFormField(
-        controller: ctl,
-        decoration: _dec(label),
-        keyboardType: TextInputType.number,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        validator: (v) {
-          if (v == null || v.trim().isEmpty) return null;
-          return int.tryParse(v.trim()) == null ? 'Harus angka positif' : null;
-        },
-      );
+    controller: ctl,
+    decoration: _dec(label),
+    keyboardType: TextInputType.number,
+    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+    validator: (v) {
+      if (v == null || v.trim().isEmpty) return null;
+      return int.tryParse(v.trim()) == null ? 'Harus angka positif' : null;
+    },
+  );
 
   Future<void> _save() async {
     if (!formKey.currentState!.validate()) return;
@@ -1600,14 +1625,25 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
       final lansia = int.tryParse(lansiaCtl.text.trim()) ?? 0;
       final bumil = int.tryParse(bumilCtl.text.trim()) ?? 0;
       final balita = int.tryParse(balitaCtl.text.trim()) ?? 0;
-      
+
       // Validasi: Jangan simpan jika semua nilai 0 dan tidak ada detail
-      final hasMainData = totalRumah > 0 || totalKk > 0 || totalJiwa > 0 || 
-                          lansia > 0 || bumil > 0 || balita > 0;
-      final hasRtData = rtItems.any((item) => !item.removed && item.rtCodeCtl.text.trim().isNotEmpty);
-      final hasBantuanData = bantuanItems.any((item) => !item.removed && item.namaCtl.text.trim().isNotEmpty);
-      final hasPenangananData = penItems.any((item) => !item.removed && item.deskripsiCtl.text.trim().isNotEmpty);
-      
+      final hasMainData =
+          totalRumah > 0 ||
+          totalKk > 0 ||
+          totalJiwa > 0 ||
+          lansia > 0 ||
+          bumil > 0 ||
+          balita > 0;
+      final hasRtData = rtItems.any(
+        (item) => !item.removed && item.rtCodeCtl.text.trim().isNotEmpty,
+      );
+      final hasBantuanData = bantuanItems.any(
+        (item) => !item.removed && item.namaCtl.text.trim().isNotEmpty,
+      );
+      final hasPenangananData = penItems.any(
+        (item) => !item.removed && item.deskripsiCtl.text.trim().isNotEmpty,
+      );
+
       if (!hasMainData && !hasRtData && !hasBantuanData && !hasPenangananData) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1631,7 +1667,10 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
       for (final n in bantuanNames) {
         dupBantuan[n] = (dupBantuan[n] ?? 0) + 1;
       }
-      final dupsBantuan = dupBantuan.entries.where((e) => e.value > 1).map((e) => e.key).toList();
+      final dupsBantuan = dupBantuan.entries
+          .where((e) => e.value > 1)
+          .map((e) => e.key)
+          .toList();
 
       final rtCodes = rtItems
           .where((r) => !r.removed)
@@ -1642,7 +1681,10 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
       for (final c in rtCodes) {
         dupRt[c] = (dupRt[c] ?? 0) + 1;
       }
-      final dupsRt = dupRt.entries.where((e) => e.value > 1).map((e) => e.key).toList();
+      final dupsRt = dupRt.entries
+          .where((e) => e.value > 1)
+          .map((e) => e.key)
+          .toList();
 
       if (dupsBantuan.isNotEmpty || dupsRt.isNotEmpty) {
         // close sheet first so snackbar appears on parent scaffold
@@ -1682,14 +1724,20 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
                       if (dupsBantuan.isNotEmpty)
                         Text(
                           'Duplikat Bantuan: ${dupsBantuan.join(', ')}',
-                          style: const TextStyle(fontSize: 12, color: Colors.white),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.white,
+                          ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
                       if (dupsRt.isNotEmpty)
                         Text(
                           'Duplikat RT: ${dupsRt.join(', ')}',
-                          style: const TextStyle(fontSize: 12, color: Colors.white),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.white,
+                          ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -1706,11 +1754,13 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
         setState(() => saving = false);
         return;
       }
-      
+
       final snapId = await _repo.upsertRekap(
         snapshotId: widget.snapshotId,
         kodeWilayah: widget.kodeWilayah,
-        jenis: (_newJenisCtl.text.trim().isNotEmpty ? _newJenisCtl.text.trim() : (widget.initialData?['jenis']?.toString() ?? 'banjir')),
+        jenis: (_newJenisCtl.text.trim().isNotEmpty
+            ? _newJenisCtl.text.trim()
+            : (widget.initialData?['jenis']?.toString() ?? 'banjir')),
         periodeLabel: periodeLabelCtl.text.trim(),
         totalRumah: totalRumah,
         totalKk: totalKk,
@@ -1756,7 +1806,11 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
         for (final p in penItems.where((e) => !e.removed)) {
           final desc = p.deskripsiCtl.text.trim();
           if (desc.isEmpty) continue;
-          await _repo.upsertPenanganan(snapshotId: snapId, urutan: p.urutan, deskripsi: desc);
+          await _repo.upsertPenanganan(
+            snapshotId: snapId,
+            urutan: p.urutan,
+            deskripsi: desc,
+          );
         }
       } else {
         final Map<String, dynamic> rtDetail = {};
@@ -1795,7 +1849,7 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
           penanganan: penanganan,
         );
       }
-  await widget.onSaved(snapId);
+      await widget.onSaved(snapId);
       if (!mounted) return;
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1882,10 +1936,7 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
                     SizedBox(height: 2),
                     Text(
                       'Gagal menyimpan. Coba lagi.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.white,
-                      ),
+                      style: TextStyle(fontSize: 12, color: Colors.white),
                     ),
                   ],
                 ),
@@ -1933,18 +1984,12 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
                   const SizedBox(height: 12),
                   const Text(
                     'Edit Data Kebencanaan',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     'Perbarui rekap, RT, bantuan & penanganan',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey[600],
-                    ),
+                    style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                   ),
                 ],
               ),
@@ -1972,49 +2017,97 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
                             // Statistik (improved spacing & 2-column layout)
                             ListView(
                               controller: scrollController,
-                              padding: const EdgeInsets.fromLTRB(20,16,20,24),
+                              padding: const EdgeInsets.fromLTRB(
+                                20,
+                                16,
+                                20,
+                                24,
+                              ),
                               children: [
-                                const Text('Statistik Rekap', style: TextStyle(fontSize:16,fontWeight: FontWeight.w600)),
-                                const SizedBox(height:12),
+                                const Text(
+                                  'Statistik Rekap',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
                                 Wrap(
                                   spacing: 16,
                                   runSpacing: 16,
                                   children: [
                                     SizedBox(
-                                      width: (MediaQuery.of(context).size.width - 20*2 - 16) / 2,
+                                      width:
+                                          (MediaQuery.of(context).size.width -
+                                              20 * 2 -
+                                              16) /
+                                          2,
                                       child: TextFormField(
                                         controller: _newJenisCtl,
                                         decoration: _dec('Jenis Bencana'),
-                                        validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
+                                        validator: (v) =>
+                                            v == null || v.trim().isEmpty
+                                            ? 'Wajib diisi'
+                                            : null,
                                       ),
                                     ),
                                     SizedBox(
-                                      width: (MediaQuery.of(context).size.width - 20*2 - 16) / 2,
-                                      child: _numField('Total Rumah', totalRumahCtl),
+                                      width:
+                                          (MediaQuery.of(context).size.width -
+                                              20 * 2 -
+                                              16) /
+                                          2,
+                                      child: _numField(
+                                        'Total Rumah',
+                                        totalRumahCtl,
+                                      ),
                                     ),
                                     SizedBox(
-                                      width: (MediaQuery.of(context).size.width - 20*2 - 16) / 2,
+                                      width:
+                                          (MediaQuery.of(context).size.width -
+                                              20 * 2 -
+                                              16) /
+                                          2,
                                       child: _numField('Total KK', totalKkCtl),
                                     ),
                                     SizedBox(
-                                      width: (MediaQuery.of(context).size.width - 20*2 - 16) / 2,
-                                      child: _numField('Total Jiwa', totalJiwaCtl),
+                                      width:
+                                          (MediaQuery.of(context).size.width -
+                                              20 * 2 -
+                                              16) /
+                                          2,
+                                      child: _numField(
+                                        'Total Jiwa',
+                                        totalJiwaCtl,
+                                      ),
                                     ),
                                     SizedBox(
-                                      width: (MediaQuery.of(context).size.width - 20*2 - 16) / 2,
+                                      width:
+                                          (MediaQuery.of(context).size.width -
+                                              20 * 2 -
+                                              16) /
+                                          2,
                                       child: _numField('Lansia', lansiaCtl),
                                     ),
                                     SizedBox(
-                                      width: (MediaQuery.of(context).size.width - 20*2 - 16) / 2,
+                                      width:
+                                          (MediaQuery.of(context).size.width -
+                                              20 * 2 -
+                                              16) /
+                                          2,
                                       child: _numField('Ibu Hamil', bumilCtl),
                                     ),
                                     SizedBox(
-                                      width: (MediaQuery.of(context).size.width - 20*2 - 16) / 2,
+                                      width:
+                                          (MediaQuery.of(context).size.width -
+                                              20 * 2 -
+                                              16) /
+                                          2,
                                       child: _numField('Balita', balitaCtl),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height:24),
+                                const SizedBox(height: 24),
                                 TextFormField(
                                   controller: periodeLabelCtl,
                                   decoration: _dec('Label Periode (opsional)'),
@@ -2026,68 +2119,148 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
                               controller: scrollController,
                               padding: const EdgeInsets.all(16),
                               children: [
-                                ...rtItems.where((it) => !it.removed).map(
-                                  (it) => Padding(
-                                    padding: const EdgeInsets.only(bottom: 12),
-                                    child: Card(
-                                      elevation: 1,
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(12),
-                                        child: Column(
-                                          children: [
-                                            Row(
+                                ...rtItems
+                                    .where((it) => !it.removed)
+                                    .map(
+                                      (it) => Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 12,
+                                        ),
+                                        child: Card(
+                                          elevation: 1,
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(12),
+                                            child: Column(
                                               children: [
-                                                Expanded(
-                                                  child: TextFormField(
-                                                    controller: it.rtCodeCtl,
-                                                    decoration: _dec('RT Code'),
-                                                    keyboardType: TextInputType.number,
-                                                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                                                    validator: (v) => v == null || v.trim().isEmpty ? 'Wajib' : null,
-                                                  ),
+                                                Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child: TextFormField(
+                                                        controller:
+                                                            it.rtCodeCtl,
+                                                        decoration: _dec(
+                                                          'RT Code',
+                                                        ),
+                                                        keyboardType:
+                                                            TextInputType
+                                                                .number,
+                                                        inputFormatters: [
+                                                          FilteringTextInputFormatter
+                                                              .digitsOnly,
+                                                        ],
+                                                        validator: (v) =>
+                                                            v == null ||
+                                                                v.trim().isEmpty
+                                                            ? 'Wajib'
+                                                            : null,
+                                                      ),
+                                                    ),
+                                                    IconButton(
+                                                      tooltip: 'Hapus RT',
+                                                      onPressed: () => setState(
+                                                        () => it.removed = true,
+                                                      ),
+                                                      icon: const Icon(
+                                                        Icons.delete_outline,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
-                                                IconButton(
-                                                  tooltip: 'Hapus RT',
-                                                  onPressed: () => setState(() => it.removed = true),
-                                                  icon: const Icon(Icons.delete_outline),
+                                                const SizedBox(height: 8),
+                                                Wrap(
+                                                  spacing: 8,
+                                                  runSpacing: 8,
+                                                  children: [
+                                                    SizedBox(
+                                                      width: 100,
+                                                      child: _numField(
+                                                        'Rumah',
+                                                        it.rumahCtl,
+                                                      ),
+                                                    ),
+                                                    SizedBox(
+                                                      width: 80,
+                                                      child: _numField(
+                                                        'KK',
+                                                        it.kkCtl,
+                                                      ),
+                                                    ),
+                                                    SizedBox(
+                                                      width: 90,
+                                                      child: _numField(
+                                                        'Jiwa',
+                                                        it.jiwaCtl,
+                                                      ),
+                                                    ),
+                                                    SizedBox(
+                                                      width: 90,
+                                                      child: _numField(
+                                                        'Lansia',
+                                                        it.lansiaCtl,
+                                                      ),
+                                                    ),
+                                                    SizedBox(
+                                                      width: 90,
+                                                      child: _numField(
+                                                        'Bumil',
+                                                        it.bumilCtl,
+                                                      ),
+                                                    ),
+                                                    SizedBox(
+                                                      width: 90,
+                                                      child: _numField(
+                                                        'Balita',
+                                                        it.balitaCtl,
+                                                      ),
+                                                    ),
+                                                    SizedBox(
+                                                      width: 90,
+                                                      child: _numField(
+                                                        'Bayi',
+                                                        it.bayiCtl,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                               ],
                                             ),
-                                            const SizedBox(height: 8),
-                                            Wrap(
-                                              spacing: 8,
-                                              runSpacing: 8,
-                                              children: [
-                                                SizedBox(width: 100, child: _numField('Rumah', it.rumahCtl)),
-                                                SizedBox(width: 80, child: _numField('KK', it.kkCtl)),
-                                                SizedBox(width: 90, child: _numField('Jiwa', it.jiwaCtl)),
-                                                SizedBox(width: 90, child: _numField('Lansia', it.lansiaCtl)),
-                                                SizedBox(width: 90, child: _numField('Bumil', it.bumilCtl)),
-                                                SizedBox(width: 90, child: _numField('Balita', it.balitaCtl)),
-                                                SizedBox(width: 90, child: _numField('Bayi', it.bayiCtl)),
-                                              ],
-                                            ),
-                                          ],
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                ),
                                 Align(
                                   alignment: Alignment.centerLeft,
                                   child: OutlinedButton.icon(
-                                    onPressed: () => setState(() => rtItems.add(
-                                          _RtEditItem(
-                                            rtCodeCtl: TextEditingController(text: '00${rtItems.length + 1}'),
-                                            rumahCtl: TextEditingController(text: '0'),
-                                            kkCtl: TextEditingController(text: '0'),
-                                            jiwaCtl: TextEditingController(text: '0'),
-                                            lansiaCtl: TextEditingController(text: '0'),
-                                            bumilCtl: TextEditingController(text: '0'),
-                                            balitaCtl: TextEditingController(text: '0'),
-                                            bayiCtl: TextEditingController(text: '0'),
+                                    onPressed: () => setState(
+                                      () => rtItems.add(
+                                        _RtEditItem(
+                                          rtCodeCtl: TextEditingController(
+                                            text: '00${rtItems.length + 1}',
                                           ),
-                                        )),
+                                          rumahCtl: TextEditingController(
+                                            text: '0',
+                                          ),
+                                          kkCtl: TextEditingController(
+                                            text: '0',
+                                          ),
+                                          jiwaCtl: TextEditingController(
+                                            text: '0',
+                                          ),
+                                          lansiaCtl: TextEditingController(
+                                            text: '0',
+                                          ),
+                                          bumilCtl: TextEditingController(
+                                            text: '0',
+                                          ),
+                                          balitaCtl: TextEditingController(
+                                            text: '0',
+                                          ),
+                                          bayiCtl: TextEditingController(
+                                            text: '0',
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                     icon: const Icon(Icons.add),
                                     label: const Text('Tambah RT'),
                                   ),
@@ -2099,59 +2272,85 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
                               controller: scrollController,
                               padding: const EdgeInsets.all(16),
                               children: [
-                                ...bantuanItems.where((b) => !b.removed).map(
-                                  (b) => Padding(
-                                    padding: const EdgeInsets.only(bottom: 12),
-                                    child: Card(
-                                      elevation: 1,
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(12),
-                                        child: Column(
-                                          children: [
-                                            Row(
+                                ...bantuanItems
+                                    .where((b) => !b.removed)
+                                    .map(
+                                      (b) => Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 12,
+                                        ),
+                                        child: Card(
+                                          elevation: 1,
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(12),
+                                            child: Column(
                                               children: [
-                                                Expanded(
-                                                  child: TextFormField(
-                                                    controller: b.namaCtl,
-                                                    decoration: _dec('Nama Bantuan'),
-                                                    validator: (v) => v == null || v.trim().isEmpty ? 'Wajib' : null,
-                                                  ),
+                                                Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child: TextFormField(
+                                                        controller: b.namaCtl,
+                                                        decoration: _dec(
+                                                          'Nama Bantuan',
+                                                        ),
+                                                        validator: (v) =>
+                                                            v == null ||
+                                                                v.trim().isEmpty
+                                                            ? 'Wajib'
+                                                            : null,
+                                                      ),
+                                                    ),
+                                                    IconButton(
+                                                      onPressed: () => setState(
+                                                        () => b.removed = true,
+                                                      ),
+                                                      icon: const Icon(
+                                                        Icons.delete_outline,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
-                                                IconButton(
-                                                  onPressed: () => setState(() => b.removed = true),
-                                                  icon: const Icon(Icons.delete_outline),
+                                                const SizedBox(height: 8),
+                                                Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child: TextFormField(
+                                                        controller: b.jenisCtl,
+                                                        decoration: _dec(
+                                                          'Jenis (opsional)',
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    SizedBox(
+                                                      width: 90,
+                                                      child: _numField(
+                                                        'Jumlah',
+                                                        b.jumlahCtl,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                               ],
                                             ),
-                                            const SizedBox(height: 8),
-                                            Row(
-                                              children: [
-                                                Expanded(
-                                                  child: TextFormField(
-                                                    controller: b.jenisCtl,
-                                                    decoration: _dec('Jenis (opsional)'),
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                SizedBox(width: 90, child: _numField('Jumlah', b.jumlahCtl)),
-                                              ],
-                                            ),
-                                          ],
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                ),
                                 Align(
                                   alignment: Alignment.centerLeft,
                                   child: OutlinedButton.icon(
-                                    onPressed: () => setState(() => bantuanItems.add(
-                                          _BantuanEditItem(
-                                            namaCtl: TextEditingController(),
-                                            jenisCtl: TextEditingController(),
-                                            jumlahCtl: TextEditingController(text: '0'),
+                                    onPressed: () => setState(
+                                      () => bantuanItems.add(
+                                        _BantuanEditItem(
+                                          namaCtl: TextEditingController(),
+                                          jenisCtl: TextEditingController(),
+                                          jumlahCtl: TextEditingController(
+                                            text: '0',
                                           ),
-                                        )),
+                                        ),
+                                      ),
+                                    ),
                                     icon: const Icon(Icons.add),
                                     label: const Text('Tambah Bantuan'),
                                   ),
@@ -2163,52 +2362,90 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
                               controller: scrollController,
                               padding: const EdgeInsets.all(16),
                               children: [
-                                ...penItems.where((p) => !p.removed).map(
-                                  (p) => Padding(
-                                    padding: const EdgeInsets.only(bottom: 12),
-                                    child: Card(
-                                      elevation: 1,
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(12),
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Row(
+                                ...penItems
+                                    .where((p) => !p.removed)
+                                    .map(
+                                      (p) => Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 12,
+                                        ),
+                                        child: Card(
+                                          elevation: 1,
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(12),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
                                               children: [
-                                                Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.blue.shade50,
-                                                    borderRadius: BorderRadius.circular(20),
-                                                  ),
-                                                  child: Text('Langkah ${p.urutan}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                                                Row(
+                                                  children: [
+                                                    Container(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 12,
+                                                            vertical: 6,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color:
+                                                            Colors.blue.shade50,
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              20,
+                                                            ),
+                                                      ),
+                                                      child: Text(
+                                                        'Langkah ${p.urutan}',
+                                                        style: const TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const Spacer(),
+                                                    IconButton(
+                                                      onPressed: () => setState(
+                                                        () => p.removed = true,
+                                                      ),
+                                                      icon: const Icon(
+                                                        Icons.delete_outline,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
-                                                const Spacer(),
-                                                IconButton(
-                                                  onPressed: () => setState(() => p.removed = true),
-                                                  icon: const Icon(Icons.delete_outline),
+                                                const SizedBox(height: 8),
+                                                TextFormField(
+                                                  controller: p.deskripsiCtl,
+                                                  maxLines: 3,
+                                                  decoration: _dec(
+                                                    'Deskripsi Kegiatan',
+                                                  ),
+                                                  validator: (v) =>
+                                                      v == null ||
+                                                          v.trim().isEmpty
+                                                      ? 'Wajib'
+                                                      : null,
                                                 ),
                                               ],
                                             ),
-                                            const SizedBox(height: 8),
-                                            TextFormField(
-                                              controller: p.deskripsiCtl,
-                                              maxLines: 3,
-                                              decoration: _dec('Deskripsi Kegiatan'),
-                                              validator: (v) => v == null || v.trim().isEmpty ? 'Wajib' : null,
-                                            ),
-                                          ],
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                ),
                                 Align(
                                   alignment: Alignment.centerLeft,
                                   child: OutlinedButton.icon(
                                     onPressed: () => setState(() {
-                                      final next = penItems.where((e) => !e.removed).length + 1;
-                                      penItems.add(_PenangananEditItem(urutan: next, deskripsiCtl: TextEditingController()));
+                                      final next =
+                                          penItems
+                                              .where((e) => !e.removed)
+                                              .length +
+                                          1;
+                                      penItems.add(
+                                        _PenangananEditItem(
+                                          urutan: next,
+                                          deskripsiCtl: TextEditingController(),
+                                        ),
+                                      );
                                     }),
                                     icon: const Icon(Icons.add),
                                     label: const Text('Tambah Penanganan'),
@@ -2248,7 +2485,9 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
                           width: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
                           ),
                         )
                       : Ink(
@@ -2322,8 +2561,5 @@ class _PenangananEditItem {
   final int urutan;
   final TextEditingController deskripsiCtl;
   bool removed = false;
-  _PenangananEditItem({
-    required this.urutan,
-    required this.deskripsiCtl,
-  });
+  _PenangananEditItem({required this.urutan, required this.deskripsiCtl});
 }
