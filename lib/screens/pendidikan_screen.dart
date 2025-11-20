@@ -203,7 +203,7 @@ class _PendidikanScreenState extends State<PendidikanScreen>
                   backgroundColor: Colors.transparent,
                   toolbarHeight: 56,
                   title: const Text(
-                    'Pendidikan',
+                    'Data Pendidikan',
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w800,
@@ -1032,13 +1032,62 @@ class _PendidikanScreenState extends State<PendidikanScreen>
                                   .map((e) => e.key)
                                   .toList();
                               if (dups.isNotEmpty) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Label duplikat: ${dups.join(', ')}',
+                                // Close the bottom sheet first so the snackbar appears on the
+                                // parent scaffold (consistent with other screens).
+                                if (ctx.mounted) Navigator.pop(ctx);
+
+                                if (parentState.mounted) {
+                                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(8),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withValues(alpha: 0.2),
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: const Icon(
+                                              Icons.error_outline_rounded,
+                                              color: Colors.white,
+                                              size: 24,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Text(
+                                                  'Gagal Menyimpan',
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 14,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  'Label duplikat: ${dups.join(', ')}',
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.white,
+                                                  ),
+                                                  maxLines: 2,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      backgroundColor: const Color(0xFFEF4444),
+                                      behavior: SnackBarBehavior.fixed,
+                                      duration: const Duration(seconds: 4),
                                     ),
-                                  ),
-                                );
+                                  );
+                                }
                                 return;
                               }
                               setLocal(() => saving = true);
@@ -1169,10 +1218,56 @@ class _PendidikanScreenState extends State<PendidikanScreen>
                                   );
                                 }
                               } catch (e) {
+                                // Close bottom sheet first so snackbar is visible on parent
+                                if (ctx.mounted) Navigator.pop(ctx);
+
                                 if (parentState.mounted) {
+                                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text('Gagal menyimpan: $e'),
+                                      content: Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(8),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withValues(alpha: 0.2),
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: const Icon(
+                                              Icons.error_outline_rounded,
+                                              color: Colors.white,
+                                              size: 24,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: const [
+                                                Text(
+                                                  'Gagal Menyimpan',
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 14,
+                                                  ),
+                                                ),
+                                                SizedBox(height: 2),
+                                                Text(
+                                                  'Gagal menyimpan. Coba lagi.',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      backgroundColor: const Color(0xFFEF4444),
+                                      behavior: SnackBarBehavior.fixed,
+                                      duration: const Duration(seconds: 3),
                                     ),
                                   );
                                 }
@@ -1346,41 +1441,8 @@ class _PendidikanScreenState extends State<PendidikanScreen>
             ],
           ),
         ),
-        // Sticky button di bawah
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 8,
-                offset: const Offset(0, -2),
-              ),
-            ],
-          ),
-          padding: const EdgeInsets.all(16),
-          child: OutlinedButton.icon(
-            onPressed: () => setLocal(() {
-              final defaultLabel = switch (tab) {
-                0 => 'Negeri Baru',
-                2 => 'Keagamaan/SLB Baru',
-                _ => 'Jenis Pendidikan',
-              };
-              items.add(
-                _MetricEditItemInt(
-                  originalLabel: '_new_${items.length}',
-                  labelCtl: TextEditingController(text: defaultLabel),
-                  valueCtl: TextEditingController(),
-                ),
-              );
-            }),
-            icon: const Icon(Icons.add),
-            label: const Text('Tambah Jenis Pendidikan'),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 48),
-            ),
-          ),
-        ),
+        // (Removed Add button per request)
+        const SizedBox.shrink(),
       ],
     );
   }

@@ -104,7 +104,7 @@ class _KependudukanScreenState extends State<KependudukanScreen>
                 backgroundColor: Colors.transparent,
                 toolbarHeight: 56,
                 title: const Text(
-                  'Kependudukan',
+                  'Data Kependudukan',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
@@ -1630,6 +1630,8 @@ class _EditBottomSheetState extends State<_EditBottomSheet> {
                     // If any inline field errors exist, stop and inform the user
                     if (_fieldErrors.values.any((e) => e != null)) {
                       if (context.mounted) {
+                        // Close bottom sheet first, then show brief warning
+                        Navigator.of(context).pop();
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('Perbaiki input yang tidak valid'),
@@ -1658,55 +1660,57 @@ class _EditBottomSheetState extends State<_EditBottomSheet> {
                           produktifBekerja == null ||
                           produktifTidak == null) {
                         if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.2),
-                                    borderRadius: BorderRadius.circular(8),
+                          // Close sheet first so snackbar appears on parent
+                          Navigator.of(context).pop();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.error_outline,
+                                      color: Colors.white,
+                                      size: 24,
+                                    ),
                                   ),
-                                  child: const Icon(
-                                    Icons.error_outline,
-                                    color: Colors.white,
-                                    size: 24,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                const Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        'Validasi Gagal',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14,
+                                  const SizedBox(width: 12),
+                                  const Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          'Validasi Gagal',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                          ),
                                         ),
-                                      ),
-                                      SizedBox(height: 2),
-                                      Text(
-                                        'Semua field data utama harus diisi dengan angka valid',
-                                        style: TextStyle(fontSize: 12),
-                                      ),
-                                    ],
+                                        SizedBox(height: 2),
+                                        Text(
+                                          'Ada input kosong atau tidak valid',
+                                          style: TextStyle(fontSize: 12),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
+                              backgroundColor: const Color(0xFFEF4444),
+                              behavior: SnackBarBehavior.fixed,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              duration: const Duration(seconds: 4),
                             ),
-                            backgroundColor: const Color(0xFFEF4444),
-                            behavior: SnackBarBehavior.fixed,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            duration: const Duration(seconds: 4),
-                          ),
-                        );
-                        return;
-                      }
+                          );
+                          return;
+                        }
 
                       if (totalPenduduk < 0 ||
                           totalKK < 0 ||
@@ -1715,6 +1719,8 @@ class _EditBottomSheetState extends State<_EditBottomSheet> {
                           produktifBekerja < 0 ||
                           produktifTidak < 0) {
                         if (!context.mounted) return;
+                        // Close sheet first then show input-invalid warning
+                        Navigator.of(context).pop();
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Row(
@@ -1782,6 +1788,81 @@ class _EditBottomSheetState extends State<_EditBottomSheet> {
                         if (label.isNotEmpty && value > 0) {
                           pekerjaanData[label] = value;
                         }
+                      }
+
+                      // Validation: check duplicate pekerjaan labels
+                      final pekerjaanLabels = widget.pekerjaanItems
+                          .map((e) => e.labelCtl.text.trim())
+                          .where((s) => s.isNotEmpty)
+                          .toList();
+                      final dupMap = <String, int>{};
+                      for (final l in pekerjaanLabels) {
+                        dupMap[l] = (dupMap[l] ?? 0) + 1;
+                      }
+                      final dupLabels = dupMap.entries
+                          .where((e) => e.value > 1)
+                          .map((e) => e.key)
+                          .toList();
+                      if (dupLabels.isNotEmpty) {
+                        if (context.mounted) {
+                          // Close sheet first so snackbar appears on parent
+                          Navigator.of(context).pop();
+                          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.2),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.error_outline,
+                                      color: Colors.white,
+                                      size: 24,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Text(
+                                          'Gagal Menyimpan',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          'Label duplikat: ${dupLabels.join(', ')}',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.white,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              backgroundColor: const Color(0xFFEF4444),
+                              behavior: SnackBarBehavior.fixed,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              duration: const Duration(seconds: 4),
+                            ),
+                          );
+                        }
+                        setLocal(() => saving = false);
+                        return;
                       }
 
                       // Save to database
@@ -1863,6 +1944,8 @@ class _EditBottomSheetState extends State<_EditBottomSheet> {
                       }
                     } catch (e) {
                       if (context.mounted) {
+                        // Close bottom sheet first, then show a concise error
+                        Navigator.of(context).pop();
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Row(
@@ -1884,19 +1967,19 @@ class _EditBottomSheetState extends State<_EditBottomSheet> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Text(
+                                    children: const [
+                                      Text(
                                         'Gagal Menyimpan',
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 14,
                                         ),
                                       ),
-                                      const SizedBox(height: 2),
+                                      SizedBox(height: 2),
                                       Text(
-                                        '$e',
-                                        style: const TextStyle(fontSize: 12),
-                                        maxLines: 2,
+                                        'Gagal menyimpan. Coba lagi.',
+                                        style: TextStyle(fontSize: 12),
+                                        maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ],
@@ -1909,7 +1992,7 @@ class _EditBottomSheetState extends State<_EditBottomSheet> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            duration: const Duration(seconds: 5),
+                            duration: const Duration(seconds: 3),
                           ),
                         );
                       }

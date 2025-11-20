@@ -98,18 +98,16 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
       kode,
       year: year,
     ); // Map<String,double>
-    // UI saat ini memakai satuan (km) pada label dan integer untuk nilai, maka konversi ke int dengan pembulatan
+    // Convert jalan km (double) into UI-friendly integer values with " (km)" suffix
     final jalanInt = <String, int>{
-      for (final e in jalanKm.entries)
-        // Tambahkan " (km)" ke label agar konsisten dengan UI lama
-        '${e.key} (km)': e.value.round(),
+      for (final e in jalanKm.entries) '${e.key} (km)': e.value.round(),
     };
 
+    // Angkutan
     final angkutan = await _repo.getAngkutan(kode, year: year);
 
-    // Akses Pemerintahan
+    // Akses Pemerintahan: transform list -> map{'Tujuan': {'jarak_km': int, 'waktu_menit': int}}
     final aksesList = await _repo.getAksesPemerintahan(kode, year: year);
-    // Bentuk ulang ke struktur UI lama: {'Ke Camat': {'jarak_km': 12, 'waktu_menit': 25}, ...}
     final aksesMap = <String, Map<String, int>>{};
     for (final r in aksesList) {
       final label = (r['label'] as String?) ?? (r['tujuan'] as String? ?? '-');
@@ -118,25 +116,22 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
       aksesMap[label] = {'jarak_km': jarak.round(), 'waktu_menit': waktu};
     }
 
-    // Komunikasi
+    // Komunikasi -> normalize into UI keys
     final komunikasi = await _repo.getKomunikasi(kode, year: year) ?? {};
-    // Transform ke kunci UI lama
     final komunikasiUi = <String, int>{
       'Menara BTS': ((komunikasi['bts_count'] as num?)?.toInt() ?? 0),
-      'Operator Seluler':
-          ((komunikasi['operator_count'] as num?)?.toInt() ?? 0),
+      'Operator Seluler': ((komunikasi['operator_count'] as num?)?.toInt() ?? 0),
       'Sinyal 4G (%)': ((komunikasi['cakupan_4g_pct'] as num?)?.round() ?? 0),
       'Internet Desa': ((komunikasi['internet_desa'] == true) ? 1 : 0),
       'Komputer (unit)': ((komunikasi['komputer_unit'] as num?)?.toInt() ?? 0),
-      'TV/Radio (pusat)':
-          ((komunikasi['tv_radio_pusat'] as num?)?.toInt() ?? 0),
+      'TV/Radio (pusat)': ((komunikasi['tv_radio_pusat'] as num?)?.toInt() ?? 0),
     };
 
     // Sanitasi & Kebencanaan
     final sanitasi = await _repo.getSanitasi(kode, year: year);
     final kebencanaan = await _repo.getKebencanaan(kode, year: year);
 
-    // Update state data (tanpa setState di sini; pemanggil yang setState setelah selesai)
+    // Update state data
     _data['pendidikan'] = pendidikan;
     _data['kesehatan'] = fasilitas;
     _data['tenaga_medis'] = tenaga;
@@ -364,7 +359,6 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
     // Build local editable structures from current _data
     final pendidikan = Map<String, int>.from(_data['pendidikan']);
     final kesehatan = Map<String, int>.from(_data['kesehatan']);
-    final tenaga = Map<String, int>.from(_data['tenaga_medis']);
     final jalan = Map<String, int>.from(_data['jalan']); // displayed as int km
     final angkutan = Map<String, int>.from(_data['angkutan']);
     final akses = Map<String, Map<String, int>>.from(
@@ -390,16 +384,9 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
           ),
         )
         .toList();
+    // Only preload fasilitas entries that have a non-zero value to keep the form compact
     final List<_MetricEditItemInt> kesItems = kesehatan.entries
-        .map(
-          (e) => _MetricEditItemInt(
-            originalLabel: e.key,
-            labelCtl: TextEditingController(text: e.key),
-            valueCtl: intCtl(e.value),
-          ),
-        )
-        .toList();
-    final List<_MetricEditItemInt> tenagaItems = tenaga.entries
+        .where((e) => e.value > 0)
         .map(
           (e) => _MetricEditItemInt(
             originalLabel: e.key,
@@ -506,12 +493,7 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
                       )
                       .map((e) => e.labelCtl.text.trim())
                       .toList(),
-                  'Tenaga Medis': tenagaItems
-                      .where(
-                        (e) => !e.removed && e.labelCtl.text.trim().isNotEmpty,
-                      )
-                      .map((e) => e.labelCtl.text.trim())
-                      .toList(),
+                  // Tenaga Medis editing removed from this sheet
                   'Jalan': jalanItems
                       .where(
                         (e) => !e.removed && e.labelCtl.text.trim().isNotEmpty,
@@ -561,9 +543,51 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(
-                          'Label duplikat ditemukan:\n$duplicateMessage'.trim(),
+                        content: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.error_outline_rounded,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text(
+                                    'Gagal Menyimpan',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Label duplikat ditemukan: ${duplicateMessage.trim()}',
+                                    style: const TextStyle(fontSize: 12),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
+                        backgroundColor: const Color(0xFFDC2626),
+                        behavior: SnackBarBehavior.fixed,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        duration: const Duration(seconds: 4),
                       ),
                     );
                   }
@@ -640,41 +664,7 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
                     );
                   }
                 }
-                // Tenaga medis
-                for (final item in tenagaItems) {
-                  if (item.removed) {
-                    await _repo.deleteMetric(
-                      kodeWilayah: kode,
-                      year: year,
-                      domain: 'tenaga_medis',
-                      jenis: item.originalLabel,
-                      metricName: 'jumlah',
-                    );
-                    continue;
-                  }
-                  final label = item.labelCtl.text.trim();
-                  if (label.isEmpty) continue;
-                  final v = int.tryParse(item.valueCtl.text.trim()) ?? 0;
-                  await _repo.upsertMetric(
-                    kodeWilayah: kode,
-                    desaId: desaId,
-                    year: year,
-                    domain: 'tenaga_medis',
-                    jenis: label,
-                    metricName: 'jumlah',
-                    valueInt: v,
-                    unit: 'orang',
-                  );
-                  if (label != item.originalLabel) {
-                    await _repo.deleteMetric(
-                      kodeWilayah: kode,
-                      year: year,
-                      domain: 'tenaga_medis',
-                      jenis: item.originalLabel,
-                      metricName: 'jumlah',
-                    );
-                  }
-                }
+                // Tenaga Medis editing removed from this sheet — nothing to persist here.
                 // Jalan km (strip suffix ' (km)')
                 for (final item in jalanItems) {
                   if (item.removed) {
@@ -967,10 +957,62 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
                   ),
                 );
               } catch (e) {
-                if (!mounted) return;
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text('Gagal menyimpan: $e')));
+                // Close bottom sheet first so snackbar is visible on parent
+                if (!ctx.mounted) return;
+                Navigator.of(ctx).pop();
+
+                if (mounted) {
+                  // Show structured error notification (title + subtitle)
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.error_outline_rounded,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: const [
+                                Text(
+                                  'Gagal Menyimpan',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'Gagal menyimpan. Coba lagi.',
+                                  style: TextStyle(fontSize: 12),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      backgroundColor: const Color(0xFFDC2626),
+                      behavior: SnackBarBehavior.fixed,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      duration: const Duration(seconds: 3),
+                    ),
+                  );
+                }
               } finally {
                 if (mounted) setLocalState(() => saving = false);
               }
@@ -1274,102 +1316,7 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
                                         label: const Text('Tambah Fasilitas'),
                                       ),
                                     ),
-                                    const SizedBox(height: 12),
-                                    const Text(
-                                      'Tenaga Medis',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    ...tenagaItems
-                                        .where((item) => !item.removed)
-                                        .map(
-                                          (item) => Padding(
-                                            padding: const EdgeInsets.only(
-                                              bottom: 12,
-                                            ),
-                                            child: Row(
-                                              children: [
-                                                Expanded(
-                                                  child: Column(
-                                                    children: [
-                                                      TextFormField(
-                                                        controller:
-                                                            item.labelCtl,
-                                                        decoration: deco(
-                                                          'Jabatan',
-                                                        ),
-                                                        validator: (v) =>
-                                                            (v == null ||
-                                                                v
-                                                                    .trim()
-                                                                    .isEmpty)
-                                                            ? 'Wajib diisi'
-                                                            : null,
-                                                      ),
-                                                      const SizedBox(height: 8),
-                                                      TextFormField(
-                                                        controller:
-                                                            item.valueCtl,
-                                                        decoration: deco(
-                                                          'Jumlah',
-                                                        ),
-                                                        keyboardType:
-                                                            TextInputType
-                                                                .number,
-                                                        inputFormatters: [
-                                                          FilteringTextInputFormatter
-                                                              .digitsOnly,
-                                                        ],
-                                                        validator: (v) {
-                                                          if (v == null ||
-                                                              v.trim().isEmpty)
-                                                            return null;
-                                                          return int.tryParse(
-                                                                    v,
-                                                                  ) ==
-                                                                  null
-                                                              ? 'Angka tidak valid'
-                                                              : null;
-                                                        },
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                IconButton(
-                                                  tooltip: 'Hapus',
-                                                  onPressed: () =>
-                                                      setLocalState(
-                                                        () =>
-                                                            item.removed = true,
-                                                      ),
-                                                  icon: const Icon(
-                                                    Icons.delete_outline,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                    Align(
-                                      alignment: Alignment.centerLeft,
-                                      child: OutlinedButton.icon(
-                                        onPressed: () => setLocalState(
-                                          () => tenagaItems.add(
-                                            _MetricEditItemInt(
-                                              originalLabel:
-                                                  '_new_${tenagaItems.length}',
-                                              labelCtl: TextEditingController(),
-                                              valueCtl: TextEditingController(),
-                                            ),
-                                          ),
-                                        ),
-                                        icon: const Icon(Icons.add),
-                                        label: const Text('Tambah Tenaga'),
-                                      ),
-                                    ),
+                                    // Tenaga Medis editing removed from this sheet — not shown here
                                   ],
                                 ),
                               ),
@@ -2114,7 +2061,6 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
 
   Widget _buildKesehatan() {
     final fasilitas = Map<String, int>.from(_data['kesehatan']);
-    final tenaga = Map<String, int>.from(_data['tenaga_medis']);
     final totalFasilitas = _sum(fasilitas);
 
     final colors = [
@@ -2150,76 +2096,27 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Center(
-                  child: SizedBox(
-                    height: 280,
-                    child: PieChart(
-                      PieChartData(
-                        sectionsSpace: 3,
-                        centerSpaceRadius: 60,
-                        sections: List.generate(entries.length, (i) {
-                          final e = entries[i];
-                          final pct = totalFasilitas == 0
-                              ? 0
-                              : e.value / totalFasilitas * 100;
-                          return PieChartSectionData(
-                            value: e.value.toDouble(),
-                            title: pct > 8 ? '${pct.toStringAsFixed(0)}%' : '',
-                            color: colors[i % colors.length],
-                            radius: 90,
-                            titleStyle: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          );
-                        }),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: entries
-                      .asMap()
-                      .entries
-                      .map(
-                        (kv) => _legendItem(
-                          color: colors[kv.key % colors.length],
-                          label: kv.value.key,
-                          value: kv.value.value,
-                        ),
-                      )
-                      .toList(),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'Tenaga Medis',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: tenaga.entries
-                      .map(
-                        (e) => Expanded(
-                          child: _infoStat(
-                            icon: e.key == 'Dokter'
-                                ? Icons.medical_information_rounded
-                                : e.key == 'Bidan'
-                                ? Icons.pregnant_woman_rounded
-                                : Icons.volunteer_activism_rounded,
-                            label: e.key,
-                            value: e.value.toString(),
-                            color: const Color(0xFF10B981),
-                          ),
-                        ),
-                      )
-                      .toList(),
-                ),
+                // Show fasilitas as horizontal bars (matches Pendidikan style)
+                ...entries
+                    .where((e) => e.value > 0)
+                    .toList()
+                    .asMap()
+                    .entries
+                    .map((kv) {
+                      final idx = kv.key;
+                      final e = kv.value;
+                      final color = colors[idx % colors.length];
+                      final pct = totalFasilitas == 0
+                          ? 0.0
+                          : (e.value / totalFasilitas * 100.0);
+                      return _modernHorizontalBar(
+                        label: e.key,
+                        value: e.value,
+                        percentage: pct,
+                        color: color,
+                      );
+                    })
+                    .toList(),
               ],
             ),
     );
@@ -2362,49 +2259,7 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  'Angkutan Umum',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: angkutan.entries
-                      .map(
-                        (e) => Expanded(
-                          child: _infoStat(
-                            icon: Icons.directions_bus_rounded,
-                            label: e.key,
-                            value: e.value.toString(),
-                            color: const Color(0xFFF59E0B),
-                          ),
-                        ),
-                      )
-                      .toList(),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Akses ke Kantor Pemerintahan',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: akses.entries.map((e) {
-                    final map = Map<String, int>.from(e.value);
-                    return _chip(
-                      icon: Icons.place_rounded,
-                      label: e.key,
-                      value:
-                          '${map['jarak_km']} km • ${map['waktu_menit']} menit',
-                    );
-                  }).toList(),
-                ),
+                // Duplicate transport blocks removed; kept first Angkutan Umum and Akses sections above
                 const SizedBox(height: 16),
                 Text(
                   'Angkutan Umum',
@@ -2689,39 +2544,7 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
     );
   }
 
-  Widget _legendItem({
-    required Color color,
-    required String label,
-    required int value,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '$label: $value',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[800],
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  
 
   Widget _infoStat({
     required IconData icon,

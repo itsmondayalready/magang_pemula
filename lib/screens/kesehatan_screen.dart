@@ -128,7 +128,7 @@ class _KesehatanScreenState extends State<KesehatanScreen>
                 backgroundColor: Colors.transparent,
                 toolbarHeight: 56,
                 title: const Text(
-                  'Kesehatan',
+                  'Data Kesehatan',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
@@ -1172,8 +1172,6 @@ class _EditBottomSheetState extends State<_EditBottomSheet> {
       widget.onDataSaved();
 
       if (mounted) {
-        // Build a combined deletion summary (if any) to show in one SnackBar
-        final deletedLabels = [..._removedFasilitas, ..._removedTenaga];
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1192,30 +1190,23 @@ class _EditBottomSheetState extends State<_EditBottomSheet> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Expanded(
+                const Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text(
+                      Text(
                         'Berhasil!',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      const Text(
+                      SizedBox(height: 2),
+                      Text(
                         'Data kesehatan berhasil disimpan',
                         style: TextStyle(fontSize: 12),
                       ),
-                      if (deletedLabels.isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          'Kategori dihapus: ${deletedLabels.join(', ')}',
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                      ],
                     ],
                   ),
                 ),
@@ -1226,13 +1217,17 @@ class _EditBottomSheetState extends State<_EditBottomSheet> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
-            duration: const Duration(seconds: 4),
+            duration: const Duration(seconds: 3),
           ),
         );
       }
     } catch (e) {
       if (mounted) {
         Navigator.of(context).pop();
+
+        // Simple user-facing message (always short)
+        final userMsg = 'Gagal menyimpan. Coba lagi.';
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -1244,7 +1239,7 @@ class _EditBottomSheetState extends State<_EditBottomSheet> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(
-                    Icons.error_outline,
+                    Icons.error_outline_rounded,
                     color: Colors.white,
                     size: 24,
                   ),
@@ -1264,9 +1259,9 @@ class _EditBottomSheetState extends State<_EditBottomSheet> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '$e',
+                        userMsg,
                         style: const TextStyle(fontSize: 12),
-                        maxLines: 2,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
@@ -1279,7 +1274,7 @@ class _EditBottomSheetState extends State<_EditBottomSheet> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
-            duration: const Duration(seconds: 5),
+            duration: const Duration(seconds: 3),
           ),
         );
       }

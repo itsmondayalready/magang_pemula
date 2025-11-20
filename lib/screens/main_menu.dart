@@ -8,7 +8,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../services/auth_service.dart';
 import '../services/desa_repository.dart';
 import '../services/kesehatan_repository.dart';
-import '../services/pendidikan_repository.dart';
+import '../services/infrastruktur_repository_single.dart';
+import '../utils/pendidikan_constants.dart';
 import '../utils/responsive.dart';
 
 // Shared simple text field builder for Add/Edit Desa forms
@@ -92,6 +93,9 @@ class _MainMenuPageState extends State<MainMenuPage> {
   int? _totalTenagaMedis;
   int? _totalPendidikanNegeri;
   int? _totalPendidikanSwasta;
+  // Detailed per-category counts for Pendidikan (used to compute totals)
+  Map<String, int> _pendidikanNegeriCounts = {};
+  Map<String, int> _pendidikanSwastaCounts = {};
   bool _loadingSummary = true;
   final _repo = DesaRepository();
   final _kesehatanRepo = KesehatanRepository();
@@ -132,21 +136,65 @@ class _MainMenuPageState extends State<MainMenuPage> {
         _totalFasilitas = (kes?['total_fasilitas'] ?? 0) as int?;
         _totalTenagaMedis = (kes?['total_tenaga_medis'] ?? 0) as int?;
 
-        // Pendidikan: load data dari database
-        final pendidikanRepo = PendidikanRepository();
-        final pendidikanCounts = await pendidikanRepo.getCounts(_kodeWilayah);
+        // Pendidikan: load lengkap dari repository (kategori sesuai form edit)
+        final infraRepo = InfrastrukturRepositorySingle();
+        final pendidikanMap = await infraRepo.getPendidikan(
+          _kodeWilayah,
+          year: DateTime.now().year,
+        );
 
-        // Hitung total negeri (SD, SMP, SMA, SMK)
-        final sd = pendidikanCounts['SD'] ?? 0;
-        final smp = pendidikanCounts['SMP'] ?? 0;
-        final sma = pendidikanCounts['SMA'] ?? 0;
-        final smk = pendidikanCounts['SMK'] ?? 0;
-        _totalPendidikanNegeri = sd + smp + sma + smk;
+        // Reset detailed maps
+        _pendidikanNegeriCounts = <String, int>{};
+        _pendidikanSwastaCounts = <String, int>{};
 
-        // Hitung total swasta (PAUD, TK)
-        final paud = pendidikanCounts['PAUD'] ?? 0;
-        final tk = pendidikanCounts['TK'] ?? 0;
-        _totalPendidikanSwasta = paud + tk;
+        // Compute per-category counts for formal pendidikan labels.
+        // For each label (PAUD, TK, SD, SMP, SMA, SMK, Akademi/PT),
+        // sum entries that mention the label. If the entry name also
+        // contains 'negeri' (case-insensitive) it counts toward the
+        // negeri map; otherwise it counts toward swasta.
+        // Initialize zeroed maps for all formal labels so UI can read them.
+        _pendidikanNegeriCounts = {
+          for (final l in PendidikanConstants.formal) l: 0,
+        };
+        _pendidikanSwastaCounts = {
+          for (final l in PendidikanConstants.formal) l: 0,
+        };
+
+        for (final entry in pendidikanMap.entries) {
+          final key = entry.key.toString();
+          final value = (entry.value as num?)?.toInt() ?? 0;
+          if (value == 0) continue; // skip zeros
+
+          final lc = key.toLowerCase();
+          bool matched = false;
+          for (final base in PendidikanConstants.formal) {
+            final lcBase = base.toLowerCase();
+            if (lc.contains(lcBase)) {
+              if (lc.contains('negeri')) {
+                _pendidikanNegeriCounts[base] = (_pendidikanNegeriCounts[base] ?? 0) + value;
+              } else {
+                _pendidikanSwastaCounts[base] = (_pendidikanSwastaCounts[base] ?? 0) + value;
+              }
+              matched = true;
+              break;
+            }
+          }
+          if (!matched) {
+            // If key doesn't match a formal base but is exactly 'PAUD'/'TK' etc,
+            // try a direct map lookup (defensive).
+            final direct = PendidikanConstants.formal.firstWhere(
+              (f) => f.toLowerCase() == key.toLowerCase(),
+              orElse: () => '',
+            );
+            if (direct.isNotEmpty) {
+              _pendidikanSwastaCounts[direct] = (_pendidikanSwastaCounts[direct] ?? 0) + value;
+            }
+          }
+        }
+
+        // Totals are sums across the per-category maps
+        _totalPendidikanNegeri = _pendidikanNegeriCounts.values.fold<int>(0, (p, c) => p + c);
+        _totalPendidikanSwasta = _pendidikanSwastaCounts.values.fold<int>(0, (p, c) => p + c);
       }).timeout(const Duration(seconds: 8));
     } on TimeoutException {
       // timeout: leave values as null so UI shows placeholders
@@ -333,8 +381,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
         route: '/pendidikan',
       ),
       _Feature(
-        title: 'Kebencanaan',
-        icon: Icons.cloud_rounded,
+        title: 'Tematik',
+        icon: Icons.category_rounded,
         gradient: _gradRedOrange,
         route: '/kebencanaan',
       ),
@@ -1517,7 +1565,7 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
         String userMsg;
         if (errorMsg.contains('violates foreign key constraint')) {
           userMsg =
-              'Gagal menghapus desa. Data desa masih terhubung ke tabel lain.';
+              'Gagal menghapus desa. Selahkan coba lagi.';
         } else {
           userMsg = 'Gagal menghapus desa. Silakan coba lagi.';
         }

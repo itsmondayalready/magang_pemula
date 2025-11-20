@@ -1,6 +1,7 @@
 import 'dart:developer' as dev;
 
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Repository untuk data kebencanaan.
 ///
@@ -92,6 +93,7 @@ class KebencanaanRepository {
   Map<String, dynamic> toScreenData(Map<String, dynamic> row) {
     final periodeLabel = _formatPeriode(row);
     return {
+      'jenis': row['jenis'] ?? '',
       'periode': periodeLabel,
       'total_rumah': (row['total_rumah'] ?? 0) as int,
       'total_kk': (row['total_kk'] ?? 0) as int,
@@ -851,6 +853,63 @@ class KebencanaanRepository {
       dev.log('getSnapshotDesaId error: $e');
       _snapshotDesaCache[snapshotId] = null;
       return null;
+    }
+  }
+
+  // ------------------- Jenis (list of disaster types) -------------------
+  /// Fetch available `jenis` options.
+  ///
+  /// Tries the `kebencanaan_jenis` table first; if the table doesn't exist
+  /// or an error occurs, falls back to `SharedPreferences` key
+  /// `kebencanaan_jenis_options` (list of strings). If nothing found, returns
+  /// a sensible default list.
+  Future<List<String>> fetchJenisOptions() async {
+    try {
+      final rows = await _db.from('kebencanaan_jenis').select('name').order('name', ascending: true);
+      if (rows is List && rows.isNotEmpty) {
+        return rows.map((r) => (r as Map)['name'].toString()).where((s) => s.isNotEmpty).toList();
+      }
+    } catch (e) {
+      dev.log('fetchJenisOptions: table query failed, falling back to prefs: $e');
+    }
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = prefs.getStringList('kebencanaan_jenis_options');
+      if (list != null && list.isNotEmpty) return list;
+    } catch (e) {
+      dev.log('fetchJenisOptions: prefs fallback failed: $e');
+    }
+
+    // Default set
+    return ['banjir', 'longsor', 'angin', 'kebakaran'];
+  }
+
+  /// Add a new `jenis` option. Tries inserting into `kebencanaan_jenis` table,
+  /// if available. On failure falls back to adding into `SharedPreferences`.
+  Future<void> addJenisOption(String name) async {
+    final nm = name.trim();
+    if (nm.isEmpty) return;
+    try {
+      // Check existing first to avoid duplicates
+      final exists = await _db.from('kebencanaan_jenis').select('id').eq('name', nm).maybeSingle();
+      if (exists == null) {
+        await _db.from('kebencanaan_jenis').insert({'name': nm});
+      }
+      return;
+    } catch (e) {
+      dev.log('addJenisOption: insert failed, trying prefs fallback: $e');
+    }
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = prefs.getStringList('kebencanaan_jenis_options') ?? <String>[];
+      if (!list.contains(nm)) {
+        list.add(nm);
+        await prefs.setStringList('kebencanaan_jenis_options', list);
+      }
+    } catch (e) {
+      dev.log('addJenisOption: prefs fallback also failed: $e');
     }
   }
 }
