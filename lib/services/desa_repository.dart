@@ -215,6 +215,125 @@ class DesaRepository {
     }
   }
 
+  /// Check whether there are any references to this desa in important tables.
+  /// Returns a map of table -> present (0 or 1). This uses a limit-1 existence
+  /// check to avoid fetching large datasets; value 1 means at least one row exists.
+  Future<Map<String, int>> countDesaReferencesPresence(String kodeWilayah) async {
+    final Map<String, int> result = {};
+    try {
+      // normalized kebencanaan_rekap (uses kode_wilayah)
+      try {
+        final rows = await _db
+            .from('kebencanaan_rekap')
+            .select('id')
+            .eq('kode_wilayah', kodeWilayah)
+            .limit(1);
+        result['kebencanaan_rekap'] = (rows is List && rows.isNotEmpty) ? 1 : 0;
+      } catch (_) {
+        result['kebencanaan_rekap'] = 0;
+      }
+
+      // legacy kebencanaan (by desa_id)
+      try {
+        final desa = await _db
+            .from('desa')
+            .select('id')
+            .eq('kode_wilayah', kodeWilayah)
+            .maybeSingle();
+        final desaId = desa?['id'];
+        if (desaId != null) {
+          final rows = await _db
+              .from('kebencanaan')
+              .select('id')
+              .eq('desa_id', desaId)
+              .limit(1);
+          result['kebencanaan_legacy'] = (rows is List && rows.isNotEmpty) ? 1 : 0;
+        } else {
+          result['kebencanaan_legacy'] = 0;
+        }
+      } catch (_) {
+        result['kebencanaan_legacy'] = 0;
+      }
+
+      // kependudukan (example other module using kode_wilayah)
+      try {
+        final rows = await _db
+            .from('kependudukan')
+            .select('id')
+            .eq('kode_wilayah', kodeWilayah)
+            .limit(1);
+        result['kependudukan'] = (rows is List && rows.isNotEmpty) ? 1 : 0;
+      } catch (_) {
+        result['kependudukan'] = 0;
+      }
+    } catch (e) {
+      // In case of any unexpected error, return zeros so caller can handle.
+      return {
+        'kebencanaan_rekap': 0,
+        'kebencanaan_legacy': 0,
+        'kependudukan': 0,
+      };
+    }
+    return result;
+  }
+
+  /// Client-side cascade delete: delete kebencanaan detail/rekap and legacy rows
+  /// before deleting the `desa` row. This is non-atomic and may partially
+  /// succeed if interrupted; caller should handle exceptions and retries.
+  Future<void> deleteDesaCascadeClientSide(String kodeWilayah) async {
+    try {
+      // 1) get desa id (if exists)
+      final desa = await _db
+          .from('desa')
+          .select('id')
+          .eq('kode_wilayah', kodeWilayah)
+          .maybeSingle();
+      final desaId = desa?['id'];
+
+      // 2) normalized snapshots: collect snapshot ids
+      List<dynamic> snaps = const [];
+      try {
+        snaps = await _db
+            .from('kebencanaan_rekap')
+            .select('id')
+            .eq('kode_wilayah', kodeWilayah);
+      } catch (_) {
+        snaps = const [];
+      }
+      final snapshotIds = snaps is List ? snaps.map((r) => r['id'].toString()).toList() : <String>[];
+
+      // 3) delete normalized detail rows for each snapshot id (loop to stay compatible)
+      for (final sid in snapshotIds) {
+        try {
+          await _db.from('kebencanaan_rt').delete().eq('snapshot_id', sid);
+        } catch (_) {}
+        try {
+          await _db.from('kebencanaan_bantuan').delete().eq('snapshot_id', sid);
+        } catch (_) {}
+        try {
+          await _db.from('kebencanaan_penanganan').delete().eq('snapshot_id', sid);
+        } catch (_) {}
+      }
+
+      // 4) delete rekap rows
+      try {
+        await _db.from('kebencanaan_rekap').delete().eq('kode_wilayah', kodeWilayah);
+      } catch (_) {}
+
+      // 5) delete legacy kebencanaan rows by desa_id
+      if (desaId != null) {
+        try {
+          await _db.from('kebencanaan').delete().eq('desa_id', desaId);
+        } catch (_) {}
+      }
+
+      // 6) finally delete desa
+      await _db.from('desa').delete().eq('kode_wilayah', kodeWilayah);
+    } catch (e) {
+      throw Exception('deleteDesaCascadeClientSide failed: $e');
+    }
+  }
+
   // Fetch galeri foto from desa_profile.galeri_photos
   Future<List<DesaPhoto>> fetchGaleriFoto(String kodeWilayah) async {
     try {

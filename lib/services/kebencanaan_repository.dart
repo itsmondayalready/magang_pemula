@@ -189,6 +189,11 @@ class KebencanaanRepository {
   Map<String, dynamic> toScreenData(Map<String, dynamic> row) {
     final periodeLabel = _formatPeriode(row);
     return {
+      // Always expose a `snapshot_id` key for the UI/edit sheet.
+      // Some schemas use `id` (legacy kebencanaan table) while normalized
+      // snapshots use `id` as well but packaged under `snapshot_id` when
+      // assembled. Normalize here so edit flow can update instead of insert.
+      'snapshot_id': (row['snapshot_id'] ?? row['id'])?.toString(),
       'jenis': row['jenis'] ?? '',
       'periode': periodeLabel,
       'total_rumah': (row['total_rumah'] ?? 0) as int,
