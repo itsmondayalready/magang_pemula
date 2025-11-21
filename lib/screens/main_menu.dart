@@ -523,7 +523,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
                 ),
                 child: _HeaderContent(
                   desaName: _desaName,
-                  kodeWilayah: widget.kodeWilayah,
+                  kodeWilayah: _kodeWilayah,
                   isAdmin: widget.isAdmin,
                   onChangeWilayah: _changeWilayah,
                   onLogout: () async {
@@ -1459,228 +1459,73 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
 
     final hasRefs = presence.values.any((v) => v > 0);
 
-    if (!hasRefs) {
-      // No related data detected — proceed with the regular confirmation
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (dctx) => AlertDialog(
-          title: const Text('Hapus Desa'),
-          content: Text(
-            'Yakin ingin menghapus desa "${chosen.nama}" (${chosen.kode})?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dctx, false),
-              child: const Text('Batal'),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: Colors.red),
-              onPressed: () => Navigator.pop(dctx, true),
-              child: const Text('Hapus'),
-            ),
-          ],
-        ),
-      );
-
-      if (confirmed != true) return;
-
-      try {
-        await _repo.deleteDesaByKode(chosen.kode);
-      } catch (e) {
-        if (mounted) {
-          Navigator.pop(context);
-          String userMsg = 'Gagal menghapus desa. Silakan coba lagi.';
-          if (e.toString().contains('violates foreign key constraint')) {
-            userMsg =
-                'Gagal menghapus desa karena masih ada data terkait di database.';
-          }
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.error_outline_rounded,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(
-                          'Gagal',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(userMsg, style: const TextStyle(fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              backgroundColor: const Color(0xFFDC2626),
-              behavior: SnackBarBehavior.fixed,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              duration: const Duration(seconds: 4),
-            ),
-          );
-        }
-        return;
-      }
-
-      // If deletion succeeded, refresh and notify (reuse existing success path)
-      await _load(
-        search: _searchController.text.trim().isEmpty
-            ? null
-            : _searchController.text.trim(),
-      );
-
-      if (mounted) {
-        final parent = context.findAncestorStateOfType<_MainMenuPageState>();
-        final needSwitch = parent != null && parent._kodeWilayah == chosen.kode;
-
-        _DesaData? returnData;
-        if (needSwitch) {
-          try {
-            final fallback = await _repo.fetchDefaultDesa();
-            if (fallback != null) {
-              final newKode = (fallback['kode_wilayah'] ?? '') as String;
-              final newNama = (fallback['nama'] ?? 'Desa') as String;
-              returnData = _DesaData(
-                nama: newNama,
-                kode: newKode,
-                kecamatan: '',
-                penduduk: 0,
-              );
-            }
-          } catch (_) {}
-        }
-
-        returnData ??= const _DesaData(
-          nama: '__RELOAD__',
-          kode: '__RELOAD__',
-          kecamatan: '',
-          penduduk: 0,
-        );
-
-        Navigator.pop(context, returnData);
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.check_circle_rounded,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Desa berhasil dihapus!',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              backgroundColor: const Color(0xFF16A34A),
-              behavior: SnackBarBehavior.fixed,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              duration: const Duration(seconds: 3),
-            ),
-          );
-        }
-      }
-
-      return;
-    }
-
-    // If we reach here, there are related rows — offer cascade-delete
-    final proceed = await showDialog<bool>(
+    // Unified confirmation: ask once, then delete (cascade automatically if needed)
+    final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dctx) {
-        return AlertDialog(
-          title: const Text('Data Terkait Ditemukan'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Desa "${chosen.nama}" (${chosen.kode}) memiliki data terkait.'),
-              const SizedBox(height: 8),
-              const Text('Untuk melanjutkan, pilih "Hapus Semua Data Terkait". Tindakan ini akan menghapus semua data yang terkait dan tidak dapat dikembalikan.'),
-            ],
-          ),
-          actions: [
-            OutlinedButton(
+      builder: (dctx) => AlertDialog(
+        title: const Text('Hapus Desa'),
+        content: Text(
+          'Yakin ingin menghapus desa "${chosen.nama}" (${chosen.kode})? Semua data terkait akan dihapus.',
+        ),
+        actionsAlignment: MainAxisAlignment.end,
+        actions: [
+          SizedBox(
+            height: 44,
+            child: OutlinedButton(
               onPressed: () => Navigator.pop(dctx, false),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: Colors.grey.shade300),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+              ),
               child: const Text('Batal'),
             ),
-            FilledButton.icon(
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.red,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              ),
+          ),
+          const SizedBox(width: 12),
+          SizedBox(
+            height: 44,
+            child: FilledButton.icon(
               onPressed: () => Navigator.pop(dctx, true),
               icon: const Icon(Icons.delete_forever, color: Colors.white),
-              label: const Text('Hapus Semua Data Terkait'),
+              label: const Text('Hapus'),
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.red,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
             ),
-          ],
-        );
-      },
+          ),
+        ],
+      ),
     );
 
-    if (proceed != true) return;
+    if (confirmed != true) return;
 
-    // Show progress modal while performing cascade delete
+    // Show progress modal while performing delete (cascade if needed)
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (pctx) => AlertDialog(
         content: Row(
-          children: const [
-            SizedBox(width: 24, height: 24, child: CircularProgressIndicator()),
-            SizedBox(width: 16),
-            Expanded(child: Text('Menghapus data terkait...')),
+          children: [
+            const SizedBox(width: 24, height: 24, child: CircularProgressIndicator()),
+            const SizedBox(width: 16),
+            Expanded(child: Text(hasRefs ? 'Menghapus data terkait...' : 'Menghapus desa...')),
           ],
         ),
       ),
     );
 
     try {
-      await _repo.deleteDesaCascadeClientSide(chosen.kode);
+      if (hasRefs) {
+        await _repo.deleteDesaCascadeClientSide(chosen.kode);
+      } else {
+        await _repo.deleteDesaByKode(chosen.kode);
+      }
       Navigator.pop(context); // close progress dialog
 
       await _load(
