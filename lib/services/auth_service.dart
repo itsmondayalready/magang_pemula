@@ -1,10 +1,13 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'login_log_repository.dart';
 
 class AuthService extends ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
   User? _user;
   String? _userRole; // 'admin', 'user', or 'guest' from Supabase users table
+  final LoginLogRepository _logRepo = LoginLogRepository();
 
   AuthService() {
     debugPrint('');
@@ -104,6 +107,7 @@ class AuthService extends ChangeNotifier {
       // Fetch role from Supabase users table
       if (_user != null) {
         await _fetchUserRole(_user!.id);
+        await _recordLogin();
       }
 
       debugPrint('');
@@ -280,7 +284,7 @@ class AuthService extends ChangeNotifier {
           'id': _user!.id,
           'email': email,
           'role': 'user',
-          'created_at': DateTime.now().toIso8601String(),
+          // created_at akan pakai default dari database
         });
         _userRole = 'user';
       }
@@ -299,7 +303,88 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  Future<void> signInAnonymously() async {
+  Future<void> _recordLogin({String? guestName}) async {
+    final user = _user;
+    if (user == null) {
+      debugPrint('[AuthService] ⚠️ recordLogin: user is null, skip');
+      return;
+    }
+
+    final role = _userRole ?? 'user';
+    debugPrint('');
+    debugPrint('📥 ══════════════════════════════════════════════════════');
+    debugPrint('[AuthService] 📥 RECORDING LOGIN');
+    debugPrint('[AuthService] User ID: ${user.id}');
+    debugPrint('[AuthService] Role: $role');
+    debugPrint('[AuthService] Email: ${user.email}');
+    debugPrint('[AuthService] Guest Name: ${guestName ?? "(none)"}');
+    debugPrint('📥 ══════════════════════════════════════════════════════');
+
+    try {
+      await _ensureUserRecord(uid: user.id, email: user.email, role: role);
+
+      await _logRepo.logLogin(
+        userId: user.id,
+        role: role,
+        email: user.email,
+        guestName: guestName,
+      );
+
+      debugPrint('');
+      debugPrint('✅ ══════════════════════════════════════════════════════');
+      debugPrint('[AuthService] ✅ LOGIN LOG INSERTED SUCCESSFULLY');
+      debugPrint('✅ ══════════════════════════════════════════════════════');
+      debugPrint('');
+    } catch (e, stackTrace) {
+      debugPrint('');
+      debugPrint('❌ ══════════════════════════════════════════════════════');
+      debugPrint('[AuthService] ⚠️ Failed to record login: $e');
+      debugPrint('[AuthService] Stack trace:');
+      debugPrint(stackTrace.toString());
+      debugPrint('❌ ══════════════════════════════════════════════════════');
+      debugPrint('');
+    }
+  }
+
+  Future<void> _ensureUserRecord({
+    required String uid,
+    required String role,
+    String? email,
+  }) async {
+    try {
+      final existing = await _supabase
+          .from('users')
+          .select('id, role')
+          .eq('id', uid)
+          .maybeSingle();
+
+      final currentRole = existing == null ? null : existing['role'] as String?;
+      if (existing == null) {
+        await _supabase.from('users').insert({
+          'id': uid,
+          'email': email,
+          'role': role,
+          // created_at akan pakai default dari database
+        });
+        debugPrint('[AuthService] ✅ User record created for $uid');
+        return;
+      }
+
+      final needsRoleUpdate =
+          (currentRole == null || currentRole.isEmpty) &&
+          role.isNotEmpty &&
+          currentRole != role;
+      if (needsRoleUpdate) {
+        await _supabase.from('users').update({'role': role}).eq('id', uid);
+        debugPrint('[AuthService] ✅ User role updated to $role for $uid');
+      }
+    } catch (e, stackTrace) {
+      debugPrint('[AuthService] ⚠️ Unable to ensure users row: $e');
+      debugPrint(stackTrace.toString());
+    }
+  }
+
+  Future<void> signInAnonymously({String? guestName}) async {
     try {
       debugPrint('');
       debugPrint('👤 ══════════════════════════════════════════════════════');
@@ -309,6 +394,8 @@ class AuthService extends ChangeNotifier {
       final response = await _supabase.auth.signInAnonymously();
       _user = response.user;
       _userRole = 'guest';
+
+      await _recordLogin(guestName: guestName);
 
       debugPrint('');
       debugPrint('✅ ══════════════════════════════════════════════════════');

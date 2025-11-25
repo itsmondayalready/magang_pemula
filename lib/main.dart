@@ -13,6 +13,7 @@ import 'screens/pendidikan_screen.dart';
 import 'screens/kesehatan_screen.dart';
 import 'screens/kebencanaan_screen.dart';
 import 'screens/metadata_screen.dart';
+import 'screens/login_log_screen.dart';
 import 'screens/profil_desa_screen.dart';
 
 void main() async {
@@ -67,6 +68,7 @@ class MyApp extends StatelessWidget {
           '/pendidikan': (context) => const PendidikanScreen(),
           '/kebencanaan': (context) => const KebencanaanScreen(),
           '/metadata': (context) => const MetadataScreen(),
+          '/log-masuk': (context) => const LoginLogScreen(),
           '/profil-desa': (context) {
             final args = ModalRoute.of(context)?.settings.arguments;
             String kode = '';

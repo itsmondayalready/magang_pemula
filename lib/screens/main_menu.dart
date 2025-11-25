@@ -125,19 +125,50 @@ class _MainMenuPageState extends State<MainMenuPage> {
       if (mounted) await _loadSummary();
     });
   }
+
   Future<void> _loadSummary() async {
     if (!mounted) return;
     setState(() => _loadingSummary = true);
 
     try {
       await Future(() async {
-        // Kesehatan terbaru (fasilitas & tenaga medis)
+        // 1. Ambil detail desa untuk luas wilayah, RT/RW, telepon kantor
+        final desaRepo = DesaRepository();
+        final desaDetail = await desaRepo.fetchDesaDetailByKode(_kodeWilayah);
+
+        if (desaDetail != null) {
+          // Data ada di desa_profile
+          final profile = desaDetail['desa_profile'];
+          if (profile is Map) {
+            _luasWilayahKm2 = (profile['luas_wilayah'] as num?)?.toDouble();
+            _totalRT = (profile['total_rt'] as num?)?.toInt();
+            _totalRW = (profile['total_rw'] as num?)?.toInt();
+            _teleponKantor = profile['telepon_kantor'] as String?;
+          } else if (profile is List && profile.isNotEmpty) {
+            final p = profile[0] as Map;
+            _luasWilayahKm2 = (p['luas_wilayah'] as num?)?.toDouble();
+            _totalRT = (p['total_rt'] as num?)?.toInt();
+            _totalRW = (p['total_rw'] as num?)?.toInt();
+            _teleponKantor = p['telepon_kantor'] as String?;
+          }
+        }
+
+        // 2. Ambil data kependudukan terbaru
+        final kependudukan = await desaRepo.fetchLatestKependudukanByKode(
+          _kodeWilayah,
+        );
+        if (kependudukan != null) {
+          _latestPenduduk = (kependudukan['total_penduduk'] as num?)?.toInt();
+          _latestKK = (kependudukan['total_kk'] as num?)?.toInt();
+        }
+
+        // 3. Kesehatan terbaru (fasilitas & tenaga medis)
         final kesehatanRepo = KesehatanRepository();
         final kes = await kesehatanRepo.fetchLatest(_kodeWilayah);
         _totalFasilitas = (kes?['total_fasilitas'] ?? 0) as int?;
         _totalTenagaMedis = (kes?['total_tenaga_medis'] ?? 0) as int?;
 
-        // Pendidikan: load lengkap dari repository (kategori sesuai form edit)
+        // 4. Pendidikan: load lengkap dari repository (kategori sesuai form edit)
         final infraRepo = InfrastrukturRepositorySingle();
         final pendidikanMap = await infraRepo.getPendidikan(
           _kodeWilayah,
@@ -167,9 +198,11 @@ class _MainMenuPageState extends State<MainMenuPage> {
             final lcBase = base.toLowerCase();
             if (lc.contains(lcBase)) {
               if (lc.contains('negeri')) {
-                _pendidikanNegeriCounts[base] = (_pendidikanNegeriCounts[base] ?? 0) + value;
+                _pendidikanNegeriCounts[base] =
+                    (_pendidikanNegeriCounts[base] ?? 0) + value;
               } else {
-                _pendidikanSwastaCounts[base] = (_pendidikanSwastaCounts[base] ?? 0) + value;
+                _pendidikanSwastaCounts[base] =
+                    (_pendidikanSwastaCounts[base] ?? 0) + value;
               }
               matched = true;
               break;
@@ -181,14 +214,21 @@ class _MainMenuPageState extends State<MainMenuPage> {
               orElse: () => '',
             );
             if (direct.isNotEmpty) {
-              _pendidikanSwastaCounts[direct] = (_pendidikanSwastaCounts[direct] ?? 0) + value;
+              _pendidikanSwastaCounts[direct] =
+                  (_pendidikanSwastaCounts[direct] ?? 0) + value;
             }
           }
         }
 
         // Totals are sums across the per-category maps
-        _totalPendidikanNegeri = _pendidikanNegeriCounts.values.fold<int>(0, (p, c) => p + c);
-        _totalPendidikanSwasta = _pendidikanSwastaCounts.values.fold<int>(0, (p, c) => p + c);
+        _totalPendidikanNegeri = _pendidikanNegeriCounts.values.fold<int>(
+          0,
+          (p, c) => p + c,
+        );
+        _totalPendidikanSwasta = _pendidikanSwastaCounts.values.fold<int>(
+          0,
+          (p, c) => p + c,
+        );
       }).timeout(const Duration(seconds: 8));
     } on TimeoutException {
       // timeout: leave values as null so UI shows placeholders
@@ -384,6 +424,17 @@ class _MainMenuPageState extends State<MainMenuPage> {
         route: '/metadata',
       ),
     ];
+
+    if (widget.isAdmin) {
+      dataCategories.add(
+        _Feature(
+          title: 'Log Masuk',
+          icon: Icons.history_rounded,
+          gradient: _gradBlueHistory,
+          route: '/log-masuk',
+        ),
+      );
+    }
 
     // Static paddings for the fixed carousel
     const double topPad = 12;
@@ -684,7 +735,10 @@ class _HeaderContentState extends State<_HeaderContent>
                           onTap: widget.onChangeWilayah,
                           child: const Text(
                             'Ubah Wilayah',
-                            style: TextStyle(color: Colors.white70, fontSize: 12),
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -702,7 +756,10 @@ class _HeaderContentState extends State<_HeaderContent>
                         const SizedBox(height: 4),
                         Text(
                           'Kode: ${widget.kodeWilayah}',
-                          style: const TextStyle(color: Colors.white70, fontSize: 12),
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
                         ),
                         const SizedBox(height: 6),
                         FadeTransition(opacity: _fade, child: _RoleBadge()),
@@ -871,13 +928,28 @@ class _RoleBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthService>(context);
     final isGuest = auth.isGuest;
-    final isAdmin = !(isGuest); // treat non-guest as admin for now
-    final baseColor = isAdmin ? Colors.green : Colors.grey;
-    final bgColor = isAdmin
-        ? baseColor.withValues(alpha: 0.16)
-        : baseColor.withValues(alpha: 0.08);
+    final isAdmin = auth.isAdmin;
+    final bool isUser = !isAdmin && !isGuest;
+
+    final baseColor = isAdmin
+        ? Colors.green
+        : isGuest
+        ? Colors.orange
+        : Colors.grey;
+    final bgColor = baseColor.withValues(alpha: isAdmin ? 0.16 : 0.08);
     final borderColor = baseColor.withValues(alpha: 0.24);
     final contentColor = isAdmin ? Colors.white : baseColor;
+
+    final String label;
+    if (isAdmin) {
+      label = 'Admin';
+    } else if (isGuest) {
+      label = 'Guest';
+    } else if (isUser) {
+      label = 'User';
+    } else {
+      label = 'Unknown';
+    }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -896,7 +968,7 @@ class _RoleBadge extends StatelessWidget {
           ),
           const SizedBox(width: 4),
           Text(
-            isGuest ? 'Guest' : 'Admin',
+            label,
             style: TextStyle(
               color: contentColor,
               fontWeight: FontWeight.w600,
@@ -1459,9 +1531,17 @@ class _DesaPickerSheetState extends State<_DesaPickerSheet> {
       builder: (pctx) => AlertDialog(
         content: Row(
           children: [
-            const SizedBox(width: 24, height: 24, child: CircularProgressIndicator()),
+            const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(),
+            ),
             const SizedBox(width: 16),
-            Expanded(child: Text(hasRefs ? 'Menghapus data terkait...' : 'Menghapus desa...')),
+            Expanded(
+              child: Text(
+                hasRefs ? 'Menghapus data terkait...' : 'Menghapus desa...',
+              ),
+            ),
           ],
         ),
       ),
@@ -1665,6 +1745,11 @@ const _gradGreenLime = LinearGradient(
   begin: Alignment.topLeft,
   end: Alignment.bottomRight,
 );
+const _gradBlueHistory = LinearGradient(
+  colors: [Color(0xFFF59E0B), Color(0xFFFBBF24)],
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+);
 const _gradPurplePink = LinearGradient(
   colors: [Color(0xFF9333EA), Color(0xFFEC4899)],
   begin: Alignment.topLeft,
@@ -1724,14 +1809,15 @@ class _SummaryCarouselState extends State<_SummaryCarousel> {
 
   void _startAutoScroll() {
     _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
-      if (_pageController.hasClients && widget.items.isNotEmpty) {
-        final nextPage = _pageController.page!.toInt() + 1;
-        _pageController.animateToPage(
-          nextPage,
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.easeInOut,
-        );
-      }
+      if (!_pageController.hasClients || widget.items.isEmpty) return;
+      final currentPage =
+          _pageController.page ?? _pageController.initialPage.toDouble();
+      final nextPage = currentPage.toInt() + 1;
+      _pageController.animateToPage(
+        nextPage,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+      );
     });
   }
 
@@ -2009,8 +2095,12 @@ class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
     // widgets already present in the form.
     _loadFromSupabase();
     // seed province/kabupaten options with defaults
-    _provinsiOptions = [_provinsiCtrl.text].where((s) => s.trim().isNotEmpty).toSet().toList();
-    _kabupatenOptions = [_kabupatenCtrl.text].where((s) => s.trim().isNotEmpty).toSet().toList();
+    _provinsiOptions = [
+      _provinsiCtrl.text,
+    ].where((s) => s.trim().isNotEmpty).toSet().toList();
+    _kabupatenOptions = [
+      _kabupatenCtrl.text,
+    ].where((s) => s.trim().isNotEmpty).toSet().toList();
   }
 
   Future<void> _loadFromSupabase() async {
@@ -2019,9 +2109,12 @@ class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
       final byKec = await SupabaseService.fetchAllDesaDropdown();
       // Debug: record source and counts
       final totalDesa = byKec.values.fold<int>(0, (p, v) => p + v.length);
-      debugPrint('Supabase: loaded desa_dropdown — kecamatan=${byKec.length}, desa=$totalDesa');
+      debugPrint(
+        'Supabase: loaded desa_dropdown — kecamatan=${byKec.length}, desa=$totalDesa',
+      );
       _desaSource = 'supabase';
-      final ks = byKec.keys.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+      final ks = byKec.keys.toList()
+        ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
       if (mounted) {
         setState(() {
           _desaByKecamatan.clear();
@@ -2042,11 +2135,11 @@ class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
       if (mounted) {
         setState(() {
           _csvLoaded = false;
-          _csvErrorMessage = 'Gagal memuat daftar dari Supabase: ${e.toString()}';
+          _csvErrorMessage =
+              'Gagal memuat daftar dari Supabase: ${e.toString()}';
         });
       }
-    }
-    finally {
+    } finally {
       if (mounted) setState(() => _loadingDesa = false);
     }
   }
@@ -2062,10 +2155,14 @@ class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
       // During development prefer the lib-screen copy (no rebundle needed).
       // Fallback to bundled asset if lib copy is missing.
       try {
-        raw = await rootBundle.loadString('lib/screens/daftar_desa/hasil_bersih.csv');
+        raw = await rootBundle.loadString(
+          'lib/screens/daftar_desa/hasil_bersih.csv',
+        );
         usedPath = 'lib/screens/daftar_desa/hasil_bersih.csv';
       } catch (_) {
-        raw = await rootBundle.loadString('assets/daftar_desa/hasil_bersih.csv');
+        raw = await rootBundle.loadString(
+          'assets/daftar_desa/hasil_bersih.csv',
+        );
         usedPath = 'assets/daftar_desa/hasil_bersih.csv';
       }
       debugPrint('Loaded desa CSV from: $usedPath');
@@ -2082,10 +2179,15 @@ class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
         final kode = parts[1].trim();
         final desa = parts.sublist(2).join(',').trim();
         if (kec.isEmpty || kode.isEmpty || desa.isEmpty) continue;
-        _desaByKecamatan.putIfAbsent(kec, () => []).add({'desa': desa, 'kode': kode});
+        _desaByKecamatan.putIfAbsent(kec, () => []).add({
+          'desa': desa,
+          'kode': kode,
+        });
       }
       final ks = _desaByKecamatan.keys.toList()..sort();
-      debugPrint('Parsed kecamatan count=${ks.length}; sample=${ks.take(30).toList()}');
+      debugPrint(
+        'Parsed kecamatan count=${ks.length}; sample=${ks.take(30).toList()}',
+      );
       setState(() {
         _kecamatanOptions = ks;
         _csvLoaded = true;
@@ -2095,10 +2197,11 @@ class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
       // capture error for debugging and show fallback
       final err = e.toString();
       debugPrint('Failed to load CSV: $err');
-      if (mounted) setState(() {
-        _csvLoaded = false;
-        _csvErrorMessage = err;
-      });
+      if (mounted)
+        setState(() {
+          _csvLoaded = false;
+          _csvErrorMessage = err;
+        });
     }
   }
 
@@ -2125,15 +2228,20 @@ class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
       final errorMsg = e.toString();
       // detect duplicate/desa-exists errors (various DB messages)
       final lower = errorMsg.toLowerCase();
-      final isDuplicate = lower.contains('duplicate') || lower.contains('already exists') || lower.contains('unique constraint failed') || lower.contains('duplicate key');
+      final isDuplicate =
+          lower.contains('duplicate') ||
+          lower.contains('already exists') ||
+          lower.contains('unique constraint failed') ||
+          lower.contains('duplicate key');
 
       if (isDuplicate) {
         // close the current Add Desa sheet, then show the snackbar using the
         // navigator overlay context so it appears above the underlying sheet
         // prefer root navigator overlay so snackbar is shown above modal sheets
-        final messengerContext = Navigator.of(context, rootNavigator: true).overlay?.context
-            ?? Navigator.of(context).overlay?.context
-            ?? context;
+        final messengerContext =
+            Navigator.of(context, rootNavigator: true).overlay?.context ??
+            Navigator.of(context).overlay?.context ??
+            context;
         // capture navigator so we can pop multiple times safely
         final nav = Navigator.of(context);
         if (mounted) nav.pop();
@@ -2201,9 +2309,11 @@ class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
         if (mounted) {
           String userMsg;
           if (errorMsg.contains('violates foreign key constraint')) {
-            userMsg = 'Gagal menambah desa. Data masih terhubung ke tabel lain.';
+            userMsg =
+                'Gagal menambah desa. Data masih terhubung ke tabel lain.';
           } else if (errorMsg.contains('UNIQUE constraint failed')) {
-            userMsg = 'Kode wilayah sudah digunakan. Silakan gunakan kode lain.';
+            userMsg =
+                'Kode wilayah sudah digunakan. Silakan gunakan kode lain.';
           } else {
             userMsg = 'Gagal menambah desa. Silakan coba lagi.';
           }
@@ -2328,7 +2438,8 @@ class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
                       controller: _provinsiCtrl,
                       label: 'Provinsi',
                       hint: 'Provinsi tidak dapat diubah',
-                      validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
+                      validator: (v) =>
+                          v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
                       readOnly: true,
                     ),
                     const SizedBox(height: 12),
@@ -2337,7 +2448,8 @@ class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
                       controller: _kabupatenCtrl,
                       label: 'Kabupaten/Kota',
                       hint: 'Kabupaten tidak dapat diubah',
-                      validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
+                      validator: (v) =>
+                          v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
                       readOnly: true,
                     ),
                     const SizedBox(height: 16),
@@ -2347,7 +2459,10 @@ class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
                         padding: const EdgeInsets.only(bottom: 8.0),
                         child: Text(
                           'Gagal memuat daftar desa: $_csvErrorMessage',
-                          style: TextStyle(color: Colors.red.shade200, fontSize: 12),
+                          style: TextStyle(
+                            color: Colors.red.shade200,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
                     if (_kecamatanOptions.isNotEmpty) ...[
@@ -2355,7 +2470,9 @@ class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
                         optionsBuilder: (textEditingValue) {
                           final q = textEditingValue.text.toLowerCase();
                           if (q.isEmpty) return _kecamatanOptions;
-                          return _kecamatanOptions.where((p) => p.toLowerCase().contains(q));
+                          return _kecamatanOptions.where(
+                            (p) => p.toLowerCase().contains(q),
+                          );
                         },
                         onSelected: (selection) {
                           setState(() {
@@ -2365,40 +2482,70 @@ class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
                             _selectedDesaName = null;
                           });
                         },
-                        fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
-                          if (textEditingController.text.isEmpty && _kecamatanCtrl.text.isNotEmpty) {
-                            textEditingController.text = _kecamatanCtrl.text;
-                          }
-                          return TextFormField(
-                            controller: textEditingController,
-                            focusNode: focusNode,
-                            decoration: InputDecoration(
-                              labelText: 'Kecamatan',
-                              hintText: 'Pilih kecamatan',
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                              filled: true,
-                              fillColor: Colors.grey.shade50,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                            ),
-                            validator: (v) => v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
-                            onFieldSubmitted: (_) => onFieldSubmitted(),
-                          );
-                        },
+                        fieldViewBuilder:
+                            (
+                              context,
+                              textEditingController,
+                              focusNode,
+                              onFieldSubmitted,
+                            ) {
+                              if (textEditingController.text.isEmpty &&
+                                  _kecamatanCtrl.text.isNotEmpty) {
+                                textEditingController.text =
+                                    _kecamatanCtrl.text;
+                              }
+                              return TextFormField(
+                                controller: textEditingController,
+                                focusNode: focusNode,
+                                decoration: InputDecoration(
+                                  labelText: 'Kecamatan',
+                                  hintText: 'Pilih kecamatan',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.grey.shade50,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 16,
+                                  ),
+                                ),
+                                validator: (v) => v == null || v.trim().isEmpty
+                                    ? 'Wajib diisi'
+                                    : null,
+                                onFieldSubmitted: (_) => onFieldSubmitted(),
+                              );
+                            },
                       ),
                       const SizedBox(height: 12),
-                      if (_selectedKecamatan != null && (_desaByKecamatan[_selectedKecamatan!] ?? []).isNotEmpty)
+                      if (_selectedKecamatan != null &&
+                          (_desaByKecamatan[_selectedKecamatan!] ?? [])
+                              .isNotEmpty)
                         Autocomplete<String>(
                           optionsBuilder: (textEditingValue) {
                             final q = textEditingValue.text.toLowerCase();
-                            final list = _desaByKecamatan[_selectedKecamatan!] ?? [];
-                            final List<String> desaNames = list.map((m) => (m['desa'] ?? '').toString()).where((s) => s.isNotEmpty).toList();
-                            desaNames.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+                            final list =
+                                _desaByKecamatan[_selectedKecamatan!] ?? [];
+                            final List<String> desaNames = list
+                                .map((m) => (m['desa'] ?? '').toString())
+                                .where((s) => s.isNotEmpty)
+                                .toList();
+                            desaNames.sort(
+                              (a, b) =>
+                                  a.toLowerCase().compareTo(b.toLowerCase()),
+                            );
                             if (q.isEmpty) return desaNames;
-                            return desaNames.where((d) => d.toLowerCase().contains(q));
+                            return desaNames.where(
+                              (d) => d.toLowerCase().contains(q),
+                            );
                           },
                           onSelected: (selection) {
-                            final list = _desaByKecamatan[_selectedKecamatan!] ?? [];
-                            final found = list.firstWhere((e) => (e['desa'] ?? '') == selection, orElse: () => {'kode': ''});
+                            final list =
+                                _desaByKecamatan[_selectedKecamatan!] ?? [];
+                            final found = list.firstWhere(
+                              (e) => (e['desa'] ?? '') == selection,
+                              orElse: () => {'kode': ''},
+                            );
                             setState(() {
                               _selectedDesaKode = found['kode'];
                               _selectedDesaName = selection;
@@ -2406,30 +2553,52 @@ class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
                               _namaCtrl.text = selection;
                             });
                           },
-                          fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
-                            if (textEditingController.text.isEmpty && _selectedDesaName != null) {
-                              textEditingController.text = _selectedDesaName!;
-                            }
-                            return TextFormField(
-                              controller: textEditingController,
-                              focusNode: focusNode,
-                              decoration: InputDecoration(
-                                labelText: 'Pilih Desa',
-                                hintText: 'Cari atau pilih desa',
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                filled: true,
-                                fillColor: Colors.grey.shade50,
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                              ),
-                              validator: (v) {
-                                if (v == null || v.trim().isEmpty) return 'Wajib dipilih';
-                                final list = _desaByKecamatan[_selectedKecamatan!] ?? [];
-                                final exists = list.any((e) => (e['desa'] ?? '').toLowerCase() == v.trim().toLowerCase());
-                                return exists ? null : 'Silakan pilih desa yang ada di daftar';
+                          fieldViewBuilder:
+                              (
+                                context,
+                                textEditingController,
+                                focusNode,
+                                onFieldSubmitted,
+                              ) {
+                                if (textEditingController.text.isEmpty &&
+                                    _selectedDesaName != null) {
+                                  textEditingController.text =
+                                      _selectedDesaName!;
+                                }
+                                return TextFormField(
+                                  controller: textEditingController,
+                                  focusNode: focusNode,
+                                  decoration: InputDecoration(
+                                    labelText: 'Pilih Desa',
+                                    hintText: 'Cari atau pilih desa',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.grey.shade50,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 16,
+                                    ),
+                                  ),
+                                  validator: (v) {
+                                    if (v == null || v.trim().isEmpty)
+                                      return 'Wajib dipilih';
+                                    final list =
+                                        _desaByKecamatan[_selectedKecamatan!] ??
+                                        [];
+                                    final exists = list.any(
+                                      (e) =>
+                                          (e['desa'] ?? '').toLowerCase() ==
+                                          v.trim().toLowerCase(),
+                                    );
+                                    return exists
+                                        ? null
+                                        : 'Silakan pilih desa yang ada di daftar';
+                                  },
+                                  onFieldSubmitted: (_) => onFieldSubmitted(),
+                                );
                               },
-                              onFieldSubmitted: (_) => onFieldSubmitted(),
-                            );
-                          },
                         )
                       else
                         TextFormField(
@@ -2438,7 +2607,9 @@ class _AddDesaFormSheetState extends State<_AddDesaFormSheet> {
                           decoration: InputDecoration(
                             labelText: 'Pilih Desa',
                             hintText: 'Pilih kecamatan terlebih dahulu',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                             filled: true,
                             fillColor: Colors.grey.shade100,
                           ),

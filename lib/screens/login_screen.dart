@@ -17,6 +17,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final TextEditingController _guestNameController = TextEditingController();
   bool _isLoading = false;
   String? _error;
   bool _obscurePassword = true;
@@ -25,15 +26,15 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _guestNameController.dispose();
     super.dispose();
   }
 
-  Future<void> _signInGuest() async {
+  Future<void> _signInGuest(AuthService auth, String guestName) async {
     setState(() => _error = null);
     setState(() => _isLoading = true);
-    final auth = Provider.of<AuthService>(context, listen: false);
     try {
-      await auth.signInAnonymously();
+      await auth.signInAnonymously(guestName: guestName);
       // Login Guest berhasil - Consumer di main.dart akan redirect otomatis
     } on AuthException catch (e) {
       debugPrint('[Login] Guest sign-in AuthException: ${e.message}');
@@ -89,6 +90,66 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  Future<void> _handleGuestLogin() async {
+    final auth = Provider.of<AuthService>(context, listen: false);
+    final controller = _guestNameController..text = '';
+    final formKey = GlobalKey<FormState>();
+    String? guestName;
+    guestName = await showDialog<String>(
+      context: context,
+      useRootNavigator: true,
+      builder: (context) {
+          return AlertDialog(
+            title: const Text('Masuk sebagai Guest'),
+            content: Form(
+              key: formKey,
+              child: TextFormField(
+                controller: controller,
+                autofocus: true,
+                textInputAction: TextInputAction.done,
+                decoration: const InputDecoration(
+                  labelText: 'Nama lengkap',
+                  hintText: 'Masukkan nama Anda',
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Nama wajib diisi';
+                  }
+                  return null;
+                },
+                onFieldSubmitted: (_) {
+                  if (formKey.currentState?.validate() ?? false) {
+                    Navigator.of(context, rootNavigator: true)
+                        .pop(controller.text.trim());
+                  }
+                },
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () =>
+                    Navigator.of(context, rootNavigator: true).pop(),
+                child: const Text('Batal'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  if (formKey.currentState?.validate() ?? false) {
+                    Navigator.of(context, rootNavigator: true)
+                        .pop(controller.text.trim());
+                  }
+                },
+                child: const Text('Masuk sebagai Guest'),
+              ),
+            ],
+          );
+        },
+    );
+
+    if (guestName == null || guestName.isEmpty) return;
+    if (!mounted) return;
+    await _signInGuest(auth, guestName);
   }
 
   @override
@@ -371,7 +432,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     width: 220,
                     height: 44,
                     child: OutlinedButton.icon(
-                      onPressed: _isLoading ? null : _signInGuest,
+                      onPressed: _isLoading ? null : _handleGuestLogin,
                       icon: const Icon(Icons.person_2),
                       label: const Text('Masuk sebagai Guest'),
                       style: OutlinedButton.styleFrom(
