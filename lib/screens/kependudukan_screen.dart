@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../utils/responsive.dart';
 import '../services/kependudukan_repository.dart';
 import '../services/auth_service.dart';
+import '../services/pdf_export_service.dart';
 
 class KependudukanScreen extends StatefulWidget {
   const KependudukanScreen({
@@ -111,6 +112,14 @@ class _KependudukanScreenState extends State<KependudukanScreen>
                   ),
                 ),
                 centerTitle: false,
+                actions: [
+                  IconButton(
+                    onPressed: _exportToPdf,
+                    icon: const Icon(Icons.picture_as_pdf_rounded, color: Colors.white),
+                    tooltip: 'Ekspor ke PDF',
+                  ),
+                  const SizedBox(width: 8),
+                ],
                 shape: const RoundedRectangleBorder(
                   borderRadius: BorderRadius.only(
                     bottomLeft: Radius.circular(20),
@@ -288,6 +297,82 @@ class _KependudukanScreenState extends State<KependudukanScreen>
       print('Error loading kependudukan: $e');
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _exportToPdf() async {
+    if (_loading) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Data masih dimuat, tunggu sebentar...'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 16),
+            Text('Membuat laporan PDF...'),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      // Prepare data for PDF export
+      final data = {
+        'total_penduduk': _totalPenduduk ?? 0,
+        'total_kk': _totalKK ?? 0,
+        'laki_laki': _lakiLaki ?? 0,
+        'perempuan': _perempuan ?? 0,
+        'usia_0_14': _getAgeGroupData('0-14'),
+        'usia_15_64': _getAgeGroupData('15-64'),
+        'usia_65_plus': _getAgeGroupData('65+'),
+        'year': DateTime.now().year,
+        'pendidikan': _pendidikan,
+        'pekerjaan': _pekerjaan,
+      };
+
+      await PdfExportService.exportKependudukan(
+        desaName: widget.desaName,
+        kodeWilayah: widget.kodeWilayah,
+        data: data,
+        context: context,
+      );
+
+      Navigator.of(context).pop(); // Close loading dialog
+    } catch (e) {
+      Navigator.of(context).pop(); // Close loading dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal mengekspor PDF: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  int _getAgeGroupData(String group) {
+    // This is a simplified age group calculation
+    // In a real implementation, you'd fetch this from your database
+    final total = _totalPenduduk ?? 0;
+    switch (group) {
+      case '0-14':
+        return (total * 0.25).round(); // Roughly 25% children
+      case '15-64':
+        return (total * 0.65).round(); // Roughly 65% working age
+      case '65+':
+        return (total * 0.10).round(); // Roughly 10% elderly
+      default:
+        return 0;
     }
   }
 

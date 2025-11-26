@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../utils/responsive.dart';
 import '../services/kesehatan_repository.dart';
 import '../services/auth_service.dart';
+import '../services/pdf_export_service.dart';
 
 class KesehatanScreen extends StatefulWidget {
   const KesehatanScreen({
@@ -75,6 +76,67 @@ class _KesehatanScreenState extends State<KesehatanScreen>
     }
   }
 
+  Future<void> _exportToPdf() async {
+    if (_loading) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Data masih dimuat, tunggu sebentar...'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 16),
+            Text('Membuat laporan PDF...'),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      // Prepare data for PDF export
+      final data = {
+        'total_fasilitas': _totalFasilitas ?? 0,
+        'total_tenaga_medis': _totalTenagaMedis ?? 0,
+        'puskesmas': _fasilitas['puskesmas'] ?? 0,
+        'polindes': _fasilitas['polindes'] ?? 0,
+        'posyandu': _fasilitas['posyandu'] ?? 0,
+        'dokter': _tenagaMedis['dokter'] ?? 0,
+        'bidan': _tenagaMedis['bidan'] ?? 0,
+        'perawat': _tenagaMedis['perawat'] ?? 0,
+        'year': DateTime.now().year,
+        'fasilitas': _fasilitas,
+        'tenaga_medis': _tenagaMedis,
+      };
+
+      await PdfExportService.exportKesehatan(
+        desaName: widget.desaName,
+        kodeWilayah: widget.kodeWilayah,
+        data: data,
+        context: context,
+      );
+
+      Navigator.of(context).pop(); // Close loading dialog
+    } catch (e) {
+      Navigator.of(context).pop(); // Close loading dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal mengekspor PDF: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context, listen: false);
@@ -135,6 +197,14 @@ class _KesehatanScreenState extends State<KesehatanScreen>
                   ),
                 ),
                 centerTitle: false,
+                actions: [
+                  IconButton(
+                    onPressed: _exportToPdf,
+                    icon: const Icon(Icons.picture_as_pdf_rounded, color: Colors.white),
+                    tooltip: 'Ekspor ke PDF',
+                  ),
+                  const SizedBox(width: 8),
+                ],
                 shape: const RoundedRectangleBorder(
                   borderRadius: BorderRadius.only(
                     bottomLeft: Radius.circular(20),

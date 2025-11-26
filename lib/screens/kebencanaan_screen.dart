@@ -28,14 +28,7 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
   @override
   void initState() {
     super.initState();
-    // Determine initial tab count based on current auth role so the TabController
-    // is created with correct length. We read provider with listen:false here
-    // because initState cannot subscribe to changes.
-    final isAdminInit = Provider.of<AuthService>(
-      context,
-      listen: false,
-    ).isAdmin;
-    _tabController = TabController(length: isAdminInit ? 4 : 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     // Load data dari Supabase (fallback ke sample jika kosong)
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
@@ -66,15 +59,12 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
                   elevation: 0,
                   backgroundColor: Colors.transparent,
                   toolbarHeight: 56,
-                  // Static title changed per request: always "Data Tematik"
                   title: const Text(
-                    'Data Tematik',
+                    'Data Kebencanaan',
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w800,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                   centerTitle: false,
                   shape: const RoundedRectangleBorder(
@@ -99,82 +89,55 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
                     ),
                   ),
                 ),
-                // Summary cards + small header (jenis & periode)
+                // Summary cards
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(
                       context.horizontalPadding,
-                      8,
+                      0,
                       context.horizontalPadding,
                       8,
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                    child: GridView.count(
+                      shrinkWrap: true,
+                      crossAxisCount: context.gridCount(
+                        mobile: 2,
+                        tablet: 3,
+                        desktop: 4,
+                      ),
+                      childAspectRatio: context.summaryAspect,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
                       children: [
-                        if (_dataBanjir != null) ...[
-                          _buildSummaryCard(
-                            label:
-                                ((_dataBanjir?['periode'] ?? '')
-                                    .toString()
-                                    .isNotEmpty)
-                                ? 'Periode: ${_dataBanjir?['periode']}'
-                                : 'Periode: -',
-                            value:
-                                ((_dataBanjir?['jenis'] ?? '')
-                                    .toString()
-                                    .isNotEmpty)
-                                ? _capitalize(_dataBanjir?['jenis'])
-                                : '-'.toString(),
-                            icon: Icons.warning_amber_rounded,
-                            color: const Color(0xFFDC2626),
+                        _buildSummaryCard(
+                          label: 'Rumah',
+                          value: _fmtInt(_dataBanjir?['total_rumah']),
+                          icon: Icons.home_rounded,
+                          color: const Color(0xFFDC2626),
+                        ),
+                        _buildSummaryCard(
+                          label: 'Kepala Keluarga',
+                          value: _fmtInt(_dataBanjir?['total_kk']),
+                          icon: Icons.people_rounded,
+                          color: const Color(0xFFDC2626),
+                        ),
+                        _buildSummaryCard(
+                          label: 'Jiwa Terdampak',
+                          value: _fmtInt(_dataBanjir?['total_jiwa']),
+                          icon: Icons.person_rounded,
+                          color: const Color(0xFFDC2626),
+                        ),
+                        _buildSummaryCard(
+                          label: 'Kelompok Rentan',
+                          value: _fmtInt(
+                            ((_dataBanjir?['lansia'] ?? 0) as int) +
+                                ((_dataBanjir?['bumil'] ?? 0) as int) +
+                                ((_dataBanjir?['balita'] ?? 0) as int),
+                            allowZero: true,
                           ),
-                          const SizedBox(
-                            height: 4,
-                          ), // jarak kecil, diperkecil agar card lebih rapat
-                        ],
-
-                        GridView.count(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          crossAxisCount: context.gridCount(
-                            mobile: 2,
-                            tablet: 3,
-                            desktop: 4,
-                          ),
-                          childAspectRatio: context.summaryAspect,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          children: [
-                            _buildSummaryCard(
-                              label: 'Rumah',
-                              value: _fmtInt(_dataBanjir?['total_rumah']),
-                              icon: Icons.home_rounded,
-                              color: const Color(0xFFDC2626),
-                            ),
-                            _buildSummaryCard(
-                              label: 'Kepala Keluarga',
-                              value: _fmtInt(_dataBanjir?['total_kk']),
-                              icon: Icons.people_rounded,
-                              color: const Color(0xFFDC2626),
-                            ),
-                            _buildSummaryCard(
-                              label: 'Jiwa Terdampak',
-                              value: _fmtInt(_dataBanjir?['total_jiwa']),
-                              icon: Icons.person_rounded,
-                              color: const Color(0xFFDC2626),
-                            ),
-                            _buildSummaryCard(
-                              label: 'Kelompok Rentan',
-                              value: _fmtInt(
-                                ((_dataBanjir?['lansia'] ?? 0) as int) +
-                                    ((_dataBanjir?['bumil'] ?? 0) as int) +
-                                    ((_dataBanjir?['balita'] ?? 0) as int),
-                                allowZero: true,
-                              ),
-                              icon: Icons.warning_amber_rounded,
-                              color: const Color(0xFFDC2626),
-                            ),
-                          ],
+                          icon: Icons.warning_amber_rounded,
+                          color: const Color(0xFFDC2626),
                         ),
                       ],
                     ),
@@ -188,7 +151,7 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
                   children: [
                     _buildStatistik(),
                     _buildPerRT(),
-                    if (context.watch<AuthService>().isAdmin) _buildBantuan(),
+                    _buildBantuan(),
                     _buildPenanganan(),
                   ],
                 ),
@@ -209,8 +172,6 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
             ? FloatingActionButton(
                 onPressed: _openEditKebencanaanSheet,
                 backgroundColor: const Color(0xFFDC2626),
-                shape: const CircleBorder(),
-                elevation: 6,
                 child: const Icon(Icons.edit, color: Colors.white),
               )
             : null,
@@ -219,45 +180,38 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
           elevation: 8,
           child: SafeArea(
             top: false,
-            child: Builder(
-              builder: (tabCtx) {
-                final isAdmin = context.watch<AuthService>().isAdmin;
-                final tabs = <Tab>[
-                  const Tab(
-                    icon: Icon(Icons.bar_chart_rounded, size: 20),
-                    text: 'Statistik',
-                  ),
-                  const Tab(
-                    icon: Icon(Icons.location_city_rounded, size: 20),
-                    text: 'Per RT',
-                  ),
-                  if (isAdmin)
-                    const Tab(
-                      icon: Icon(Icons.volunteer_activism_rounded, size: 20),
-                      text: 'Bantuan',
-                    ),
-                  const Tab(
-                    icon: Icon(Icons.engineering_rounded, size: 20),
-                    text: 'Penanganan',
-                  ),
-                ];
-                return TabBar(
-                  controller: _tabController,
-                  tabs: tabs,
-                  labelColor: const Color(0xFFDC2626),
-                  unselectedLabelColor: Colors.grey,
-                  indicatorColor: const Color(0xFFDC2626),
-                  indicatorWeight: 3,
-                  labelStyle: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  unselectedLabelStyle: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.normal,
-                  ),
-                );
-              },
+            child: TabBar(
+              controller: _tabController,
+              labelColor: const Color(0xFFDC2626),
+              unselectedLabelColor: Colors.grey,
+              indicatorColor: const Color(0xFFDC2626),
+              indicatorWeight: 3,
+              labelStyle: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+              unselectedLabelStyle: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.normal,
+              ),
+              tabs: const [
+                Tab(
+                  icon: Icon(Icons.bar_chart_rounded, size: 20),
+                  text: 'Statistik',
+                ),
+                Tab(
+                  icon: Icon(Icons.location_city_rounded, size: 20),
+                  text: 'Per RT',
+                ),
+                Tab(
+                  icon: Icon(Icons.volunteer_activism_rounded, size: 20),
+                  text: 'Bantuan',
+                ),
+                Tab(
+                  icon: Icon(Icons.engineering_rounded, size: 20),
+                  text: 'Penanganan',
+                ),
+              ],
             ),
           ),
         ), // End bottomNavigationBar
@@ -308,11 +262,10 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
       Map<String, dynamic>? row;
       if (forceSnapshotId != null) {
         row = await _repo.fetchBySnapshotId(forceSnapshotId);
-        // Jika fetch by id gagal (hapus atau id tidak ditemukan), fallback ke latest apapun jenisnya
-        row ??= await _repo.fetchLatestAnyJenis(kode);
+        // Jika fetch by id gagal (hapus atau id tidak ditemukan), fallback ke latest
+        row ??= await _repo.fetchLatest(kode, jenis: 'banjir');
       } else {
-        // Ambil snapshot terbaru apapun jenisnya
-        row = await _repo.fetchLatestAnyJenis(kode);
+        row = await _repo.fetchLatest(kode, jenis: 'banjir');
       }
       if (!mounted) return;
       if (row != null) {
@@ -1436,13 +1389,6 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
     }
     return v.toString();
   }
-
-  // Capitalize first letter of a string, preserving the rest
-  String _capitalize(dynamic s) {
-    final raw = (s ?? '').toString().trim();
-    if (raw.isEmpty) return raw;
-    return raw[0].toUpperCase() + (raw.length > 1 ? raw.substring(1) : '');
-  }
 }
 
 // ================= Bottom sheet edit widget (refactored) =================
@@ -1467,7 +1413,6 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
   final formKey = GlobalKey<FormState>();
   bool saving = false;
   late final KebencanaanRepository _repo;
-  late final TextEditingController _newJenisCtl;
 
   // Statistik controllers
   late final TextEditingController totalRumahCtl;
@@ -1487,9 +1432,6 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
     super.initState();
     _repo = KebencanaanRepository();
     final d = widget.initialData;
-    _newJenisCtl = TextEditingController(
-      text: (d?['jenis'] ?? 'banjir').toString(),
-    );
     totalRumahCtl = TextEditingController(
       text: (d?['total_rumah'] ?? 0).toString(),
     );
@@ -1568,7 +1510,6 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
 
   @override
   void dispose() {
-    _newJenisCtl.dispose();
     totalRumahCtl.dispose();
     totalKkCtl.dispose();
     totalJiwaCtl.dispose();
@@ -1658,110 +1599,10 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
         return;
       }
 
-      // Validation: check duplicate bantuan names and duplicate RT codes
-      final bantuanNames = bantuanItems
-          .where((b) => !b.removed)
-          .map((b) => b.namaCtl.text.trim())
-          .where((s) => s.isNotEmpty)
-          .toList();
-      final dupBantuan = <String, int>{};
-      for (final n in bantuanNames) {
-        dupBantuan[n] = (dupBantuan[n] ?? 0) + 1;
-      }
-      final dupsBantuan = dupBantuan.entries
-          .where((e) => e.value > 1)
-          .map((e) => e.key)
-          .toList();
-
-      final rtCodes = rtItems
-          .where((r) => !r.removed)
-          .map((r) => r.rtCodeCtl.text.trim())
-          .where((s) => s.isNotEmpty)
-          .toList();
-      final dupRt = <String, int>{};
-      for (final c in rtCodes) {
-        dupRt[c] = (dupRt[c] ?? 0) + 1;
-      }
-      final dupsRt = dupRt.entries
-          .where((e) => e.value > 1)
-          .map((e) => e.key)
-          .toList();
-
-      if (dupsBantuan.isNotEmpty || dupsRt.isNotEmpty) {
-        // close sheet first so snackbar appears on parent scaffold
-        if (mounted) Navigator.pop(context);
-
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.error_outline_rounded,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text(
-                        'Gagal Menyimpan',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      if (dupsBantuan.isNotEmpty)
-                        Text(
-                          'Duplikat Bantuan: ${dupsBantuan.join(', ')}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.white,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      if (dupsRt.isNotEmpty)
-                        Text(
-                          'Duplikat RT: ${dupsRt.join(', ')}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.white,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: const Color(0xFFEF4444),
-            behavior: SnackBarBehavior.fixed,
-            duration: const Duration(seconds: 4),
-          ),
-        );
-        setState(() => saving = false);
-        return;
-      }
-
       final snapId = await _repo.upsertRekap(
         snapshotId: widget.snapshotId,
         kodeWilayah: widget.kodeWilayah,
-        jenis: (_newJenisCtl.text.trim().isNotEmpty
-            ? _newJenisCtl.text.trim()
-            : (widget.initialData?['jenis']?.toString() ?? 'banjir')),
+        jenis: 'banjir',
         periodeLabel: periodeLabelCtl.text.trim(),
         totalRumah: totalRumah,
         totalKk: totalKk,
@@ -1901,54 +1742,11 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
         ),
       );
     } catch (e) {
-      // Close the bottom sheet first so the snackbar appears on the parent scaffold
-      if (mounted) Navigator.pop(context);
-
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.error_outline_rounded,
-                  color: Colors.white,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Text(
-                      'Gagal Menyimpan',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Gagal menyimpan. Coba lagi.',
-                      style: TextStyle(fontSize: 12, color: Colors.white),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: const Color(0xFFEF4444),
-          behavior: SnackBarBehavior.fixed,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Gagal menyimpan: $e')));
+      }
     } finally {
       if (mounted) setState(() => saving = false);
     }
@@ -2037,21 +1835,6 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
                                   spacing: 16,
                                   runSpacing: 16,
                                   children: [
-                                    SizedBox(
-                                      width:
-                                          (MediaQuery.of(context).size.width -
-                                              20 * 2 -
-                                              16) /
-                                          2,
-                                      child: TextFormField(
-                                        controller: _newJenisCtl,
-                                        decoration: _dec('Jenis Bencana'),
-                                        validator: (v) =>
-                                            v == null || v.trim().isEmpty
-                                            ? 'Wajib diisi'
-                                            : null,
-                                      ),
-                                    ),
                                     SizedBox(
                                       width:
                                           (MediaQuery.of(context).size.width -
@@ -2466,51 +2249,20 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: SizedBox(
                 width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
+                height: 48,
+                child: FilledButton.icon(
                   onPressed: saving ? null : _save,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    foregroundColor: Colors.white,
-                    disabledBackgroundColor: Colors.grey[300],
-                    elevation: 0,
-                    shadowColor: Colors.transparent,
-                    padding: EdgeInsets.zero,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: saving
+                  icon: saving
                       ? const SizedBox(
-                          height: 20,
-                          width: 20,
+                          width: 18,
+                          height: 18,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white,
-                            ),
+                            color: Colors.white,
                           ),
                         )
-                      : Ink(
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFFDC2626), Color(0xFFF97316)],
-                              begin: Alignment.centerLeft,
-                              end: Alignment.centerRight,
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Container(
-                            alignment: Alignment.center,
-                            child: const Text(
-                              'Simpan Perubahan',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
+                      : const Icon(Icons.save),
+                  label: const Text('Simpan Perubahan'),
                 ),
               ),
             ),

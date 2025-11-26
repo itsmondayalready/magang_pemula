@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/infrastruktur_repository_single.dart';
 import '../utils/responsive.dart';
+import '../services/pdf_export_service.dart';
 
 class InfrastrukturScreen extends StatefulWidget {
   const InfrastrukturScreen({super.key});
@@ -143,6 +144,74 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
     _data['kebencanaan'] = kebencanaan;
   }
 
+  Future<void> _exportToPdf() async {
+    if (_loading) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Data masih dimuat, tunggu sebentar...'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 16),
+            Text('Membuat laporan PDF...'),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      // Get desa name from SharedPreferences or fallback
+      String desaName = 'Desa';
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        desaName = prefs.getString('last_desa_name') ?? 'Desa';
+      } catch (_) {}
+
+      // Prepare data for PDF export - kelompokkan sesuai chart
+      final data = {
+        'pendidikan': _data['pendidikan'] as Map<String, int>,
+        'kesehatan': _data['kesehatan'] as Map<String, int>,
+        'transportasi': {
+          ..._data['jalan'] as Map<String, int>,
+          ..._data['angkutan'] as Map<String, int>,
+        },
+        'komunikasi': _data['komunikasi'] as Map<String, int>,
+        'sanitasi': _data['sanitasi'] as Map<String, int>,
+        'kebencanaan': _data['kebencanaan'] as Map<String, int>,
+        'akses_pemerintahan': _data['akses_pemerintahan'] as Map<String, Map<String, int>>,
+        'year': DateTime.now().year,
+      };
+
+      await PdfExportService.exportInfrastruktur(
+        desaName: desaName,
+        kodeWilayah: _kodeWilayah ?? '',
+        data: data,
+        context: context,
+      );
+
+      Navigator.of(context).pop(); // Close loading dialog
+    } catch (e) {
+      Navigator.of(context).pop(); // Close loading dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal mengekspor PDF: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isAdmin = context.watch<AuthService>().isAdmin;
@@ -208,6 +277,14 @@ class _InfrastrukturScreenState extends State<InfrastrukturScreen>
                       'Pendidikan • Kesehatan • Transportasi • Komunikasi • Sanitasi',
                 ),
                 centerTitle: false,
+                actions: [
+                  IconButton(
+                    onPressed: _exportToPdf,
+                    icon: const Icon(Icons.picture_as_pdf_rounded, color: Colors.white),
+                    tooltip: 'Ekspor ke PDF',
+                  ),
+                  const SizedBox(width: 8),
+                ],
                 shape: const RoundedRectangleBorder(
                   borderRadius: BorderRadius.only(
                     bottomLeft: Radius.circular(20),

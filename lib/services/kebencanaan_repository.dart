@@ -1,7 +1,6 @@
 import 'dart:developer' as dev;
 
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 /// Repository untuk data kebencanaan.
 ///
@@ -77,101 +76,6 @@ class KebencanaanRepository {
     }
   }
 
-  /// Ambil record kebencanaan terbaru untuk `kodeWilayah` tanpa memfilter
-  /// berdasarkan `jenis`. Berguna ketika UI ingin menampilkan snapshot
-  /// terbaru apapun jenisnya.
-  Future<Map<String, dynamic>?> fetchLatestAnyJenis(String kodeWilayah) async {
-    // 1) coba skema normalized (kebencanaan_rekap)
-    try {
-      final snap = await _db
-          .from('kebencanaan_rekap')
-          .select()
-          .eq('kode_wilayah', kodeWilayah)
-          .order('period_end', ascending: false, nullsFirst: false)
-          .order('periode_date', ascending: false, nullsFirst: false)
-          .order('created_at', ascending: false)
-          .limit(1)
-          .maybeSingle();
-      if (snap != null) {
-        final snapshot = Map<String, dynamic>.from(snap);
-
-        // Try to load details; best-effort — re-use existing assembly helper
-        final snapshotId = snapshot['id'];
-        List<dynamic> rtRows = const [];
-        List<dynamic> bantuanRows = const [];
-        List<dynamic> penangananRows = const [];
-        try {
-          rtRows = await _db
-              .from('kebencanaan_rt')
-              .select()
-              .eq('snapshot_id', snapshotId)
-              .order('rt_code', ascending: true);
-        } catch (_) {}
-        try {
-          bantuanRows = await _db
-              .from('kebencanaan_bantuan')
-              .select()
-              .eq('snapshot_id', snapshotId)
-              .order('nama', ascending: true);
-        } catch (_) {}
-        try {
-          penangananRows = await _db
-              .from('kebencanaan_penanganan')
-              .select()
-              .eq('snapshot_id', snapshotId)
-              .order('urutan', ascending: true);
-        } catch (_) {}
-
-        return _assembleRowFromNormalized(
-          snapshot: snapshot,
-          rtRows: rtRows,
-          bantuanRows: bantuanRows,
-          penangananRows: penangananRows,
-        );
-      }
-    } catch (e) {
-      dev.log('fetchLatestAnyJenis (normalized) failed: $e');
-    }
-
-    // 2) coba tabel kebencanaan (legacy/new single-table) tanpa filter jenis
-    try {
-      final List rows = await _db
-          .from('kebencanaan')
-          .select()
-          .order('period_end', ascending: false)
-          .order('periode_date', ascending: false)
-          .order('created_at', ascending: false)
-          .limit(1);
-      if (rows.isNotEmpty) return Map<String, dynamic>.from(rows.first as Map);
-    } catch (e) {
-      dev.log('fetchLatestAnyJenis (direct kebencanaan) failed: $e');
-    }
-
-    // 3) fallback legacy: cari desa_id lalu ambil dari kebencanaan
-    try {
-      final desa = await _db
-          .from('desa')
-          .select('id')
-          .eq('kode_wilayah', kodeWilayah)
-          .maybeSingle();
-      if (desa == null) return null;
-      final desaId = desa['id'];
-      final List rows = await _db
-          .from('kebencanaan')
-          .select()
-          .eq('desa_id', desaId)
-          .order('period_end', ascending: false)
-          .order('periode_date', ascending: false)
-          .order('created_at', ascending: false)
-          .limit(1);
-      if (rows.isEmpty) return null;
-      return Map<String, dynamic>.from(rows.first as Map);
-    } catch (e) {
-      dev.log('fetchLatestAnyJenis (fallback) error: $e');
-      return null;
-    }
-  }
-
   /// Bentuk data sesuai kebutuhan UI kebencanaan_screen.dart
   /// Struktur hasil:
   /// {
@@ -189,12 +93,6 @@ class KebencanaanRepository {
   Map<String, dynamic> toScreenData(Map<String, dynamic> row) {
     final periodeLabel = _formatPeriode(row);
     return {
-      // Always expose a `snapshot_id` key for the UI/edit sheet.
-      // Some schemas use `id` (legacy kebencanaan table) while normalized
-      // snapshots use `id` as well but packaged under `snapshot_id` when
-      // assembled. Normalize here so edit flow can update instead of insert.
-      'snapshot_id': (row['snapshot_id'] ?? row['id'])?.toString(),
-      'jenis': row['jenis'] ?? '',
       'periode': periodeLabel,
       'total_rumah': (row['total_rumah'] ?? 0) as int,
       'total_kk': (row['total_kk'] ?? 0) as int,
@@ -952,82 +850,6 @@ class KebencanaanRepository {
       dev.log('getSnapshotDesaId error: $e');
       _snapshotDesaCache[snapshotId] = null;
       return null;
-    }
-  }
-
-  // ------------------- Jenis (list of disaster types) -------------------
-  /// Fetch available `jenis` options.
-  ///
-  /// Tries the `kebencanaan_jenis` table first; if the table doesn't exist
-  /// or an error occurs, falls back to `SharedPreferences` key
-  /// `kebencanaan_jenis_options` (list of strings). If nothing found, returns
-  /// a sensible default list.
-  Future<List<String>> fetchJenisOptions() async {
-    try {
-      final rows = await _db
-          .from('kebencanaan_jenis')
-          .select('name')
-          .order('name', ascending: true);
-      if (rows.isNotEmpty) {
-        // Safely extract, trim, deduplicate, and filter non-empty names.
-        final names =
-            rows
-                .whereType<Map>()
-                .map((m) => (m['name'] ?? '').toString().trim())
-                .where((s) => s.isNotEmpty)
-                .toSet() // ensure uniqueness
-                .toList()
-              ..sort(); // keep sorted order for UI consistency
-        if (names.isNotEmpty) return names;
-      }
-    } catch (e) {
-      dev.log(
-        'fetchJenisOptions: table query failed, falling back to prefs: $e',
-      );
-    }
-
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final list = prefs.getStringList('kebencanaan_jenis_options');
-      if (list != null && list.isNotEmpty) return list;
-    } catch (e) {
-      dev.log('fetchJenisOptions: prefs fallback failed: $e');
-    }
-
-    // Default set
-    return ['banjir', 'longsor', 'angin', 'kebakaran'];
-  }
-
-  /// Add a new `jenis` option. Tries inserting into `kebencanaan_jenis` table,
-  /// if available. On failure falls back to adding into `SharedPreferences`.
-  Future<void> addJenisOption(String name) async {
-    final nm = name.trim();
-    if (nm.isEmpty) return;
-    try {
-      // Check existing first to avoid duplicates
-      final exists = await _db
-          .from('kebencanaan_jenis')
-          .select('id')
-          .eq('name', nm)
-          .maybeSingle();
-      if (exists == null) {
-        await _db.from('kebencanaan_jenis').insert({'name': nm});
-      }
-      return;
-    } catch (e) {
-      dev.log('addJenisOption: insert failed, trying prefs fallback: $e');
-    }
-
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final list =
-          prefs.getStringList('kebencanaan_jenis_options') ?? <String>[];
-      if (!list.contains(nm)) {
-        list.add(nm);
-        await prefs.setStringList('kebencanaan_jenis_options', list);
-      }
-    } catch (e) {
-      dev.log('addJenisOption: prefs fallback also failed: $e');
     }
   }
 }
