@@ -12,6 +12,7 @@ import 'screens/kependudukan_screen.dart';
 import 'screens/pendidikan_screen.dart';
 import 'screens/kesehatan_screen.dart';
 import 'screens/kebencanaan_screen.dart';
+import 'screens/login_log_screen.dart';
 import 'screens/metadata_screen.dart';
 import 'screens/profil_desa_screen.dart';
 
@@ -64,8 +65,16 @@ class MyApp extends StatelessWidget {
             }
             return KesehatanScreen(kodeWilayah: kode, desaName: nama);
           },
-          '/pendidikan': (context) => const PendidikanScreen(),
+          '/pendidikan': (context) {
+            final args = ModalRoute.of(context)?.settings.arguments;
+            String nama = 'Desa';
+            if (args is Map) {
+              nama = (args['desaName'] ?? 'Desa') as String;
+            }
+            return PendidikanScreen(desaName: nama);
+          },
           '/kebencanaan': (context) => const KebencanaanScreen(),
+          '/log-masuk': (context) => const LoginLogScreen(),
           '/metadata': (context) => const MetadataScreen(),
           '/profil-desa': (context) {
             final args = ModalRoute.of(context)?.settings.arguments;

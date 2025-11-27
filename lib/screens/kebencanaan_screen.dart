@@ -6,9 +6,11 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/kebencanaan_repository.dart';
 import '../utils/responsive.dart';
+import '../services/pdf_export_service.dart';
 
 class KebencanaanScreen extends StatefulWidget {
-  const KebencanaanScreen({super.key});
+  final String desaName;
+  const KebencanaanScreen({super.key, this.desaName = ''});
 
   @override
   State<KebencanaanScreen> createState() => _KebencanaanScreenState();
@@ -88,6 +90,14 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
                       ),
                     ),
                   ),
+                  actions: [
+                    IconButton(
+                      onPressed: _exportToPdf,
+                      icon: const Icon(Icons.picture_as_pdf_rounded, color: Colors.white),
+                      tooltip: 'Ekspor ke PDF',
+                    ),
+                    const SizedBox(width: 8),
+                  ],
                 ),
                 // Summary cards
                 SliverToBoxAdapter(
@@ -317,6 +327,124 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
       debugPrint('Error load kebencanaan: $e');
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _exportToPdf() async {
+    if (_loading) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Data masih dimuat, tunggu sebentar...'), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 16),
+            Text('Membuat laporan PDF...'),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      if (_dataBanjir == null) {
+        Navigator.of(context).pop();
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tidak ada data kebencanaan untuk diekspor'), backgroundColor: Colors.orange),
+        );
+        return;
+      }
+
+      // Build rekap map (map keys used by PDF exporter)
+      final rekap = <String, dynamic>{
+        'total_kejadian': _dataBanjir?['total_kejadian'] ?? 0,
+        'rusak_ringan': _dataBanjir?['rusak_ringan'] ?? 0,
+        'rusak_sedang': _dataBanjir?['rusak_sedang'] ?? 0,
+        'rusak_berat': _dataBanjir?['rusak_berat'] ?? 0,
+        'korban_jiwa': _dataBanjir?['korban_jiwa'] ?? _dataBanjir?['total_jiwa'] ?? 0,
+        'korban_hilang': _dataBanjir?['korban_hilang'] ?? 0,
+        'korban_luka': _dataBanjir?['korban_luka'] ?? 0,
+        'mengungsi': _dataBanjir?['mengungsi'] ?? 0,
+        'total_rumah': _dataBanjir?['total_rumah'] ?? 0,
+        'total_kk': _dataBanjir?['total_kk'] ?? 0,
+      };
+
+      // RT details: convert map -> list expected by exporter
+      final rtRaw = _dataBanjir?['rt'];
+      final List<Map<String, dynamic>> rtDetails = [];
+      if (rtRaw is Map) {
+        for (final e in rtRaw.entries) {
+          final val = Map<String, dynamic>.from(e.value as Map? ?? {});
+          rtDetails.add({
+            'rt_number': e.key.toString(),
+            'rumah': val['rumah'] ?? 0,
+            'kk': val['kk'] ?? 0,
+            'rusak_ringan': val['rusak_ringan'] ?? 0,
+            'rusak_sedang': val['rusak_sedang'] ?? 0,
+            'rusak_berat': val['rusak_berat'] ?? 0,
+            'korban_jiwa': val['jiwa'] ?? 0,
+          });
+        }
+      }
+
+      // Bantuan: accept Map<String,int> or List<Map>
+      final bantuanRaw = _dataBanjir?['bantuan'];
+      final Map<String, int> bantuanMap = {};
+      if (bantuanRaw is Map) {
+        for (final e in (bantuanRaw as Map).entries) {
+          bantuanMap[e.key.toString()] = (e.value is int) ? e.value as int : int.tryParse(e.value.toString()) ?? 0;
+        }
+      } else if (bantuanRaw is List) {
+        for (final item in bantuanRaw) {
+          if (item is Map) {
+            final name = (item['nama'] ?? item['name'] ?? '').toString();
+            final jumlah = item['jumlah'] is int ? item['jumlah'] as int : int.tryParse((item['jumlah'] ?? '0').toString()) ?? 0;
+            if (name.isNotEmpty) bantuanMap[name] = (bantuanMap[name] ?? 0) + jumlah;
+          }
+        }
+      }
+
+      // Penanganan: prefer List -> convert to map for exporter
+      final penRaw = _dataBanjir?['penanganan'];
+      Map<String, dynamic> penMap = {};
+      if (penRaw is Map) {
+        penMap = Map<String, dynamic>.from(penRaw);
+      } else if (penRaw is List) {
+        int i = 1;
+        for (final p in penRaw) {
+          penMap['Penanganan $i'] = p;
+          i++;
+        }
+      }
+
+      final data = {
+        'rekap': rekap,
+        'rt_details': rtDetails,
+        'bantuan': bantuanMap,
+        'penanganan': penMap,
+        'jenis': _dataBanjir?['jenis'] ?? 'banjir',
+        'year': DateTime.now().year,
+      };
+
+      await PdfExportService.exportKebencanaan(
+        desaName: widget.desaName.isNotEmpty ? widget.desaName : (_kodeWilayah ?? 'Desa'),
+        kodeWilayah: _kodeWilayah ?? '',
+        data: data,
+        context: context,
+      );
+
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) Navigator.of(context).pop();
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal mengekspor PDF: $e'), backgroundColor: Colors.red),
+      );
     }
   }
 

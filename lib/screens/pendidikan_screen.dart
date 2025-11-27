@@ -7,9 +7,11 @@ import '../services/infrastruktur_repository_single.dart';
 import '../services/notes_repository.dart';
 import '../utils/responsive.dart';
 import '../utils/pendidikan_constants.dart';
+import '../services/pdf_export_service.dart';
 
 class PendidikanScreen extends StatefulWidget {
-  const PendidikanScreen({super.key});
+  final String desaName;
+  const PendidikanScreen({super.key, this.desaName = ''});
 
   @override
   State<PendidikanScreen> createState() => _PendidikanScreenState();
@@ -234,6 +236,14 @@ class _PendidikanScreenState extends State<PendidikanScreen>
                       ),
                     ),
                   ),
+                  actions: [
+                    IconButton(
+                      onPressed: _exportToPdf,
+                      icon: const Icon(Icons.picture_as_pdf_rounded, color: Colors.white),
+                      tooltip: 'Ekspor ke PDF',
+                    ),
+                    const SizedBox(width: 8),
+                  ],
                 ),
                 SliverToBoxAdapter(
                   child: Padding(
@@ -321,6 +331,94 @@ class _PendidikanScreenState extends State<PendidikanScreen>
         ), // bottomNavigationBar (Material)
       ), // Scaffold
     ); // WillPopScope
+  }
+
+  Future<void> _exportToPdf() async {
+    if (_loading) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Data masih dimuat, tunggu sebentar...'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 16),
+            Text('Membuat laporan PDF...'),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      // Build a flat map of pendidikan metrics (all numeric values)
+      final pendidikanMap = <String, dynamic>{};
+
+      // Negeri (map)
+      final negeri = Map<String, int>.from(_data['negeri']);
+      pendidikanMap.addAll(negeri);
+
+      // Swasta (list of maps with 'label' and 'count')
+      final swasta = List<Map<String, dynamic>>.from(_data['swasta']);
+      for (final s in swasta) {
+        final label = s['label']?.toString() ?? '';
+        final count = s['count'] is int ? s['count'] as int : int.tryParse((s['count'] ?? '0').toString()) ?? 0;
+        if (label.isNotEmpty) pendidikanMap[label] = count;
+      }
+
+      // SLB and keterampilan
+      final lb = Map<String, int>.from(_data['lb']);
+      pendidikanMap.addAll(lb);
+      final keterampilan = Map<String, int>.from(_data['keterampilan']);
+      pendidikanMap.addAll(keterampilan);
+
+      // Keagamaan: numeric keys
+      final keagamaan = Map<String, dynamic>.from(_data['keagamaan']);
+      for (final k in PendidikanConstants.keagamaanInt) {
+        final v = keagamaan[k];
+        pendidikanMap[k] = v is int ? v : int.tryParse(v?.toString() ?? '0') ?? 0;
+      }
+      // Keagamaan boolean flags -> convert 'Ada' to 1
+      for (final k in PendidikanConstants.keagamaanBool) {
+        final v = keagamaan[k];
+        if (v is String) {
+          pendidikanMap[k] = v.toLowerCase() == 'ada' ? 1 : 0;
+        } else if (v is int) {
+          pendidikanMap[k] = v;
+        } else {
+          pendidikanMap[k] = 0;
+        }
+      }
+
+      final data = {
+        'pendidikan': pendidikanMap,
+        'year': DateTime.now().year,
+        // signal to PDF exporter that this is a pendidikan-only report
+        'is_pendidikan_report': true,
+      };
+
+      await PdfExportService.exportInfrastruktur(
+        desaName: widget.desaName.isNotEmpty ? widget.desaName : (_desaId ?? _kodeWilayah ?? 'Desa'),
+        kodeWilayah: _kodeWilayah ?? '',
+        data: data,
+        context: context,
+      );
+
+      Navigator.of(context).pop(); // close loading dialog
+    } catch (e) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal mengekspor PDF: $e'), backgroundColor: Colors.red),
+      );
+    }
   }
 
   // ------- Section builders -------
