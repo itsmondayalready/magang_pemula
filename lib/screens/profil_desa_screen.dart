@@ -137,7 +137,7 @@ class _ProfilDesaScreenState extends State<ProfilDesaScreen> {
             IconButton(
               tooltip: 'Export PDF',
               onPressed: _loading ? null : _exportProfilPdf,
-              icon: const Icon(Icons.download_rounded, color: Colors.white),
+              icon: const Icon(Icons.picture_as_pdf_rounded, color: Colors.white),
             ),
           ],
         ),
