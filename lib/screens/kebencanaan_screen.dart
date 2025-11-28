@@ -7,6 +7,7 @@ import '../services/auth_service.dart';
 import '../services/kebencanaan_repository.dart';
 import '../utils/responsive.dart';
 import '../services/pdf_export_service.dart';
+import '../services/desa_repository.dart';
 
 class KebencanaanScreen extends StatefulWidget {
   final String desaName;
@@ -289,10 +290,16 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
         if (bantuanRaw.isNotEmpty) {
           bantuanList = bantuanRaw
               .map(
-                (b) => {
-                  'nama': (b['nama'] ?? '').toString(),
-                  'jenis': (b['jenis'] ?? '-').toString(),
-                  'jumlah': '${b['jumlah'] ?? 0} unit',
+                (b) {
+                  final rawJumlah = b['jumlah'];
+                  final intJumlah = (rawJumlah is int)
+                      ? rawJumlah
+                      : int.tryParse(rawJumlah?.toString() ?? '') ?? 0;
+                  return {
+                    'nama': (b['nama'] ?? '').toString(),
+                    'jenis': (b['jenis'] ?? '-').toString(),
+                    'jumlah': intJumlah,
+                  };
                 },
               )
               .toList();
@@ -300,14 +307,18 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
           final bantuanMap = Map<String, dynamic>.from(mapped['bantuan'] ?? {});
           bantuanList = bantuanMap.entries
               .map(
-                (e) => {
-                  'nama': e.key,
-                  'jenis': (e.key.toString().toLowerCase().contains('tenda'))
-                      ? 'Tenda'
-                      : (e.key.toString().toLowerCase().contains('sembako'))
-                      ? 'Sembako'
-                      : '-',
-                  'jumlah': '${e.value} unit',
+                (e) {
+                  final raw = e.value;
+                  final intJumlah = (raw is int) ? raw : int.tryParse(raw?.toString() ?? '') ?? 0;
+                  return {
+                    'nama': e.key,
+                    'jenis': (e.key.toString().toLowerCase().contains('tenda'))
+                        ? 'Tenda'
+                        : (e.key.toString().toLowerCase().contains('sembako'))
+                            ? 'Sembako'
+                            : '-',
+                    'jumlah': intJumlah,
+                  };
                 },
               )
               .toList();
@@ -432,8 +443,25 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
         'year': DateTime.now().year,
       };
 
+      // Resolve a readable desa name: prefer widget.desaName, then try to fetch by kodeWilayah
+      String resolvedDesaName = widget.desaName.isNotEmpty ? widget.desaName : '';
+      if (resolvedDesaName.isEmpty) {
+        try {
+          final desaRepo = DesaRepository();
+          if ((_kodeWilayah ?? '').isNotEmpty) {
+            final detail = await desaRepo.fetchDesaDetailByKode(_kodeWilayah!);
+            if (detail != null && (detail['nama'] as String?)?.isNotEmpty == true) {
+              resolvedDesaName = detail['nama'] as String;
+            }
+          }
+        } catch (_) {
+          // ignore fetch errors and fallback below
+        }
+      }
+      if (resolvedDesaName.isEmpty) resolvedDesaName = (_kodeWilayah ?? 'Desa');
+
       await PdfExportService.exportKebencanaan(
-        desaName: widget.desaName.isNotEmpty ? widget.desaName : (_kodeWilayah ?? 'Desa'),
+        desaName: resolvedDesaName,
         kodeWilayah: _kodeWilayah ?? '',
         data: data,
         context: context,
@@ -1744,9 +1772,11 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
       if (isNormalized) {
         // Replace mode: clear all detail rows for this snapshot, then insert current items
         await _repo.clearRtDetails(snapId);
+        debugPrint('[Kebencanaan][_save] Saving RT details count=${rtItems.where((e) => !e.removed).length} for snapshot=$snapId');
         for (final it in rtItems.where((e) => !e.removed)) {
           final code = it.rtCodeCtl.text.trim();
           if (code.isEmpty) continue;
+          debugPrint('[Kebencanaan][_save] upsertRtDetail snapshot=$snapId rt=$code rumah=${int.tryParse(it.rumahCtl.text.trim()) ?? 0} kk=${int.tryParse(it.kkCtl.text.trim()) ?? 0} jiwa=${int.tryParse(it.jiwaCtl.text.trim()) ?? 0}');
           await _repo.upsertRtDetail(
             snapshotId: snapId,
             rtCode: code,
@@ -1761,14 +1791,17 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
         }
 
         await _repo.clearBantuan(snapId);
+        debugPrint('[Kebencanaan][_save] Saving Bantuan count=${bantuanItems.where((e) => !e.removed).length} for snapshot=$snapId');
         for (final b in bantuanItems.where((e) => !e.removed)) {
           final nama = b.namaCtl.text.trim();
           if (nama.isEmpty) continue;
+          final jumlahInt = int.tryParse(b.jumlahCtl.text.trim()) ?? 0;
+          debugPrint('[Kebencanaan][_save] upsertBantuan snapshot=$snapId nama=$nama jenis=${b.jenisCtl.text.trim()} jumlah=$jumlahInt');
           await _repo.upsertBantuan(
             snapshotId: snapId,
             nama: nama,
             jenis: b.jenisCtl.text.trim(),
-            jumlah: int.tryParse(b.jumlahCtl.text.trim()) ?? 0,
+            jumlah: jumlahInt,
           );
         }
 

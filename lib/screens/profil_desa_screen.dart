@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import '../utils/responsive.dart';
 import '../services/desa_repository.dart';
+import '../services/pdf_export_service.dart';
 import '../services/auth_service.dart';
 
 class ProfilDesaScreen extends StatefulWidget {
@@ -132,6 +133,13 @@ class _ProfilDesaScreenState extends State<ProfilDesaScreen> {
           ),
           iconTheme: const IconThemeData(color: Colors.white),
           elevation: 0,
+          actions: [
+            IconButton(
+              tooltip: 'Export PDF',
+              onPressed: _loading ? null : _exportProfilPdf,
+              icon: const Icon(Icons.download_rounded, color: Colors.white),
+            ),
+          ],
         ),
         body: Stack(
           children: [
@@ -288,6 +296,43 @@ class _ProfilDesaScreenState extends State<ProfilDesaScreen> {
             : null,
       ), // Scaffold
     ); // WillPopScope
+  }
+
+  Future<void> _exportProfilPdf() async {
+    if (!mounted) return;
+    try {
+      setState(() => _loading = true);
+
+      final profile = <String, dynamic>{
+        'kecamatan': _kecamatan,
+        'kabupaten': _kabupaten,
+        'provinsi': _provinsi,
+        'total_rt': _totalRT,
+        'total_rw': _totalRW,
+        'luas_wilayah': _luasKm2,
+        'telepon_kantor': _teleponKantor,
+        'email_kantor': _emailKantor,
+        'website': _website,
+        'sosmed': _sosmed,
+      };
+
+      final aparaturList = List<Map<String, dynamic>>.from(_aparatur);
+
+      final photosList = _photos.map((p) => {'url': p.url, 'caption': p.caption}).toList();
+
+      await PdfExportService.exportProfilDesa(
+        desaName: widget.desaName,
+        kodeWilayah: widget.kodeWilayah,
+        profile: profile,
+        aparatur: aparaturList,
+        photos: photosList,
+        context: context,
+      );
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal export profil: $e')));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   Future<void> _openEditBottomSheet() async {

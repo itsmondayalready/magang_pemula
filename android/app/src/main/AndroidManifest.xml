@@ -4,14 +4,26 @@
     <!-- Optional: used if you want to check connectivity state -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     
-    <!-- Permissions untuk image picker -->
+    <!-- Permissions untuk image picker and legacy storage write support -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    
+    <!--
+        If your app targets Android 10 (API 29) and you need the legacy external
+        storage behaviour, you can add the attribute below on the <application>
+        element. Note: this is a temporary migration aid and ignored on Android 11+.
+        Example: add `android:requestLegacyExternalStorage="true"` to the
+        <application> tag.
+    -->
     <application
-        android:label="Desa Cantik"
-        android:name="${applicationName}"
+        android:label="@string/app_name"
         android:icon="@mipmap/ic_launcher">
+        <!--
+            If your app targets Android 10 (API 29) and you need the legacy external
+            storage behaviour, you can add the attribute below on the <application>
+            element. Note: this is a temporary migration aid and ignored on Android 11+.
+            Example: add `android:requestLegacyExternalStorage="true"` to the
+            <application> tag.
+        -->
         <activity
             android:name=".MainActivity"
             android:exported="true"

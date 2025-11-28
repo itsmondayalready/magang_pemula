@@ -1,4 +1,7 @@
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/services.dart';
+// removed unused imports for image prefetching
 import 'package:flutter/material.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -9,6 +12,7 @@ import 'package:intl/intl.dart';
 
 /// Service untuk mengekspor data ke PDF dengan berbagai format laporan
 class PdfExportService {
+  static const MethodChannel _pdfSaveChannel = MethodChannel('app.channel.pdf_save');
   // Gunakan format sederhana tanpa locale untuk menghindari masalah inisialisasi
   static String _formatDate(DateTime date) {
     const months = [
@@ -76,11 +80,11 @@ class PdfExportService {
 
             _buildDataTable(
               title: 'Data Berdasarkan Jenis Kelamin',
-              headers: ['Jenis Kelamin', 'Jumlah', 'Persentase'],
+              headers: ['Jenis Kelamin', 'Jumlah', 'Satuan'],
               rows: [
-                ['Laki-laki', _formatNumber(lakiLaki), _formatPercentage(lakiLaki, totalPenduduk)],
-                ['Perempuan', _formatNumber(perempuan), _formatPercentage(perempuan, totalPenduduk)],
-                ['Total', _formatNumber(totalPenduduk), '100.0%'],
+                ['Laki-laki', _formatNumber(lakiLaki), 'Jiwa'],
+                ['Perempuan', _formatNumber(perempuan), 'Jiwa'],
+                ['Total', _formatNumber(totalPenduduk), 'Jiwa'],
               ],
             ),
 
@@ -88,12 +92,12 @@ class PdfExportService {
 
             _buildDataTable(
               title: 'Data Berdasarkan Kelompok Usia',
-              headers: ['Kelompok Usia', 'Jumlah', 'Persentase'],
+              headers: ['Kelompok Usia', 'Jumlah', 'Satuan'],
               rows: [
-                ['0-14 tahun', _formatNumber(usia0_14), _formatPercentage(usia0_14, totalPenduduk)],
-                ['15-64 tahun', _formatNumber(usia15_64), _formatPercentage(usia15_64, totalPenduduk)],
-                ['65+ tahun', _formatNumber(usia65Plus), _formatPercentage(usia65Plus, totalPenduduk)],
-                ['Total', _formatNumber(totalPenduduk), '100.0%'],
+                ['0-14 tahun', _formatNumber(usia0_14), 'Jiwa'],
+                ['15-64 tahun', _formatNumber(usia15_64), 'Jiwa'],
+                ['65+ tahun', _formatNumber(usia65Plus), 'Jiwa'],
+                ['Total', _formatNumber(totalPenduduk), 'Jiwa'],
               ],
             ),
 
@@ -110,7 +114,7 @@ class PdfExportService {
         final rows = pekerjaan.entries.map((e) => [
               e.key,
               _formatNumber(e.value),
-              _formatPercentage(e.value, totalForTable),
+              'Jiwa',
             ]).toList();
 
         pdf.addPage(
@@ -126,7 +130,7 @@ class PdfExportService {
             build: (context) => [
               _buildDataTable(
                 title: 'Distribusi Pekerjaan',
-                headers: ['Pekerjaan', 'Jumlah', 'Persentase'],
+                headers: ['Pekerjaan', 'Jumlah', 'Satuan'],
                 rows: rows,
               ),
               pw.SizedBox(height: 20),
@@ -655,8 +659,18 @@ class PdfExportService {
 
         try {
           if (bantuan is Map) {
+            int bi = 0;
             for (final e in bantuan.entries) {
-              debugPrint('bantuan entry key=${e.key} raw=${e.value} -> _toInt=${_toInt(e.value)}');
+              final rawVal = e.value;
+              final converted = _toInt(rawVal);
+              String encoded;
+              try {
+                encoded = jsonEncode(rawVal);
+              } catch (_) {
+                encoded = rawVal?.toString() ?? '<null>';
+              }
+              debugPrint('bantuan[$bi] key=${e.key} type=${rawVal.runtimeType} raw=$encoded -> _toInt=$converted');
+              bi++;
             }
           }
         } catch (e) {
@@ -740,11 +754,14 @@ class PdfExportService {
               _buildDataTable(
                 title: 'Data Bantuan',
                 headers: ['Jenis Bantuan', 'Jumlah', 'Satuan'],
-                rows: bantuan.entries.map((e) => [
-                  _formatKey(e.key),
-                  _formatNumber(e.value as int? ?? 0),
-                  'Unit'
-                ]).toList(),
+                rows: bantuan.entries.map((e) {
+                  final int val = _toInt(e.value);
+                  return [
+                    _formatKey(e.key),
+                    _formatNumber(val),
+                    'Unit',
+                  ];
+                }).toList(),
               ),
               pw.SizedBox(height: 20),
             ],
@@ -753,12 +770,17 @@ class PdfExportService {
             if (penanganan.isNotEmpty) ...[
               _buildDataTable(
                 title: 'Data Penanganan',
-                headers: ['Jenis Penanganan', 'Status', 'Keterangan'],
-                rows: penanganan.entries.map((e) => [
-                  _formatKey(e.key),
-                  e.value != null ? 'Tersedia' : 'Tidak Tersedia',
-                  '-'
-                ]).toList(),
+                headers: ['No', 'Deskripsi Penanganan'],
+                rows: penanganan.entries.toList().asMap().entries.map((entry) {
+                  final idx = entry.key;
+                  final e = entry.value;
+                  final desc = e.value?.toString() ?? '';
+                  return [
+                    '${idx + 1}',
+                    desc.isNotEmpty ? desc : '-',
+                  ];
+                }).toList(),
+                fixedColumnWidths: <double?>[24, null],
               ),
               pw.SizedBox(height: 20),
             ],
@@ -869,6 +891,7 @@ class PdfExportService {
     required String title,
     required List<String> headers,
     required List<List<String>> rows,
+    List<double?>? fixedColumnWidths,
   }) {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -880,6 +903,14 @@ class PdfExportService {
         pw.SizedBox(height: 8),
         pw.Table(
           border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
+          // If fixedColumnWidths is provided, map indexes to FixedColumnWidth
+          columnWidths: (fixedColumnWidths != null)
+              ? Map<int, pw.TableColumnWidth>.fromEntries(
+                  fixedColumnWidths.asMap().entries.where((e) => e.value != null).map(
+                    (e) => MapEntry(e.key, pw.FixedColumnWidth(e.value!)),
+                  ),
+                )
+              : null,
           children: [
             // Header row
             pw.TableRow(
@@ -1063,15 +1094,78 @@ class PdfExportService {
   }) async {
     final bytes = await pdf.save();
 
+    // Try native MediaStore save on Android (API 29+) via MethodChannel.
+    if (Platform.isAndroid) {
+      try {
+        final nativeUri = await _savePdfToDownloadsNative(bytes, filename, desaName);
+        if (nativeUri != null) {
+          // Build a friendly, human-readable path that users can look for in their
+          // Files/Downloads app. This mirrors the RELATIVE_PATH used on Android
+          // (Download/Desa Cantik/<desaName>/filename).
+          final sanitized = desaName.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
+          final friendlyPath = 'Download/Desa Cantik/$sanitized/$filename';
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('PDF berhasil disimpan: $friendlyPath'),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 6),
+                action: SnackBarAction(
+                  label: 'Buka',
+                  onPressed: () async {
+                    try {
+                      await _pdfSaveChannel.invokeMethod('openFile', {'uri': nativeUri});
+                    } catch (e) {
+                      // Fallback: share/open via printing package
+                      await Printing.sharePdf(bytes: bytes, filename: filename);
+                    }
+                  },
+                ),
+              ),
+            );
+          }
+          return;
+        }
+      } catch (e) {
+        debugPrint('Native save failed, falling back to path-based save: $e');
+      }
+    }
+
     String sanitize(String input) => input.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
 
     try {
       Directory baseDir;
 
       if (Platform.isAndroid) {
-        // Prefer the Downloads external directory on Android
-        final dirs = await getExternalStorageDirectories(type: StorageDirectory.downloads);
-        baseDir = (dirs != null && dirs.isNotEmpty) ? dirs.first : await getApplicationDocumentsDirectory();
+        // Prefer the public Downloads directory on Android (primary internal storage)
+        Directory? chosen;
+        try {
+          final dirs = await getExternalStorageDirectories(type: StorageDirectory.downloads);
+          if (dirs != null && dirs.isNotEmpty) chosen = dirs.first;
+        } catch (_) {
+          chosen = null;
+        }
+
+        // Fallback: try primary external storage root + '/Download'
+        if (chosen == null) {
+          try {
+            final extRoot = await getExternalStorageDirectory();
+            if (extRoot != null) {
+              final downloadsDir = Directory('${extRoot.path}${Platform.pathSeparator}Download');
+              // Try to create if not exists (may fail on strict scoped storage, but we'll attempt)
+              if (!await downloadsDir.exists()) {
+                try {
+                  await downloadsDir.create(recursive: true);
+                } catch (_) {}
+              }
+              if (await downloadsDir.exists()) chosen = downloadsDir;
+            }
+          } catch (_) {
+            chosen = null;
+          }
+        }
+
+        baseDir = chosen ?? await getApplicationDocumentsDirectory();
       } else if (Platform.isIOS) {
         // iOS doesn't expose a Downloads folder; use app documents
         baseDir = await getApplicationDocumentsDirectory();
@@ -1130,6 +1224,22 @@ class PdfExportService {
     }
   }
 
+  static Future<String?> _savePdfToDownloadsNative(Uint8List bytes, String fileName, String desaName) async {
+    try {
+      final sanitized = desaName.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
+      final subfolder = 'Desa Cantik/$sanitized';
+      final res = await _pdfSaveChannel.invokeMethod<String>('savePdfToDownloads', {
+        'fileName': fileName,
+        'bytes': bytes,
+        'subfolder': subfolder,
+      });
+      return res;
+    } catch (e) {
+      debugPrint('savePdfToDownloads native error: $e');
+      return null;
+    }
+  }
+
   static void _showError(BuildContext context, String message) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1141,4 +1251,89 @@ class PdfExportService {
       );
     }
   }
+
+  /// Ekspor profil desa ke PDF
+  static Future<void> exportProfilDesa({
+    required String desaName,
+    required String kodeWilayah,
+    required Map<String, dynamic> profile,
+    required List<Map<String, dynamic>> aparatur,
+    required List<Map<String, String>> photos,
+    required BuildContext context,
+  }) async {
+    try {
+      final pdf = pw.Document();
+      final now = DateTime.now();
+
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(20),
+          header: (context) => _buildHeader(
+            title: 'PROFIL DESA',
+            subtitle: '$desaName ($kodeWilayah)',
+            date: now,
+          ),
+          footer: (context) => _buildFooter(context),
+          build: (context) => [
+            _buildInfoSection('Identitas Desa', [
+              ['Nama Desa', desaName],
+              ['Kode Wilayah', kodeWilayah],
+              ['Kecamatan', (profile['kecamatan'] ?? '-')?.toString() ?? '-'],
+              ['Kabupaten', (profile['kabupaten'] ?? '-')?.toString() ?? '-'],
+              ['Provinsi', (profile['provinsi'] ?? '-')?.toString() ?? '-'],
+              ['Jumlah RT', (profile['total_rt'] != null) ? '${profile['total_rt']} RT' : '-'],
+              ['Jumlah RW', (profile['total_rw'] != null) ? '${profile['total_rw']} RW' : '-'],
+              ['Luas Wilayah', (profile['luas_wilayah'] != null) ? '${(profile['luas_wilayah'] as num).toString()} km²' : '-'],
+            ]),
+            pw.SizedBox(height: 12),
+
+            if (aparatur.isNotEmpty) _buildDataTable(
+              title: 'Aparatur Desa',
+              headers: ['Jabatan', 'Nama'],
+              rows: aparatur.map((a) => [a['jabatan']?.toString() ?? '-', a['nama']?.toString() ?? '-']).toList(),
+            ),
+
+            // Kontak, Sosial Media, and Galeri Foto intentionally omitted
+            pw.SizedBox(height: 12),
+            // Kontak Desa as a simple 2-column table (Field | Nilai)
+            _buildDataTable(
+              title: 'Kontak Desa',
+              headers: ['Field', 'Nilai'],
+              rows: [
+                ['Telepon Kantor', profile['telepon_kantor']?.toString() ?? '-'],
+                ['Email Kantor', profile['email_kantor']?.toString() ?? '-'],
+                ['Website', profile['website']?.toString() ?? '-'],
+                ['Sosial Media', _formatSosmedForPdf(profile['sosmed'])],
+              ],
+            ),
+          ],
+        ),
+      );
+
+      final outName = 'Profil_Desa_${desaName}.pdf';
+      await _savePdf(pdf, outName, context, desaName: desaName);
+    } catch (e) {
+      _showError(context, 'Gagal membuat profil desa PDF: $e');
+    }
+  }
+
+  static String _formatSosmedForPdf(dynamic s) {
+    if (s == null) return '-';
+    if (s is Map) {
+      final parts = <String>[];
+      void add(String key, String label) {
+        final v = s[key];
+        if (v is String && v.trim().isNotEmpty) parts.add('$label: $v');
+      }
+      add('ig', 'IG');
+      add('facebook', 'FB');
+      add('yt', 'YT');
+      add('tiktok', 'TT');
+      add('x', 'X');
+      return parts.isEmpty ? '-' : parts.join(' • ');
+    }
+    return s.toString();
+  }
+  // Removed image prefetch helper (not used) to avoid unused imports and lints.
 }
