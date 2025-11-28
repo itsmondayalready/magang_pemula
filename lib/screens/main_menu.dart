@@ -725,6 +725,26 @@ class _HeaderContentState extends State<_HeaderContent>
           children: [
             Row(
               children: [
+                // Logo Desa (runtime asset) - sized & padded to avoid cropping
+                Padding(
+                  padding: const EdgeInsets.only(right: 12, left: 4),
+                  child: SizedBox(
+                    width: 56,
+                    height: 56,
+                    child: CircleAvatar(
+                      backgroundColor: Colors.white.withValues(alpha: 0.12),
+                      child: Padding(
+                        padding: const EdgeInsets.all(6),
+                        child: FittedBox(
+                          fit: BoxFit.contain,
+                          child: Image.asset(
+                            'lib/assets/GKL16_Banjar - Koleksilogo.com.png',
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.only(left: 4),
