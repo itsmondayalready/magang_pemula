@@ -15,9 +15,10 @@ class KebencanaanRepository {
 
   /// Ambil satu record kebencanaan terbaru untuk desa+jenis tertentu.
   /// Mengembalikan row apa adanya (map) atau null jika tidak ada.
+  /// Jika jenis tidak disebutkan, akan mengambil data terbaru tanpa filter jenis.
   Future<Map<String, dynamic>?> fetchLatest(
     String kodeWilayah, {
-    String jenis = 'banjir',
+    String? jenis,
   }) async {
     // 1) Coba skema NORMAL (tabel terpisah): kebencanaan_snapshot + detail
     try {
@@ -32,11 +33,16 @@ class KebencanaanRepository {
 
     // Coba query langsung berdasarkan kolom kode_wilayah (skema terbaru)
     try {
-      final List rows = await _db
+      var query = _db
           .from('kebencanaan')
           .select()
-          .eq('kode_wilayah', kodeWilayah)
-          .eq('jenis', jenis)
+          .eq('kode_wilayah', kodeWilayah);
+      
+      if (jenis != null) {
+        query = query.eq('jenis', jenis);
+      }
+      
+      final List rows = await query
           .order('period_end', ascending: false)
           .order('periode_date', ascending: false)
           .order('created_at', ascending: false)
@@ -59,11 +65,16 @@ class KebencanaanRepository {
       if (desa == null) return null;
       final desaId = desa['id'];
 
-      final List rows = await _db
+      var query = _db
           .from('kebencanaan')
           .select()
-          .eq('desa_id', desaId)
-          .eq('jenis', jenis)
+          .eq('desa_id', desaId);
+      
+      if (jenis != null) {
+        query = query.eq('jenis', jenis);
+      }
+      
+      final List rows = await query
           .order('period_end', ascending: false)
           .order('periode_date', ascending: false)
           .order('created_at', ascending: false)
@@ -92,8 +103,32 @@ class KebencanaanRepository {
   /// }
   Map<String, dynamic> toScreenData(Map<String, dynamic> row) {
     final periodeLabel = _formatPeriode(row);
+    // Extract year from periode_label first, then fallback to period dates
+    int? year;
+    
+    // Try to extract year from periode_label (e.g., "Januari 2024", "Desember 2023")
+    if (periodeLabel.isNotEmpty) {
+      final yearMatch = RegExp(r'\b(20\d{2})\b').firstMatch(periodeLabel);
+      if (yearMatch != null) {
+        year = int.tryParse(yearMatch.group(1)!);
+      }
+    }
+    
+    // Fallback to period_end or periode_date if year not found in label
+    if (year == null) {
+      try {
+        if (row['period_end'] != null) {
+          year = DateTime.parse(row['period_end'] as String).year;
+        } else if (row['periode_date'] != null) {
+          year = DateTime.parse(row['periode_date'] as String).year;
+        }
+      } catch (_) {}
+    }
+    
     return {
       'periode': periodeLabel,
+      'jenis': row['jenis'] ?? 'banjir', // jenis kebencanaan dari DB
+      'year': year ?? DateTime.now().year, // tahun dari periode label atau date
       'total_rumah': (row['total_rumah'] ?? 0) as int,
       'total_kk': (row['total_kk'] ?? 0) as int,
       'total_jiwa': (row['total_jiwa'] ?? 0) as int,
@@ -252,16 +287,21 @@ class KebencanaanRepository {
   /// Ambil snapshot terbaru lalu tarik detail RT, bantuan, dan penanganan.
   Future<Map<String, dynamic>?> _fetchLatestNormalized(
     String kodeWilayah, {
-    required String jenis,
+    String? jenis,
   }) async {
     // Ambil snapshot terbaru berdasarkan kode_wilayah & jenis
     Map<String, dynamic>? snapshot;
     try {
-      final snap = await _db
+      var query = _db
           .from('kebencanaan_rekap')
           .select()
-          .eq('kode_wilayah', kodeWilayah)
-          .eq('jenis', jenis)
+          .eq('kode_wilayah', kodeWilayah);
+      
+      if (jenis != null) {
+        query = query.eq('jenis', jenis);
+      }
+      
+      final snap = await query
           .order('period_end', ascending: false, nullsFirst: false)
           .order('periode_date', ascending: false, nullsFirst: false)
           .order('created_at', ascending: false)

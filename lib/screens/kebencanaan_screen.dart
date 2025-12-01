@@ -100,6 +100,126 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
                     const SizedBox(width: 8),
                   ],
                 ),
+                // Info card for Jenis Bencana & Tahun
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      context.horizontalPadding,
+                      16,
+                      context.horizontalPadding,
+                      8,
+                    ),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(context.rs(16)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.06),
+                            blurRadius: context.rs(10),
+                            offset: Offset(0, context.rs(4)),
+                          ),
+                        ],
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.all(context.rs(14)),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(context.rs(8)),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFDC2626).withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(context.rs(10)),
+                                  ),
+                                  child: Icon(
+                                    Icons.warning_rounded,
+                                    color: const Color(0xFFDC2626),
+                                    size: context.rs(22),
+                                  ),
+                                ),
+                                SizedBox(width: context.rs(12)),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _dataBanjir != null 
+                                            ? _capitalizeWords((_dataBanjir?['jenis'] ?? '-').toString())
+                                            : '—',
+                                        style: TextStyle(
+                                          color: const Color(0xFF1A1A1A),
+                                          fontSize: context.rf(22),
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      SizedBox(height: context.rs(2)),
+                                      Text(
+                                        'Jenis Bencana',
+                                        style: TextStyle(
+                                          color: Colors.grey[600],
+                                          fontSize: context.rf(12),
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: context.rs(12)),
+                            Row(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(context.rs(8)),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFDC2626).withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(context.rs(10)),
+                                  ),
+                                  child: Icon(
+                                    Icons.calendar_today_rounded,
+                                    color: const Color(0xFFDC2626),
+                                    size: context.rs(22),
+                                  ),
+                                ),
+                                SizedBox(width: context.rs(12)),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _dataBanjir != null 
+                                            ? (_dataBanjir?['year']?.toString() ?? '—')
+                                            : '—',
+                                        style: TextStyle(
+                                          color: const Color(0xFF1A1A1A),
+                                          fontSize: context.rf(22),
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      SizedBox(height: context.rs(2)),
+                                      Text(
+                                        'Tahun',
+                                        style: TextStyle(
+                                          color: Colors.grey[600],
+                                          fontSize: context.rf(12),
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
                 // Summary cards
                 SliverToBoxAdapter(
                   child: Padding(
@@ -274,9 +394,10 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
       if (forceSnapshotId != null) {
         row = await _repo.fetchBySnapshotId(forceSnapshotId);
         // Jika fetch by id gagal (hapus atau id tidak ditemukan), fallback ke latest
-        row ??= await _repo.fetchLatest(kode, jenis: 'banjir');
+        row ??= await _repo.fetchLatest(kode);
       } else {
-        row = await _repo.fetchLatest(kode, jenis: 'banjir');
+        // Ambil data terbaru tanpa filter jenis
+        row = await _repo.fetchLatest(kode);
       }
       if (!mounted) return;
       if (row != null) {
@@ -608,14 +729,24 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
                       child: BarChart(
                         BarChartData(
                           alignment: BarChartAlignment.spaceAround,
-                          maxY:
-                              top
-                                  .map(
-                                    (e) => ((e.value['jiwa'] ?? 0) as num)
-                                        .toDouble(),
-                                  )
-                                  .fold<double>(0, (p, c) => c > p ? c : p) +
-                              20,
+                          maxY: () {
+                            final maxValue = top
+                                .map(
+                                  (e) => ((e.value['jiwa'] ?? 0) as num)
+                                      .toDouble(),
+                                )
+                                .fold<double>(0, (p, c) => c > p ? c : p);
+                            // Round up to nearest interval for nice numbers
+                            if (maxValue <= 75) {
+                              return ((maxValue / 25).ceil() * 25).toDouble();
+                            } else if (maxValue <= 200) {
+                              return ((maxValue / 50).ceil() * 50).toDouble();
+                            } else if (maxValue <= 500) {
+                              return ((maxValue / 100).ceil() * 100).toDouble();
+                            } else {
+                              return ((maxValue / 200).ceil() * 200).toDouble();
+                            }
+                          }(),
                           barTouchData: BarTouchData(
                             enabled: true,
                             touchTooltipData: BarTouchTooltipData(
@@ -662,6 +793,19 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
                               sideTitles: SideTitles(
                                 showTitles: true,
                                 reservedSize: 40,
+                                interval: () {
+                                  final maxValue = top
+                                      .map(
+                                        (e) => ((e.value['jiwa'] ?? 0) as num)
+                                            .toDouble(),
+                                      )
+                                      .fold<double>(0, (p, c) => c > p ? c : p);
+                                  // Calculate nice interval based on max value
+                                  if (maxValue <= 75) return 25.0;
+                                  if (maxValue <= 200) return 50.0;
+                                  if (maxValue <= 500) return 100.0;
+                                  return 200.0;
+                                }(),
                                 getTitlesWidget: (value, meta) => Text(
                                   '${value.toInt()}',
                                   style: const TextStyle(fontSize: 11),
@@ -678,7 +822,19 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
                           gridData: FlGridData(
                             show: true,
                             drawVerticalLine: false,
-                            horizontalInterval: 50,
+                            horizontalInterval: () {
+                              final maxValue = top
+                                  .map(
+                                    (e) => ((e.value['jiwa'] ?? 0) as num)
+                                        .toDouble(),
+                                  )
+                                  .fold<double>(0, (p, c) => c > p ? c : p);
+                              // Same interval as Y axis
+                              if (maxValue <= 75) return 25.0;
+                              if (maxValue <= 200) return 50.0;
+                              if (maxValue <= 500) return 100.0;
+                              return 200.0;
+                            }(),
                             getDrawingHorizontalLine: (value) => FlLine(
                               color: Colors.grey.shade300,
                               strokeWidth: 1,
@@ -1545,6 +1701,15 @@ class _KebencanaanScreenState extends State<KebencanaanScreen>
     }
     return v.toString();
   }
+
+  // Capitalize first letter of each word
+  String _capitalizeWords(String text) {
+    if (text.isEmpty) return text;
+    return text.split(' ').map((word) {
+      if (word.isEmpty) return word;
+      return word[0].toUpperCase() + word.substring(1).toLowerCase();
+    }).join(' ');
+  }
 }
 
 // ================= Bottom sheet edit widget (refactored) =================
@@ -1578,6 +1743,7 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
   late final TextEditingController bumilCtl;
   late final TextEditingController balitaCtl;
   late final TextEditingController periodeLabelCtl;
+  late final TextEditingController jenisCtl; // controller untuk jenis bencana
 
   final List<_RtEditItem> rtItems = [];
   final List<_BantuanEditItem> bantuanItems = [];
@@ -1588,6 +1754,9 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
     super.initState();
     _repo = KebencanaanRepository();
     final d = widget.initialData;
+    jenisCtl = TextEditingController(
+      text: (d?['jenis'] ?? 'banjir').toString(),
+    );
     totalRumahCtl = TextEditingController(
       text: (d?['total_rumah'] ?? 0).toString(),
     );
@@ -1673,6 +1842,7 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
     bumilCtl.dispose();
     balitaCtl.dispose();
     periodeLabelCtl.dispose();
+    jenisCtl.dispose();
     for (final it in rtItems) {
       it.rtCodeCtl.dispose();
       it.rumahCtl.dispose();
@@ -1758,7 +1928,7 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
       final snapId = await _repo.upsertRekap(
         snapshotId: widget.snapshotId,
         kodeWilayah: widget.kodeWilayah,
-        jenis: 'banjir',
+        jenis: jenisCtl.text.trim().toLowerCase(),
         periodeLabel: periodeLabelCtl.text.trim(),
         totalRumah: totalRumah,
         totalKk: totalKk,
@@ -1992,6 +2162,18 @@ class _KebencanaanEditSheetState extends State<_KebencanaanEditSheet> {
                                   ),
                                 ),
                                 const SizedBox(height: 12),
+                                TextFormField(
+                                  controller: jenisCtl,
+                                  decoration: _dec('Jenis Bencana'),
+                                  textCapitalization: TextCapitalization.words,
+                                  validator: (v) {
+                                    if (v == null || v.trim().isEmpty) {
+                                      return 'Jenis bencana wajib diisi';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 16),
                                 Wrap(
                                   spacing: 16,
                                   runSpacing: 16,
